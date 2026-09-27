@@ -310,8 +310,11 @@ LM.saveTodoState = function (state) {
   LM.set(LM.TODO_KEY, state);
 };
 
-// 予定・イベントの変更をFirestoreへ同期する(登録している場合のみ)
-LM.syncFirebase = function () {
+// 予定・イベントの変更をFirestoreへ同期する(準備が間に合っていなければ待ってから送る)
+LM.syncFirebase = async function () {
+  if (!window.LMFirebase) {
+    await new Promise((resolve) => window.addEventListener('lm-firebase-ready', resolve, { once: true }));
+  }
   if (window.LMFirebase) window.LMFirebase.syncData();
 };
 
