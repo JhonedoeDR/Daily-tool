@@ -368,6 +368,15 @@ LM.showToast = function (message, type) {
   }, 2600);
 };
 
+// FirebaseのエラーはUI上のどのページでも赤いトーストで見えるようにする
+window.addEventListener('lm-firebase-error', (e) => {
+  const action = (e.detail && e.detail.action) || 'Firebase処理';
+  const message = (e.detail && e.detail.message) || '不明なエラー';
+  if (typeof LM !== 'undefined' && LM.showToast) {
+    LM.showToast(`${action}に失敗: ${message}`, 'error');
+  }
+});
+
 /* ---------- 期限切れ予定の自動削除(日付が今日より前のものを削除) ---------- */
 (function purgeExpiredSchedules() {
   const today = LM.todayStr();
