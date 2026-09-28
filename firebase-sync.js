@@ -35,7 +35,9 @@ window.LMFirebase = {
   async registerToken() {
     try {
       if (!('serviceWorker' in navigator)) return null;
-      const reg = await navigator.serviceWorker.register('./firebase-messaging-sw.js');
+      // アプリ本体と同じService Worker(sw.js)を使う(同じscopeに2つは置けないため)
+      await navigator.serviceWorker.register('./sw.js');
+      const reg = await navigator.serviceWorker.ready;
       const messaging = getMessaging(app);
       const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
       if (!token) return null;
