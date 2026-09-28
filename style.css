@@ -303,39 +303,34 @@ body {
 
 /* ---------- 時間計算 ----------- */
 
-.lm-btn-tc::before,.lm-btn-tc::after {
-  position: absolute;
-  top: 9px;
-  left: 50%;
-  content: '';
-  display: inline-block;
-  width: 13px;
-  height: 13px;
-  border-top: 2px solid #fff;
-  transform: translateX(-50%);
-}
-
-.lm-btn-tc:after {
-  top: 3px;
-  left: -3px;
-  transform: rotate(90deg);
-}
-
-
 .lm-btn-tc {
   background: #fff;
   color: var(--text);
   border: 1px solid var(--paper-line);
 }
 
-.sr-only {
+.btn-plus {
+  display: inline-block;
+  vertical-align: middle;
+  color: #333;
+  line-height: 1;
+  width: 1em;
+  height: 0.1em;
+  background: currentColor;
+  border-radius: 0.1em;
+  position: relative;
+}
+
+.btn-plus::before {
+  content: '';
   position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  clip-path: polygon(0 0, 0 0, 0 0, 0 0);
-  border: 0;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: inherit;
+  border-radius: inherit;
+  transform: rotate(90deg);
 }
 
 
