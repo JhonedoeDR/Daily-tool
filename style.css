@@ -303,6 +303,12 @@ body {
 
 /* ---------- 時間計算 ----------- */
 
+.lm-btn-tc {
+  background: #fff;
+  color: var(--text);
+  border: 1px solid var(--paper-line);
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
