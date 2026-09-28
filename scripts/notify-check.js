@@ -98,19 +98,44 @@ async function main() {
     return;
   }
 
+  // data-onlyメッセージで送る(表示はService Worker側で1回だけ行う。二重表示防止)
+  const invalidTokens = new Set();
   for (const msg of messages) {
     try {
-      await admin.messaging().sendEachForMulticast({
+      const res = await admin.messaging().sendEachForMulticast({
         tokens,
-        notification: { title: msg.title, body: msg.body },
+        data: { title: msg.title, body: msg.body },
+        webpush: { headers: { Urgency: 'high', TTL: '300' } },
+      });
+      console.log(`「${msg.title}」 成功:${res.successCount} 失敗:${res.failureCount}`);
+      res.responses.forEach((r, i) => {
+        if (r.success) {
+          console.log(`  token[${i}] OK`);
+        } else {
+          const code = r.error && r.error.code;
+          console.log(`  token[${i}] NG: ${code} / ${r.error && r.error.message}`);
+          if (
+            code === 'messaging/registration-token-not-registered' ||
+            code === 'messaging/invalid-registration-token' ||
+            code === 'messaging/invalid-argument'
+          ) {
+            invalidTokens.add(tokens[i]);
+          }
+        }
       });
     } catch (e) {
       console.error('送信失敗', e);
     }
   }
 
-  await ref.set({ notifiedKeys: Array.from(notifiedKeys).slice(-500) }, { merge: true });
-  console.log(`${messages.length}件の通知を送信しました`);
+  // 無効になったトークンはFirestoreから取り除く
+  const update = { notifiedKeys: Array.from(notifiedKeys).slice(-500) };
+  if (invalidTokens.size > 0) {
+    update.tokens = tokens.filter((t) => !invalidTokens.has(t));
+    console.log(`無効なトークンを${invalidTokens.size}件削除しました`);
+  }
+  await ref.set(update, { merge: true });
+  console.log(`${messages.length}件の通知を処理しました`);
 }
 
 main().catch((e) => {
