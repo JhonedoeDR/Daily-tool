@@ -1,14 +1,14 @@
 @import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap');
 
 :root {
-  --paper: #faeee7;
-  --paper-line: #99918d;
-  --text: #33272a;
-  --text-soft: #594a4e;
-  --accent: #ff8ba7;
-  --accent-soft: #ffc6c7;
-  --teal: #ff8ba7;
-  --teal-soft: #ffc6c7;
+  --paper: #ffffff;
+  --paper-line: #b8dce8;
+  --text: #30434a;
+  --text-soft: #60757c;
+  --accent: #5ebfe0;
+  --accent-soft: #f8e16b;
+  --teal: #5ebfe0;
+  --teal-soft: #f8e16b;
   --red: #a85c4a;
   --radius: 10px;
   --font-display: 'Zen Maru Gothic', sans-serif;
@@ -217,7 +217,7 @@ body {
   padding: 14px 6px;
   background: var(--accent);
   border: none;
-  border-bottom: 5px solid #d9768e;
+  border-bottom: 5px solid #4a9db9;
   border-radius: var(--radius);
   color: var(--text);
   text-decoration: none;
@@ -232,7 +232,7 @@ body {
 .lm-nav-btn:active,
 .lm-nav-btn.lm-pressed {
   margin-top: 3px;
-  border-bottom: 2px solid #d9768e;
+  border-bottom: 2px solid #4a9db9;
   background: var(--accent-soft);
 }
 
