@@ -303,6 +303,25 @@ body {
 
 /* ---------- 時間計算 ----------- */
 
+.lm-btn-tc::before,.lm-btn-tc::after {
+  position: absolute;
+  top: 9px;
+  left: 50%;
+  content: '';
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border-top: 2px solid #fff;
+  transform: translateX(-50%);
+}
+
+.lm-btn-tc:after {
+  top: 3px;
+  left: -3px;
+  transform: rotate(90deg);
+}
+
+
 .lm-btn-tc {
   background: #fff;
   color: var(--text);
