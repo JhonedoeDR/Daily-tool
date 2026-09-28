@@ -22,7 +22,9 @@
       <form id="work-form" style="display:flex; gap:8px; margin-top:10px;">
         <input id="f-work-name" placeholder="作業名(例:風呂)" style="flex:1; min-width:0; font-family:var(--font-body); font-size:16px; padding:8px 10px; border:1px solid var(--paper-line); border-radius:8px;" required />
         <input id="f-work-min" type="number" inputmode="numeric" pattern="[0-9]*" min="0" placeholder="分" style="width:64px; flex:none; font-family:var(--font-body); font-size:16px; padding:8px 6px; border:1px solid var(--paper-line); border-radius:8px;" required />
-        <button type="submit" class="lm-btn secondary" style="padding:8px 14px;">追加</button>
+        <button type="submit" class="lm-btn secondary" style="padding:8px 14px;">
+          <span class="sr-only">追加</span>
+        </button>
       </form>
       <div id="work-total" style="margin-top:12px; font-size:16px; font-weight:700;"></div>
     </section>
