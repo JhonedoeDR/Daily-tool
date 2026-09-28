@@ -24,7 +24,10 @@ window.LMFirebase = {
     try {
       const schedules = JSON.parse(localStorage.getItem('lm_schedules') || '[]');
       const events = JSON.parse(localStorage.getItem('lm_events') || '[]');
-      await setDoc(doc(db, ...STATE_REF_PATH), { schedules, events, updatedAt: Date.now() }, { merge: true });
+      // タスクは通知の判定に必要な部分だけ送る(日付区切り・各枠の名前と達成状況)
+      const todoRaw = JSON.parse(localStorage.getItem('lm_todoState') || 'null');
+      const todo = todoRaw ? { dayKey: todoRaw.dayKey || '', dailyTasks: todoRaw.dailyTasks || {} } : null;
+      await setDoc(doc(db, ...STATE_REF_PATH), { schedules, events, todo, updatedAt: Date.now() }, { merge: true });
     } catch (e) {
       console.error('Firestore sync failed', e);
       window.dispatchEvent(new CustomEvent('lm-firebase-error', { detail: { action: '予定の同期', message: (e && e.message) || String(e) } }));
