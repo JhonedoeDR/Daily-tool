@@ -301,6 +301,19 @@ body {
   }
 }
 
+/* ---------- 時間計算 ----------- */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  clip-path: polygon(0 0, 0 0, 0 0, 0 0);
+  border: 0;
+}
+
+
 /* ---------- モーダル(レイヤー表示) ---------- */
 .lm-modal-overlay {
   position: fixed;
