@@ -154,6 +154,38 @@ body {
   text-decoration-color: var(--paper-line);
 }
 
+/* ---------- 時間計算 ----------- */
+
+.lm-btn-tc {
+  background: #fff;
+  color: var(--text);
+  border: 1px solid var(--paper-line);
+}
+
+.btn-plus {
+  display: inline-block;
+  vertical-align: middle;
+  color: #333;
+  line-height: 1;
+  width: 1em;
+  height: 0.1em;
+  background: currentColor;
+  border-radius: 0.1em;
+  position: relative;
+}
+
+.btn-plus::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: inherit;
+  border-radius: inherit;
+  transform: rotate(90deg);
+}
+
 /* ---------- 勤務 ---------- */
 .lm-shift-box {
   display: flex;
@@ -301,37 +333,7 @@ body {
   }
 }
 
-/* ---------- 時間計算 ----------- */
 
-.lm-btn-tc {
-  background: #fff;
-  color: var(--text);
-  border: 1px solid var(--paper-line);
-}
-
-.btn-plus {
-  display: inline-block;
-  vertical-align: middle;
-  color: #333;
-  line-height: 1;
-  width: 1em;
-  height: 0.1em;
-  background: currentColor;
-  border-radius: 0.1em;
-  position: relative;
-}
-
-.btn-plus::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: inherit;
-  border-radius: inherit;
-  transform: rotate(90deg);
-}
 
 
 /* ---------- モーダル(レイヤー表示) ---------- */
