@@ -154,6 +154,18 @@ body {
   text-decoration-color: var(--paper-line);
 }
 
+/* ---------- 持ち物 ------------ */
+
+.btn-plus-bel {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 /* ---------- 時間計算 ----------- */
 
 .lm-btn-tc {
