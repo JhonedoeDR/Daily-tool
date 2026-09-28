@@ -302,12 +302,14 @@ LM.getTodoState = function () {
     state.reflected = LM.defaultTodoReflected();
   }
 
-  LM.saveTodoState(state);
+  LM.set(LM.TODO_KEY, state);
   return state;
 };
 
+// ユーザー操作によるタスクの変更を保存し、Firestoreへ少し遅らせて同期する(通知の判定に使われる)
 LM.saveTodoState = function (state) {
   LM.set(LM.TODO_KEY, state);
+  LM.syncFirebaseDebounced();
 };
 
 // 予定・イベントの変更をFirestoreへ同期する(準備が間に合っていなければ待ってから送る)
@@ -317,6 +319,24 @@ LM.syncFirebase = async function () {
   }
   if (window.LMFirebase) window.LMFirebase.syncData();
 };
+
+// 連続した変更(文字入力など)をまとめて、最後の変更から少し後に1回だけ同期する
+LM._syncTimer = null;
+LM.syncFirebaseDebounced = function (delayMs) {
+  clearTimeout(LM._syncTimer);
+  LM._syncTimer = setTimeout(() => {
+    LM._syncTimer = null;
+    LM.syncFirebase();
+  }, delayMs || 2000);
+};
+// 画面を閉じる/別アプリに切り替える時に、待機中の同期があれば今すぐ送る
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && LM._syncTimer) {
+    clearTimeout(LM._syncTimer);
+    LM._syncTimer = null;
+    LM.syncFirebase();
+  }
+});
 
 // メインタスクを初めてチェックした時だけ週間クリア数を+1する(週をまたぐとリセット)
 LM.toggleTodoCheck = function (state, id, checked) {
