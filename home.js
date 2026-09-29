@@ -37,35 +37,39 @@
 
   /* ---------- 今日の予定 ---------- */
   function renderSchedules() {
-   const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
-   const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
-   const schedules = LM.get(LM.KEYS.SCHEDULES, [])
-   .filter((s) => s.date === today && nowMin < toMin(s.start) + 60)
-   .sort((a, b) => a.start.localeCompare(b.start));
+  const el = document.getElementById('schedule-list');
+  const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+  const toMin = (t) => {
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + m;
+  };
 
+  const schedules = LM.get(LM.KEYS.SCHEDULES, [])
+    .filter((s) => s.date === today && nowMin < toMin(s.start) + 60)
+    .sort((a, b) => a.start.localeCompare(b.start));
 
-    if (schedules.length === 0) {
-      el.innerHTML = '<p class="lm-empty">今日の予定はありません</p>';
-      return false;
-    }
-
-    el.innerHTML = '';
-    schedules.forEach((s) => {
-      const row = document.createElement('a');
-      row.className = 'lm-schedule-item';
-      row.href = `./schedule.html?id=${encodeURIComponent(s.id)}`;
-      const departureHtml = renderDepartureLine(s);
-      row.innerHTML = `
-        <span class="lm-schedule-time">${s.start}</span>
-        <span>
-          <div>${escapeHtml(s.name)}</div>
-          ${departureHtml}
-        </span>
-      `;
-      el.appendChild(row);
-    });
-    return true;
+  if (schedules.length === 0) {
+    el.innerHTML = '<p class="lm-empty">今日の予定はありません</p>';
+    return false;
   }
+
+  el.innerHTML = '';
+  schedules.forEach((s) => {
+    const row = document.createElement('a');
+    row.className = 'lm-schedule-item';
+    row.href = `./schedule.html?id=${encodeURIComponent(s.id)}`;
+    const departureHtml = renderDepartureLine(s);
+    row.innerHTML = `
+      <span class="lm-schedule-time">${s.start}</span>
+      <span>
+        <div>${escapeHtml(s.name)}</div>
+        ${departureHtml}
+      </span>
+    `;
+    el.appendChild(row);
+  });
+  return true;
+ }
 
   function renderDepartureLine(s) {
     const r = LM.calcDeparture(s);
@@ -74,13 +78,30 @@
 
   /* ---------- 今日の持ちもの(カード+モーダル) ---------- */
   function renderBelongings() {
-    const el = document.getElementById('belongings-list');
-    const countEl = document.getElementById('belongings-count');
+  const el = document.getElementById('belongings-list');
+  const countEl = document.getElementById('belongings-count');
 
-    const schedules = LM.get(LM.KEYS.SCHEDULES, []).filter((s) => s.date === today);
-    const setIds = [...new Set(schedules.flatMap((s) => s.belongingSetIds || (s.belongingSetId ? [s.belongingSetId] : [])))];
-    const allSets = LM.get(LM.KEYS.BELONGING_SETS, []);
-    const sets = setIds.map((id) => allSets.find((s) => s.id === id)).filter(Boolean);
+  const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+  const toMin = (t) => {
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + m;
+  };
+
+  const schedules = LM.get(LM.KEYS.SCHEDULES, [])
+    .filter((s) => s.date === today && nowMin < toMin(s.start) + 60);
+
+  const setIds = [
+    ...new Set(
+      schedules.flatMap((s) =>
+        s.belongingSetIds || (s.belongingSetId ? [s.belongingSetId] : [])
+      )
+    )
+  ];
+
+  const allSets = LM.get(LM.KEYS.BELONGING_SETS, []);
+  const sets = setIds
+    .map((id) => allSets.find((s) => s.id === id))
+    .filter(Boolean);
 
     if (sets.length === 0) {
       countEl.textContent = '';
