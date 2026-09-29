@@ -113,9 +113,23 @@
     renderTabs();
 
     const shown =
-      current === ALL
-        ? items
-        : items.filter((it) => it.category === current);
+  current === ALL
+    ? items.filter((it) => {
+        const categoryMatch =
+          selectedCategories.size === 0 ||
+          selectedCategories.has(it.category);
+
+        const statusMatch =
+          selectedStatuses.size === 0 ||
+          selectedStatuses.has(
+            statusLabel(it.category, it.status)
+          );
+
+        return categoryMatch && statusMatch;
+      })
+    : items.filter(
+        (it) => it.category === current
+      );
 
     renderTotals(shown);
 
