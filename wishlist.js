@@ -271,6 +271,31 @@
       container.appendChild(pager);
     }
   }
+  
+  function showDetail(id) {
+  const it = load().find((x) => x.id === id);
+  if (!it) return;
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'font-size:14px; line-height:1.9;';
+
+  const details = [
+    `種類：${escapeHtml(it.category)}`,
+    `状態：${escapeHtml(statusLabel(it.category, it.status))}`,
+    it.price ? `価格：¥${it.price.toLocaleString()}` : '',
+    it.planThisMonth ? '今月買う予定：はい' : '',
+    it.url
+      ? `リンク：<a href="${escapeHtml(it.url)}" target="_blank" rel="noopener">${escapeHtml(it.url)}</a>`
+      : '',
+    it.memo
+      ? `メモ：<br>${escapeHtml(it.memo).replace(/\n/g, '<br>')}`
+      : 'メモ：なし'
+  ].filter(Boolean);
+
+  wrap.innerHTML = details.map((text) => `<div>${text}</div>`).join('');
+
+  LM.openModal(it.name, wrap);
+}
 
   function rowEl(it) {
     const row = document.createElement('div');
@@ -296,6 +321,7 @@
         )}`
       );
     }
+    
 
     if (it.planThisMonth) {
       subs.push('今月買う予定');
