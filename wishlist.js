@@ -275,6 +275,8 @@
   function rowEl(it) {
     const row = document.createElement('div');
     row.className = 'wl-row';
+    row.style.cursor = 'pointer';
+    row.dataset.detail = it.id;
 
     const opts = TYPES[it.category]
       .map(
@@ -310,11 +312,6 @@
     const badge =
       it.checks && it.checks.lent
         ? '<span class="wl-badge">貸出済</span>'
-        : '';
-
-    const memo =
-      it.memo && it.memo.trim()
-        ? `<div class="wl-row-memo">${escapeHtml(it.memo)}</div>`
         : '';
 
     row.innerHTML = `
