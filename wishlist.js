@@ -46,14 +46,13 @@
   let editingId = null;
   let formCategory = null;
 
+  // 「すべて」用フィルター
   let selectedCategories = new Set();
   let selectedStatuses = new Set();
   let filterOpen = null;
 
-  // カテゴリごとの「未購入類」ページ
   const pages = {};
 
-  // 「未購入類」に入れる状態
   function isUnpurchasedLike(cat, status) {
     return statusLabel(cat, status).startsWith('未');
   }
@@ -111,30 +110,35 @@
     const items = load();
 
     renderTabs();
-   $('filters').innerHTML = '';
 
-   if (current === ALL) {
-     renderFilters();
-   }
+    const filters = $('filters');
+
+    if (filters) {
+      filters.innerHTML = '';
+
+      if (current === ALL) {
+        renderFilters();
+      }
+    }
 
     const shown =
-  current === ALL
-    ? items.filter((it) => {
-        const categoryMatch =
-          selectedCategories.size === 0 ||
-          selectedCategories.has(it.category);
+      current === ALL
+        ? items.filter((it) => {
+            const categoryMatch =
+              selectedCategories.size === 0 ||
+              selectedCategories.has(it.category);
 
-        const statusMatch =
-          selectedStatuses.size === 0 ||
-          selectedStatuses.has(
-            statusLabel(it.category, it.status)
+            const statusMatch =
+              selectedStatuses.size === 0 ||
+              selectedStatuses.has(
+                statusLabel(it.category, it.status)
+              );
+
+            return categoryMatch && statusMatch;
+          })
+        : items.filter(
+            (it) => it.category === current
           );
-
-        return categoryMatch && statusMatch;
-      })
-    : items.filter(
-        (it) => it.category === current
-      );
 
     renderTotals(shown);
 
@@ -147,26 +151,26 @@
     }
 
     if (current === ALL) {
-  CATS.forEach((cat) => {
-    const group = shown.filter(
-      (it) => it.category === cat
-    );
+      CATS.forEach((cat) => {
+        const group = shown.filter(
+          (it) => it.category === cat
+        );
 
-    if (group.length) {
+        if (group.length) {
+          renderCategoryGroups(
+            list,
+            cat,
+            group
+          );
+        }
+      });
+    } else {
       renderCategoryGroups(
         list,
-        cat,
-        group
+        current,
+        shown
       );
     }
-  });
- } else {
-   renderCategoryGroups(
-     list,
-     current,
-     shown
-   );
- }
 
     const addArea = $('add-area');
 
@@ -184,76 +188,70 @@
       )
       .join('');
   }
-  
+
   function renderFilters() {
-  const container = $('filters');
-  container.innerHTML = '';
-  container.className = 'wl-filters';
+    const container = $('filters');
 
-  const categorySelected =
-    selectedCategories.size > 0;
+    if (!container) return;
 
-  const statusSelected =
-    selectedStatuses.size > 0;
+    container.className = 'wl-filters';
 
-  const categoryOptions = CATS.map((cat) => `
-    <button
-      type="button"
-      class="wl-filter-option${selectedCategories.has(cat) ? ' active' : ''}"
-      data-filter-category="${escapeHtml(cat)}"
-    >
-      ${selectedCategories.has(cat) ? '✓ ' : ''}${escapeHtml(cat)}
-    </button>
-  `).join('');
+    const categoryOptions = CATS.map((cat) => `
+      <button
+        type="button"
+        class="wl-filter-option${selectedCategories.has(cat) ? ' active' : ''}"
+        data-filter-category="${escapeHtml(cat)}"
+      >
+        ${selectedCategories.has(cat) ? '✓ ' : ''}${escapeHtml(cat)}
+      </button>
+    `).join('');
 
-  const statusOptions = [
-    ...new Set(
-      CATS.flatMap((cat) =>
-        TYPES[cat].map(([, label]) => label)
+    const statusOptions = [
+      ...new Set(
+        CATS.flatMap((cat) =>
+          TYPES[cat].map(([, label]) => label)
+        )
       )
-    )
-  ].map((label) => `
-    <button
-      type="button"
-      class="wl-filter-option${selectedStatuses.has(label) ? ' active' : ''}"
-      data-filter-status="${escapeHtml(label)}"
-    >
-      ${selectedStatuses.has(label) ? '✓ ' : ''}${escapeHtml(label)}
-    </button>
-  `).join('');
-
-  container.innerHTML = `
-    <div class="wl-filter">
+    ].map((label) => `
       <button
         type="button"
-        class="wl-filter-trigger${categorySelected ? ' active' : ''}"
-        data-filter-toggle="category"
+        class="wl-filter-option${selectedStatuses.has(label) ? ' active' : ''}"
+        data-filter-status="${escapeHtml(label)}"
       >
-        種類${categorySelected ? ` ${selectedCategories.size}選択` : ''} ▾
+        ${selectedStatuses.has(label) ? '✓ ' : ''}${escapeHtml(label)}
       </button>
+    `).join('');
 
-      <div class="wl-filter-options${filterOpen === 'category' ? ' open' : ''}">
-        ${categoryOptions}
+    container.innerHTML = `
+      <div class="wl-filter">
+        <button
+          type="button"
+          class="wl-filter-trigger"
+          data-filter-toggle="category"
+        >
+          種類${selectedCategories.size ? ` ${selectedCategories.size}選択` : ''} ▾
+        </button>
+
+        <div class="wl-filter-options${filterOpen === 'category' ? ' open' : ''}">
+          ${categoryOptions}
+        </div>
       </div>
-    </div>
 
-    <div class="wl-filter">
-      <button
-        type="button"
-        class="wl-filter-trigger${statusSelected ? ' active' : ''}"
-        data-filter-toggle="status"
-      >
-        属性${statusSelected ? ` ${selectedStatuses.size}選択` : ''} ▾
-      </button>
+      <div class="wl-filter">
+        <button
+          type="button"
+          class="wl-filter-trigger"
+          data-filter-toggle="status"
+        >
+          属性${selectedStatuses.size ? ` ${selectedStatuses.size}選択` : ''} ▾
+        </button>
 
-      <div class="wl-filter-options${filterOpen === 'status' ? ' open' : ''}">
-        ${statusOptions}
+        <div class="wl-filter-options${filterOpen === 'status' ? ' open' : ''}">
+          ${statusOptions}
+        </div>
       </div>
-    </div>
-  `;
-
-  $('tabs').appendChild(container);
-}
+    `;
+  }
 
   function renderTotals(shown) {
     const open = shown.filter((it) =>
@@ -273,11 +271,10 @@
       );
 
     $('totals').innerHTML =
-      `<span>未購入など合計 ¥${total.toLocaleString()}</span>` +
+      `<span>未購入類合計 ¥${total.toLocaleString()}</span>` +
       `<span>今月買うもの合計 ¥${plan.toLocaleString()}</span>`;
   }
 
-  // 「未購入など」と、それ以外の状態を表示
   function renderCategoryGroups(container, cat, items) {
     const unpurchasedLike = items.filter((it) =>
       isUnpurchasedLike(cat, it.status)
@@ -301,7 +298,7 @@
     if (unpurchasedLike.length) {
       appendPagedGroup(
         container,
-        `未購入など(${unpurchasedLike.length})`,
+        `未購入類(${unpurchasedLike.length})`,
         unpurchasedLike,
         cat
       );
@@ -364,6 +361,7 @@
           type="button"
           class="lm-btn secondary"
           data-page-prev="${escapeHtml(cat)}"
+          ${safePage <= 1 ? 'disabled' : ''}
         >◀</button>
 
         <span>${safePage}/${pageCount}</span>
@@ -372,12 +370,13 @@
           type="button"
           class="lm-btn secondary"
           data-page-next="${escapeHtml(cat)}"
+          ${safePage >= pageCount ? 'disabled' : ''}
         >▶</button>
 
         <button
-         type="button"
-         class="lm-btn secondary lm-list-all-btn"
-         data-page-all="${escapeHtml(cat)}"
+          type="button"
+          class="lm-btn secondary"
+          data-page-all="${escapeHtml(cat)}"
         >全表示</button>
       `;
 
@@ -385,7 +384,6 @@
     }
   }
 
-  // アイテム詳細
   function showDetail(id) {
     const it = load().find(
       (item) => item.id === id
@@ -422,7 +420,6 @@
     LM.openModal(it.name, wrap);
   }
 
-  // 一覧の1行
   function rowEl(it) {
     const row = document.createElement('div');
 
@@ -491,14 +488,12 @@
           type="button"
           data-edit="${escapeHtml(it.id)}"
           class="lm-btn secondary"
-          style="padding:2px 8px; font-size:12px;"
         >編集</button>
 
         <button
           type="button"
           data-delete="${escapeHtml(it.id)}"
           class="lm-btn secondary"
-          style="padding:2px 8px; font-size:12px;"
         >削除</button>
       </div>
     `;
@@ -506,7 +501,6 @@
     return row;
   }
 
-  // 状態変更
   function setStatus(id, status) {
     const items = load();
 
@@ -530,7 +524,6 @@
     render();
   }
 
-  // 追加・編集フォーム
   function openForm(cat, item) {
     formCategory = cat;
     editingId = item
@@ -596,7 +589,6 @@
     $('form-section').hidden = true;
   }
 
-  // フォーム送信
   form.addEventListener('submit', (e) => {
     e.preventDefault();
 
@@ -665,84 +657,78 @@
       closeForm
     );
 
-  // クリック処理
   document.addEventListener(
     'click',
     (e) => {
       const d = e.target.dataset;
 
-      // タブ
       if (d.tab) {
-   current = d.tab;
+        current = d.tab;
 
-  if (current === ALL) {
-    selectedCategories.clear();
-    selectedStatuses.clear();
-    filterOpen = null;
-  }
+        if (current === ALL) {
+          selectedCategories.clear();
+          selectedStatuses.clear();
+          filterOpen = null;
+        }
 
-  closeForm();
-  render();
-  return;
-}
-      
+        closeForm();
+        render();
+        return;
+      }
+
       if (d.filterToggle) {
-  filterOpen =
-    filterOpen === d.filterToggle
-      ? null
-      : d.filterToggle;
+        filterOpen =
+          filterOpen === d.filterToggle
+            ? null
+            : d.filterToggle;
 
-  render();
-  return;
- }
+        render();
+        return;
+      }
 
- if (d.filterCategory) {
-  if (
-    selectedCategories.has(
-      d.filterCategory
-    )
-  ) {
-    selectedCategories.delete(
-      d.filterCategory
-    );
-  } else {
-    selectedCategories.add(
-      d.filterCategory
-    );
-  }
+      if (d.filterCategory) {
+        if (
+          selectedCategories.has(
+            d.filterCategory
+          )
+        ) {
+          selectedCategories.delete(
+            d.filterCategory
+          );
+        } else {
+          selectedCategories.add(
+            d.filterCategory
+          );
+        }
 
-  filterOpen = 'category';
-  render();
-  return;
- }
+        render();
+        return;
+      }
 
- if (d.filterStatus) {
-  if (
-    selectedStatuses.has(
-      d.filterStatus
-    )
-  ) {
-    selectedStatuses.delete(
-      d.filterStatus
-    );
-  } else {
-    selectedStatuses.add(
-      d.filterStatus
-    );
-  }
+      if (d.filterStatus) {
+        if (
+          selectedStatuses.has(
+            d.filterStatus
+          )
+        ) {
+          selectedStatuses.delete(
+            d.filterStatus
+          );
+        } else {
+          selectedStatuses.add(
+            d.filterStatus
+          );
+        }
 
-  filterOpen = 'status';
-  render();
-  return;
- }
+        render();
+        return;
+      }
 
-      // 追加
       if (d.add) {
         openForm(current);
         return;
       }
 
-      // 編集
       if (d.edit) {
         const it = load().find(
           (item) => item.id === d.edit
@@ -758,7 +744,6 @@
         return;
       }
 
-      // 削除
       if (d.delete) {
         if (
           !confirm(
@@ -779,7 +764,6 @@
         return;
       }
 
-      // 前のページ
       if (d.pagePrev) {
         pages[d.pagePrev] =
           Math.max(
@@ -791,7 +775,6 @@
         return;
       }
 
-      // 次のページ
       if (d.pageNext) {
         const items =
           load().filter(
@@ -823,7 +806,6 @@
         return;
       }
 
-      // 全表示
       if (d.pageAll) {
         renderAllPage(
           d.pageAll
@@ -831,8 +813,6 @@
         return;
       }
 
-      // ボタン・セレクト・リンクを
-      // 押した場合は詳細を開かない
       if (
         e.target.closest(
           'button, select, a'
@@ -841,7 +821,6 @@
         return;
       }
 
-      // 行を押したら詳細
       const row =
         e.target.closest(
           '[data-detail]'
@@ -855,7 +834,6 @@
     }
   );
 
-  // 状態セレクト変更
   document.addEventListener(
     'change',
     (e) => {
@@ -870,7 +848,6 @@
     }
   );
 
-  // 「全表示」
   function renderAllPage(cat) {
     const items = load();
 
@@ -891,6 +868,13 @@
     );
 
     renderTabs();
+
+    const filters = $('filters');
+
+    if (filters) {
+      filters.innerHTML = '';
+    }
+
     renderTotals(shown);
 
     $('add-area').innerHTML =
@@ -938,7 +922,7 @@
     if (unpurchasedLike.length) {
       appendSimpleGroup(
         container,
-        `未購入など(${unpurchasedLike.length})`,
+        `未購入類(${unpurchasedLike.length})`,
         unpurchasedLike
       );
     }
