@@ -68,11 +68,4 @@ LM.renderTopMenu = function () {
   document.body.appendChild(overlay);
 };
 
-if (typeof LM.renderNav === 'function') {
-  const navContainer = document.getElementById('nav-container');
-  if (navContainer) {
-    LM.renderNav(navContainer);
-  }
-}
-
 LM.renderTopMenu();
