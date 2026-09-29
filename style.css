@@ -337,14 +337,6 @@ body {
   background: var(--paper);
 }
 
-.wl-pager {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 8px 0;
-}
-
 .wl-detail {
   font-size: 14px;
   line-height: 1.9;
