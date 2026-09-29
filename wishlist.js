@@ -185,7 +185,8 @@
   }
   
   function renderFilters() {
-  const container = document.createElement('div');
+  const container = $('filters');
+  container.innerHTML = '';
   container.className = 'wl-filters';
 
   const categorySelected =
