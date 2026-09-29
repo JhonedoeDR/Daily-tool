@@ -421,11 +421,11 @@ LM.renderNav = function (container) {
   const items = [
     { href: './schedule.html', label: '予定・逆算' },
     { href: './belongings.html', label: '持ちもの' },
-    { href: './time-calc.html', label: '時間計算' },
     { href: './todo.html', label: 'タスク' },
-    { href: './shift.html', label: '給与・シフト' },
-    { href: './wishlist.html', label: '欲しいもの' },
+    { href: './wishlist.html', label: 'WISHリスト' },
+    { href: './time-calc.html', label: '時間計算' },
     { href: './event.html', label: 'イベント' },
+    { href: './shift.html', label: '給与・シフト' },
     { href: 'https://jhonedoedr.github.io/MyBookLog/', label: 'よみもの記録', external: true },
   ];
   items.forEach((it) => {
