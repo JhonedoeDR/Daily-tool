@@ -176,11 +176,11 @@
       );
 
     $('totals').innerHTML =
-      `<span>未購入類合計 ¥${total.toLocaleString()}</span>` +
+      `<span>未購入など合計 ¥${total.toLocaleString()}</span>` +
       `<span>今月買うもの合計 ¥${plan.toLocaleString()}</span>`;
   }
 
-  // 「未購入類」と、それ以外の状態を表示
+  // 「未購入など」と、それ以外の状態を表示
   function renderCategoryGroups(container, cat, items) {
     const unpurchasedLike = items.filter((it) =>
       isUnpurchasedLike(cat, it.status)
@@ -204,7 +204,7 @@
     if (unpurchasedLike.length) {
       appendPagedGroup(
         container,
-        `未購入類(${unpurchasedLike.length})`,
+        `未購入など(${unpurchasedLike.length})`,
         unpurchasedLike,
         cat
       );
@@ -787,7 +787,7 @@
     if (unpurchasedLike.length) {
       appendSimpleGroup(
         container,
-        `未購入類(${unpurchasedLike.length})`,
+        `未購入など(${unpurchasedLike.length})`,
         unpurchasedLike
       );
     }
