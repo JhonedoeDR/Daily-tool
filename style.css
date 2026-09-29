@@ -1231,3 +1231,39 @@ body {
   border-radius: 50%;
   border: 1px solid var(--paper-line);
 }
+
+
+/* =========================================================
+   新HOME(STEP 4)追加分 - タイマー
+   STEP 2のブロックの続きとして style.css の一番下に貼る
+   ========================================================= */
+/* ボタンが出ても、円を切り替えた時に下の表示が上下に動かないよう高さを確保する */
+.hm-caption {
+  min-height: 38px;
+  align-items: center;
+}
+.hm-circle[data-mode='timecalc'] .hm-inner {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.hm-tc-btn {
+  min-width: 72px;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--paper-line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 13px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.hm-tc-btn:active {
+  background: var(--accent-soft);
+}
+.hm-tc-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
