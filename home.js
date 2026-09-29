@@ -15,9 +15,19 @@
   // 右カラムの基本順(手描き案どおり)。表示があるものを先に並べる既存の挙動は右カラム内で維持
   const SIDE_ORDER = ['schedule', 'event', 'belongings', 'shift'];
 
-  const hasContent = {};
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const RING_R = 76;
+  const RING_LEN = 2 * Math.PI * RING_R;
+  const WISH_CATEGORIES = [
+    { name: '本', color: 'var(--accent)' },
+    { name: 'ゲーム', color: 'var(--accent-soft)' },
+    { name: 'グッズ', color: '#4a9db9' },
+    { name: 'その他', color: 'var(--paper-line)' },
+  ];
 
-  setupCircleDate();
+  const hasContent = {};
+  let refreshCircle = function () {};
+
   hasContent.event = renderEvents();
   hasContent.task = renderTasks();
   hasContent.schedule = renderSchedules();
@@ -30,14 +40,6 @@
   LM.renderNav(document.getElementById('nav-container'));
   setupCircle();
   setupHomeButton();
-
-  /* ---------- 円の中の日付(例: wed / 9/30) ---------- */
-  function setupCircleDate() {
-    const d = new Date(today + 'T00:00:00');
-    const dow = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][d.getDay()];
-    document.getElementById('hm-dow').textContent = dow;
-    document.getElementById('hm-date').textContent = `${d.getMonth() + 1}/${d.getDate()}`;
-  }
 
   /* ---------- 円の切り替え(左右矢印・ドット・横スワイプ) ---------- */
   function setupCircle() {
@@ -63,6 +65,7 @@
       const mode = CIRCLE_MODES[index];
       titleEl.textContent = mode.title;
       circle.dataset.mode = mode.key;
+      renderCircleContent(mode.key);
       [...dotsEl.children].forEach((d, k) => d.setAttribute('aria-current', k === index ? 'true' : 'false'));
       if (dir) {
         hero.classList.remove('is-next', 'is-prev');
@@ -97,7 +100,152 @@
     }, { passive: true });
     hero.addEventListener('touchcancel', () => { tracking = false; }, { passive: true });
 
+    refreshCircle = function () { renderCircleContent(CIRCLE_MODES[index].key); };
+    // 予定逆算の針は時間で動くので、表示中だけ30秒ごとに描き直す
+    setInterval(() => { if (CIRCLE_MODES[index].key === 'schedule') refreshCircle(); }, 30000);
+
     show(index, 0);
+  }
+
+  /* ---------- 円の中身(STEP 2: 既存データを読むだけで、データは書き換えない) ---------- */
+  function svgEl(name, attrs, styles) {
+    const el = document.createElementNS(SVGNS, name);
+    Object.entries(attrs || {}).forEach(([k, v]) => el.setAttribute(k, v));
+    Object.entries(styles || {}).forEach(([k, v]) => { el.style[k] = v; });
+    return el;
+  }
+
+  // リング上の弧(fromとtoは0〜1、真上が0)
+  function ringArc(from, to, color) {
+    const len = Math.max(0, (to - from) * RING_LEN);
+    return svgEl('circle', {
+      cx: 100, cy: 100, r: RING_R, 'stroke-width': 40, fill: 'none',
+      'stroke-dasharray': `${len} ${RING_LEN - len}`,
+      'stroke-dashoffset': -from * RING_LEN,
+      transform: 'rotate(-90 100 100)',
+    }, { stroke: color });
+  }
+
+  function polar(r, deg) {
+    const rad = (deg * Math.PI) / 180;
+    return [100 + r * Math.sin(rad), 100 - r * Math.cos(rad)];
+  }
+
+  function renderCircleContent(key) {
+    const build = {
+      schedule: modeSchedule,
+      task: modeTask,
+      timecalc: modeTimeCalc,
+      event: modeEvent,
+      wish: modeWish,
+    }[key];
+    const r = build();
+    document.getElementById('hm-ring-dyn').replaceChildren(...(r.ring || []));
+    document.getElementById('hm-inner').innerHTML = r.inner;
+    document.getElementById('hm-caption').innerHTML = r.caption || '';
+  }
+
+  function innerHtml(sub, big, note, note2) {
+    return `<span class="hm-dow">${escapeHtml(sub)}</span>
+      <span class="hm-date">${escapeHtml(big)}</span>
+      ${note ? `<span class="hm-note">${escapeHtml(note)}</span>` : ''}
+      ${note2 ? `<span class="hm-note">${escapeHtml(note2)}</span>` : ''}`;
+  }
+
+  // タスク: メインタスクの達成数(既存のメインタスク基準)
+  function modeTask() {
+    const state = LM.getTodoState();
+    const main = LM.TODO_MAIN_IDS.map((id) => state.dailyTasks[id]).filter((t) => t.name.trim());
+    const done = main.filter((t) => t.checked).length;
+    if (main.length === 0) return { inner: innerHtml('メイン', '—', '未登録') };
+    return {
+      ring: [ringArc(0, done / main.length, 'var(--accent)')],
+      inner: innerHtml('メイン', `${done}/${main.length}`, '達成'),
+    };
+  }
+
+  // イベント: 終了日が一番近いイベントの達成率(現在値÷目標。既存カードの%と同じ値)
+  function modeEvent() {
+    const events = LM.get(LM.KEYS.EVENTS, [])
+      .filter((ev) => ev.end >= today)
+      .sort((a, b) => a.end.localeCompare(b.end));
+    if (events.length === 0) return { inner: innerHtml('イベント', '—', '開催中なし') };
+    const ev = events[0];
+    const p = LM.calcEventProgress(ev, today);
+    return {
+      ring: [ringArc(0, p.rate / 100, 'var(--accent)')],
+      inner: innerHtml(ev.name, `${p.rate}%`, `残り${p.remainDays}日`),
+      caption: events.length > 1 ? `ほか${events.length - 1}件` : '',
+    };
+  }
+
+  // 予定逆算: 12時間の文字盤に、今の時刻の針と一番近い予定の印を出す
+  function modeSchedule() {
+    const now = new Date();
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const ring = [];
+    for (let i = 0; i < 12; i++) {
+      const [x1, y1] = polar(i % 3 === 0 ? 84 : 88, i * 30);
+      const [x2, y2] = polar(93, i * 30);
+      ring.push(svgEl('line', { x1, y1, x2, y2, 'stroke-width': i % 3 === 0 ? 2.5 : 1.5, 'stroke-linecap': 'round' }, { stroke: 'var(--text-soft)' }));
+    }
+    const dial = (min) => ((min % 720) / 720) * 360;
+
+    const list = LM.get(LM.KEYS.SCHEDULES, [])
+      .filter((s) => s.date === today)
+      .sort((a, b) => a.start.localeCompare(b.start));
+    const next = list.find((s) => LM.clockToMinutes(s.end || s.start) >= nowMin);
+
+    if (next) {
+      const [mx, my] = polar(RING_R, dial(LM.clockToMinutes(next.start)));
+      ring.push(svgEl('circle', { cx: mx, cy: my, r: 9, 'stroke-width': 2.5 }, { fill: 'var(--accent-soft)', stroke: 'var(--accent)' }));
+    }
+    const [hx1, hy1] = polar(60, dial(nowMin));
+    const [hx2, hy2] = polar(82, dial(nowMin));
+    ring.push(svgEl('line', { x1: hx1, y1: hy1, x2: hx2, y2: hy2, 'stroke-width': 5, 'stroke-linecap': 'round' }, { stroke: 'var(--accent)' }));
+
+    if (list.length === 0) return { ring, inner: innerHtml('今日の予定', '—', 'なし') };
+    if (!next) return { ring, inner: innerHtml('今日の予定', '終了', '') };
+
+    const started = LM.clockToMinutes(next.start) <= nowMin;
+    let dep = '';
+    if (next.prepMin || next.travelMin || next.arriveBeforeMin) {
+      const d = LM.calcDeparture(next);
+      dep = `準備 ${d.prepStart} 出発 ${d.depart}`;
+    }
+    return { ring, inner: innerHtml(started ? '進行中' : '次の予定', next.start, next.name, dep) };
+  }
+
+  // 時間計算: 円形カウントダウンはSTEP 4で作る
+  function modeTimeCalc() {
+    return { inner: innerHtml('時間計算', '—', '準備中') };
+  }
+
+  // ウィッシュリスト: 未購入アイテムの種類比(種類は 本/ゲーム/グッズ/その他 の4つ)
+  function modeWish() {
+    const items = LM.get(LM.KEYS.WISHLIST, []).filter((it) => !it.purchased);
+    const counts = WISH_CATEGORIES.map(() => 0);
+    items.forEach((it) => {
+      let i = WISH_CATEGORIES.findIndex((c) => c.name === it.category);
+      if (i < 0) i = WISH_CATEGORIES.length - 1; // 想定外の種類は「その他」に含める
+      counts[i] += 1;
+    });
+    const total = items.length;
+    if (total === 0) return { inner: innerHtml('未購入', '0', '件') };
+
+    const ring = [];
+    let acc = 0;
+    const gap = total > 1 ? 0.006 : 0;
+    counts.forEach((n, i) => {
+      if (n === 0) return;
+      const from = acc / total;
+      acc += n;
+      ring.push(ringArc(from + gap / 2, acc / total - gap / 2, WISH_CATEGORIES[i].color));
+    });
+    const caption = WISH_CATEGORIES
+      .map((c, i) => (counts[i] ? `<span><i style="background:${c.color}"></i>${escapeHtml(c.name)} ${counts[i]}</span>` : ''))
+      .join('');
+    return { ring, inner: innerHtml('未購入', String(total), '件'), caption };
   }
 
   /* ---------- 下部メニューのHOME(今のページなので、押すと一番上へ戻る。長押しメニューはSTEP 5) ---------- */
@@ -282,6 +430,7 @@
       const s = LM.getTodoState();
       LM.toggleTodoCheck(s, id, checkbox.checked);
       hasContent.task = renderTasks();
+      refreshCircle();
     });
 
     return true;
