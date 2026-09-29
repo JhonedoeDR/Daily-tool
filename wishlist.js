@@ -328,8 +328,6 @@
         ${badge}${subs.join(' ・ ')}
       </div>
 
-      ${memo}
-
       <div class="wl-row-actions">
         <select data-status="${escapeHtml(it.id)}">
           ${opts}
@@ -466,28 +464,39 @@
   $('cancel-edit').addEventListener('click', closeForm);
 
   document.addEventListener('click', (e) => {
-    const d = e.target.dataset;
+  const d = e.target.dataset;
 
-    if (d.tab) {
-      current = d.tab;
-      closeForm();
-      render();
-      return;
-    }
+  if (d.tab) {
+    current = d.tab;
+    closeForm();
+    render();
+    return;
+  }
 
-    if (d.add) {
-      openForm(current);
-      return;
-    }
+  if (d.add) {
+    openForm(current);
+    return;
+  }
 
-    if (d.edit) {
-      const it = load().find((x) => x.id === d.edit);
-      if (it) openForm(it.category, it);
-      return;
-    }
+  if (d.edit) {
+    const it = load().find((x) => x.id === d.edit);
+    if (it) openForm(it.category, it);
+    return;
+  }
 
-    if (d.delete) {
-      if (!confirm('削除しますか?')) return;
+  if (d.delete) {
+    if (!confirm('削除しますか?')) return;
+    save(load().filter((it) => it.id !== d.delete));
+    render();
+    return;
+  }
+
+  // 編集・削除・状態変更などの操作部分を押した時は詳細を開かない
+  if (e.target.closest('button, select, a')) return;
+
+  const row = e.target.closest('[data-detail]');
+  if (row) showDetail(row.dataset.detail);
+});
 
       save(
         load().filter((it) => it.id !== d.delete)
