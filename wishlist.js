@@ -331,7 +331,6 @@
 
     row.className = 'wl-row';
     row.dataset.detail = it.id;
-    row.style.cursor = 'pointer';
 
     const opts = TYPES[it.category]
       .map(
