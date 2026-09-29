@@ -338,23 +338,26 @@ body {
 }
 
 .wl-pager {
+  width: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
   gap: 14px;
   padding: 8px 0;
+  box-sizing: border-box;
 }
 
-.wl-pager button {
+.wl-pager .lm-btn {
   border: none;
   background: none;
+  box-shadow: none;
+  border-radius: 0;
   padding: 2px 6px;
   color: var(--text);
   font-size: 14px;
-  border-radius: 0;
 }
 
-.wl-pager button:disabled {
+.wl-pager .lm-btn:disabled {
   opacity: 0.35;
 }
 
