@@ -366,6 +366,15 @@ body {
   color: var(--text-soft);
 }
 
+.wl-pager button.lm-btn.secondary {
+  border: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  padding: 2px 6px !important;
+}
+
 .wl-detail {
   font-size: 14px;
   line-height: 1.9;
