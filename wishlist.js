@@ -260,7 +260,7 @@
 
     if (items.length > PAGE_SIZE) {
       const pager = document.createElement('div');
-      pager.className = 'wl-pager';
+      pager.className = 'lm-pager';
 
       pager.innerHTML = `
         <button
