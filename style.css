@@ -67,7 +67,7 @@ body {
   height: 40px;
   border-radius: 50%;
   border: 1px solid var(--paper-line, #ddd);
-  background: rgba(250, 248, 243, .92);
+  background: var(--paper);
   font-size: 20px;
   line-height: 1;
   color: #333;
@@ -77,7 +77,7 @@ body {
   position: fixed;
   inset: 0;
   z-index: 950;
-  background: rgba(0, 0, 0, .3);
+  background: var(--paper);
   display: none;
 }
 
