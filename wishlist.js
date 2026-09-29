@@ -146,22 +146,26 @@
     }
 
     if (current === ALL) {
-      CATS.forEach((cat) => {
-        const group = shown.filter(
-          (it) => it.category === cat
-        );
+  CATS.forEach((cat) => {
+    const group = shown.filter(
+      (it) => it.category === cat
+    );
 
-        if (group.length) {
-          appendSimpleGroup(
-            list,
-            `${cat}(${group.length})`,
-            group
-          );
-        }
-      });
-    } else {
-      renderCategoryGroups(list, current, shown);
+    if (group.length) {
+      renderCategoryGroups(
+        list,
+        cat,
+        group
+      );
     }
+  });
+ } else {
+   renderCategoryGroups(
+     list,
+     current,
+     shown
+   );
+ }
 
     const addArea = $('add-area');
 
@@ -179,6 +183,75 @@
       )
       .join('');
   }
+  
+  function renderFilters() {
+  const container = document.createElement('div');
+  container.className = 'wl-filters';
+
+  const categorySelected =
+    selectedCategories.size > 0;
+
+  const statusSelected =
+    selectedStatuses.size > 0;
+
+  const categoryOptions = CATS.map((cat) => `
+    <button
+      type="button"
+      class="wl-filter-option${selectedCategories.has(cat) ? ' active' : ''}"
+      data-filter-category="${escapeHtml(cat)}"
+    >
+      ${selectedCategories.has(cat) ? '✓ ' : ''}${escapeHtml(cat)}
+    </button>
+  `).join('');
+
+  const statusOptions = [
+    ...new Set(
+      CATS.flatMap((cat) =>
+        TYPES[cat].map(([, label]) => label)
+      )
+    )
+  ].map((label) => `
+    <button
+      type="button"
+      class="wl-filter-option${selectedStatuses.has(label) ? ' active' : ''}"
+      data-filter-status="${escapeHtml(label)}"
+    >
+      ${selectedStatuses.has(label) ? '✓ ' : ''}${escapeHtml(label)}
+    </button>
+  `).join('');
+
+  container.innerHTML = `
+    <div class="wl-filter">
+      <button
+        type="button"
+        class="wl-filter-trigger${categorySelected ? ' active' : ''}"
+        data-filter-toggle="category"
+      >
+        種類${categorySelected ? ` ${selectedCategories.size}選択` : ''} ▾
+      </button>
+
+      <div class="wl-filter-options${filterOpen === 'category' ? ' open' : ''}">
+        ${categoryOptions}
+      </div>
+    </div>
+
+    <div class="wl-filter">
+      <button
+        type="button"
+        class="wl-filter-trigger${statusSelected ? ' active' : ''}"
+        data-filter-toggle="status"
+      >
+        属性${statusSelected ? ` ${selectedStatuses.size}選択` : ''} ▾
+      </button>
+
+      <div class="wl-filter-options${filterOpen === 'status' ? ' open' : ''}">
+        ${statusOptions}
+      </div>
+    </div>
+  `;
+
+  $('tabs').appendChild(container);
+}
 
   function renderTotals(shown) {
     const open = shown.filter((it) =>
@@ -598,11 +671,68 @@
 
       // タブ
       if (d.tab) {
-        current = d.tab;
-        closeForm();
-        render();
-        return;
-      }
+   current = d.tab;
+
+  if (current === ALL) {
+    selectedCategories.clear();
+    selectedStatuses.clear();
+    filterOpen = null;
+  }
+
+  closeForm();
+  render();
+  return;
+}
+      
+      if (d.filterToggle) {
+  filterOpen =
+    filterOpen === d.filterToggle
+      ? null
+      : d.filterToggle;
+
+  render();
+  return;
+ }
+
+ if (d.filterCategory) {
+  if (
+    selectedCategories.has(
+      d.filterCategory
+    )
+  ) {
+    selectedCategories.delete(
+      d.filterCategory
+    );
+  } else {
+    selectedCategories.add(
+      d.filterCategory
+    );
+  }
+
+  filterOpen = 'category';
+  render();
+  return;
+ }
+
+ if (d.filterStatus) {
+  if (
+    selectedStatuses.has(
+      d.filterStatus
+    )
+  ) {
+    selectedStatuses.delete(
+      d.filterStatus
+    );
+  } else {
+    selectedStatuses.add(
+      d.filterStatus
+    );
+  }
+
+  filterOpen = 'status';
+  render();
+  return;
+ }
 
       // 追加
       if (d.add) {
