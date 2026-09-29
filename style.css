@@ -337,6 +337,32 @@ body {
   background: var(--paper);
 }
 
+.wl-pager {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 0;
+}
+
+.wl-pager button {
+  border: none;
+  background: none;
+  padding: 2px 6px;
+  color: var(--text);
+  font-size: 14px;
+  border-radius: 0;
+}
+
+.wl-pager button:disabled {
+  opacity: 0.35;
+}
+
+.wl-pager span {
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
 .wl-detail {
   font-size: 14px;
   line-height: 1.9;
