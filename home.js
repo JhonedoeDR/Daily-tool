@@ -1,75 +1,156 @@
 (function () {
   const today = LM.todayStr();
-  document.getElementById('date-header').textContent = LM.formatDateHeader(today);
 
-  const SECTION_ORDER = ['event', 'task', 'schedule', 'belongings', 'shift'];
+  /* ---------- 上部の円形UI(STEP 1: 見た目と切り替えのみ。中身の接続はSTEP 2以降) ----------
+   * 順番は共有文書の機能一覧どおり。初期表示は手描き案に合わせてイベント(仮)。 */
+  const CIRCLE_MODES = [
+    { key: 'schedule', title: 'SCHEDULE', label: '予定逆算' },
+    { key: 'task', title: 'TASKS', label: 'タスク' },
+    { key: 'timecalc', title: 'TIME CALC', label: '時間計算' },
+    { key: 'event', title: 'EVENTS', label: 'イベント' },
+    { key: 'wish', title: 'WISH', label: 'ウィッシュリスト' },
+  ];
+  const DEFAULT_CIRCLE_MODE = 'event';
+
+  // 右カラムの基本順(手描き案どおり)。表示があるものを先に並べる既存の挙動は右カラム内で維持
+  const SIDE_ORDER = ['schedule', 'event', 'belongings', 'shift'];
+
   const hasContent = {};
 
+  setupCircleDate();
   hasContent.event = renderEvents();
   hasContent.task = renderTasks();
   hasContent.schedule = renderSchedules();
   hasContent.belongings = renderBelongings();
   hasContent.shift = renderShift();
   reorderSections();
-
   setupTaskLink();
-
   renderNotifyBanner();
   setupBackup();
   LM.renderNav(document.getElementById('nav-container'));
+  setupCircle();
+  setupHomeButton();
 
-  /* ---------- セクションの並び替え(表示があるものを先に、基本順はイベント→予定→持ちもの→タスク→勤務) ---------- */
+  /* ---------- 円の中の日付(例: wed / 9/30) ---------- */
+  function setupCircleDate() {
+    const d = new Date(today + 'T00:00:00');
+    const dow = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][d.getDay()];
+    document.getElementById('hm-dow').textContent = dow;
+    document.getElementById('hm-date').textContent = `${d.getMonth() + 1}/${d.getDate()}`;
+  }
+
+  /* ---------- 円の切り替え(左右矢印・ドット・横スワイプ) ---------- */
+  function setupCircle() {
+    const hero = document.getElementById('hm-hero');
+    const titleEl = document.getElementById('hm-mode-title');
+    const circle = document.getElementById('hm-circle');
+    const dotsEl = document.getElementById('hm-dots');
+    let index = CIRCLE_MODES.findIndex((m) => m.key === DEFAULT_CIRCLE_MODE);
+    if (index < 0) index = 0;
+
+    CIRCLE_MODES.forEach((m, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'hm-dot';
+      b.setAttribute('aria-label', m.label);
+      b.addEventListener('click', () => show(i, i > index ? 1 : -1));
+      dotsEl.appendChild(b);
+    });
+
+    function show(i, dir) {
+      const n = CIRCLE_MODES.length;
+      index = ((i % n) + n) % n;
+      const mode = CIRCLE_MODES[index];
+      titleEl.textContent = mode.title;
+      circle.dataset.mode = mode.key;
+      [...dotsEl.children].forEach((d, k) => d.setAttribute('aria-current', k === index ? 'true' : 'false'));
+      if (dir) {
+        hero.classList.remove('is-next', 'is-prev');
+        void hero.offsetWidth; // アニメーションを再生し直す
+        hero.classList.add(dir > 0 ? 'is-next' : 'is-prev');
+      }
+    }
+
+    document.getElementById('hm-prev').addEventListener('click', () => show(index - 1, -1));
+    document.getElementById('hm-next').addEventListener('click', () => show(index + 1, 1));
+
+    // 横スワイプ: 縦スクロールと競合しないよう、横方向が十分大きい時だけ反応する
+    let sx = 0;
+    let sy = 0;
+    let tracking = false;
+    hero.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) { tracking = false; return; }
+      sx = e.touches[0].clientX;
+      sy = e.touches[0].clientY;
+      tracking = true;
+    }, { passive: true });
+    hero.addEventListener('touchend', (e) => {
+      if (!tracking) return;
+      tracking = false;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - sx;
+      const dy = t.clientY - sy;
+      if (Math.abs(dx) >= 40 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        const dir = dx < 0 ? 1 : -1; // 左スワイプ=次
+        show(index + dir, dir);
+      }
+    }, { passive: true });
+    hero.addEventListener('touchcancel', () => { tracking = false; }, { passive: true });
+
+    show(index, 0);
+  }
+
+  /* ---------- 下部メニューのHOME(今のページなので、押すと一番上へ戻る。長押しメニューはSTEP 5) ---------- */
+  function setupHomeButton() {
+    document.getElementById('hm-home').addEventListener('click', () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+
+  /* ---------- セクションの並び替え(右カラム内で、表示があるものを先に) ---------- */
   function reorderSections() {
-    const page = document.querySelector('.lm-page');
-    const anchor = document.getElementById('nav-container');
-    const sorted = [...SECTION_ORDER].sort((a, b) => {
+    const col = document.getElementById('hm-col-right');
+    const sorted = [...SIDE_ORDER].sort((a, b) => {
       const ah = hasContent[a] ? 0 : 1;
       const bh = hasContent[b] ? 0 : 1;
       if (ah !== bh) return ah - bh;
-      return SECTION_ORDER.indexOf(a) - SECTION_ORDER.indexOf(b);
+      return SIDE_ORDER.indexOf(a) - SIDE_ORDER.indexOf(b);
     });
-    sorted.forEach((key, i) => {
+    sorted.forEach((key) => {
       const el = document.querySelector(`[data-section="${key}"]`);
-      el.style.borderTop = i === 0 ? 'none' : '';
-      page.insertBefore(el, anchor);
+      col.appendChild(el);
     });
   }
 
   /* ---------- 今日の予定 ---------- */
   function renderSchedules() {
-  const el = document.getElementById('schedule-list');
-  const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
-  const toMin = (t) => {
-    const [h, m] = t.split(':').map(Number);
-    return h * 60 + m;
-  };
+    const el = document.getElementById('schedule-list');
+    const schedules = LM.get(LM.KEYS.SCHEDULES, [])
+      .filter((s) => s.date === today)
+      .sort((a, b) => a.start.localeCompare(b.start));
 
-  const schedules = LM.get(LM.KEYS.SCHEDULES, [])
-    .filter((s) => s.date === today && nowMin < toMin(s.start) + 60)
-    .sort((a, b) => a.start.localeCompare(b.start));
+    if (schedules.length === 0) {
+      el.innerHTML = '<p class="lm-empty">今日の予定はありません</p>';
+      return false;
+    }
 
-  if (schedules.length === 0) {
-    el.innerHTML = '<p class="lm-empty">今日の予定はありません</p>';
-    return false;
+    el.innerHTML = '';
+    schedules.forEach((s) => {
+      const row = document.createElement('a');
+      row.className = 'lm-schedule-item';
+      row.href = `./schedule.html?id=${encodeURIComponent(s.id)}`;
+      const departureHtml = renderDepartureLine(s);
+      row.innerHTML = `
+        <span class="lm-schedule-time">${s.start}</span>
+        <span>
+          <div>${escapeHtml(s.name)}</div>
+          ${departureHtml}
+        </span>
+      `;
+      el.appendChild(row);
+    });
+    return true;
   }
-
-  el.innerHTML = '';
-  schedules.forEach((s) => {
-    const row = document.createElement('a');
-    row.className = 'lm-schedule-item';
-    row.href = `./schedule.html?id=${encodeURIComponent(s.id)}`;
-    const departureHtml = renderDepartureLine(s);
-    row.innerHTML = `
-      <span class="lm-schedule-time">${s.start}</span>
-      <span>
-        <div>${escapeHtml(s.name)}</div>
-        ${departureHtml}
-      </span>
-    `;
-    el.appendChild(row);
-  });
-  return true;
- }
 
   function renderDepartureLine(s) {
     const r = LM.calcDeparture(s);
@@ -78,30 +159,12 @@
 
   /* ---------- 今日の持ちもの(カード+モーダル) ---------- */
   function renderBelongings() {
-  const el = document.getElementById('belongings-list');
-  const countEl = document.getElementById('belongings-count');
-
-  const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
-  const toMin = (t) => {
-    const [h, m] = t.split(':').map(Number);
-    return h * 60 + m;
-  };
-
-  const schedules = LM.get(LM.KEYS.SCHEDULES, [])
-    .filter((s) => s.date === today && nowMin < toMin(s.start) + 60);
-
-  const setIds = [
-    ...new Set(
-      schedules.flatMap((s) =>
-        s.belongingSetIds || (s.belongingSetId ? [s.belongingSetId] : [])
-      )
-    )
-  ];
-
-  const allSets = LM.get(LM.KEYS.BELONGING_SETS, []);
-  const sets = setIds
-    .map((id) => allSets.find((s) => s.id === id))
-    .filter(Boolean);
+    const el = document.getElementById('belongings-list');
+    const countEl = document.getElementById('belongings-count');
+    const schedules = LM.get(LM.KEYS.SCHEDULES, []).filter((s) => s.date === today);
+    const setIds = [...new Set(schedules.flatMap((s) => s.belongingSetIds || (s.belongingSetId ? [s.belongingSetId] : [])))];
+    const allSets = LM.get(LM.KEYS.BELONGING_SETS, []);
+    const sets = setIds.map((id) => allSets.find((s) => s.id === id)).filter(Boolean);
 
     if (sets.length === 0) {
       countEl.textContent = '';
@@ -115,11 +178,13 @@
 
     let totalItems = 0;
     let totalChecked = 0;
+
     el.innerHTML = '';
     sets.forEach((set) => {
       const checkedCount = set.items.filter((it) => checkedSet.has(it.id)).length;
       totalItems += set.items.length;
       totalChecked += checkedCount;
+
       const card = document.createElement('div');
       card.className = 'lm-card';
       card.innerHTML = `
@@ -129,6 +194,7 @@
       card.addEventListener('click', () => openBelongingModal(set));
       el.appendChild(card);
     });
+
     countEl.textContent = `${totalChecked}/${totalItems}`;
     return true;
   }
@@ -140,6 +206,7 @@
 
     const ul = document.createElement('ul');
     ul.className = 'lm-check-list';
+
     if (set.items.length === 0) {
       ul.innerHTML = '<li class="lm-empty">持ちものが登録されていません</li>';
     } else {
@@ -292,6 +359,7 @@
   /* ---------- 通知の状態表示・登録ボタン ---------- */
   function renderNotifyBanner() {
     const el = document.getElementById('notify-banner');
+
     if (!('Notification' in window)) {
       el.innerHTML = '<p class="lm-empty">この端末は通知に対応していません</p>';
       return;
@@ -300,7 +368,6 @@
       el.innerHTML = '<p class="lm-empty">通知がブロックされています(端末の設定から許可できます)</p>';
       return;
     }
-
     if (Notification.permission === 'granted') {
       LM.startNotificationLoop();
       el.innerHTML = `
@@ -312,7 +379,6 @@
       document.getElementById('resync-notify').addEventListener('click', () => registerFirebase(true));
       return;
     }
-
     el.innerHTML = '<button type="button" id="enable-notify" class="lm-btn secondary" style="margin-bottom:8px;">通知を有効にする(アプリ外通知)</button>';
     document.getElementById('enable-notify').addEventListener('click', async () => {
       const result = await LM.requestNotificationPermission();
