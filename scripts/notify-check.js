@@ -39,10 +39,19 @@ function daysBetween(fromStr, toStr) {
   return Math.round((to - from) / 86400000);
 }
 
-function calcPrepStartMin(s) {
+function calcDepartMin(s) {
   const arriveMin = clockToMinutes(s.start) - (s.arriveBeforeMin || 0);
-  const departMin = arriveMin - (s.travelMin || 0);
-  return departMin - (s.prepMin || 0);
+  return arriveMin - (s.travelMin || 0);
+}
+
+function calcPrepStartMin(s) {
+  return calcDepartMin(s) - (s.prepMin || 0);
+}
+
+function minutesToClock(totalMin) {
+  const h = Math.floor(((totalMin % 1440) + 1440) % 1440 / 60);
+  const m = ((totalMin % 60) + 60) % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
 /* ---------- タスクの集計(タスクの「1日」はAM4:00区切り) ---------- */
@@ -87,7 +96,9 @@ function buildItems(state, nowMs) {
           at: midnight + calcPrepStartMin(s) * MIN_MS,
           build: (st) => {
             const cur = (st.schedules || []).find((x) => x.id === s.id);
-            return cur ? { title: '準備を始める時間です', body: `${cur.name}の準備開始時刻です` } : null;
+            if (!cur) return null;
+            const departClock = minutesToClock(calcDepartMin(cur));
+            return { title: '準備を始める時間です', body: `${cur.name}の準備開始時刻です(出発時刻は${departClock}です)` };
           },
         });
       }
