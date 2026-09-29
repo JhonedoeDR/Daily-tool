@@ -37,10 +37,12 @@
 
   /* ---------- 今日の予定 ---------- */
   function renderSchedules() {
-    const el = document.getElementById('schedule-list');
-    const schedules = LM.get(LM.KEYS.SCHEDULES, [])
-      .filter((s) => s.date === today)
-      .sort((a, b) => a.start.localeCompare(b.start));
+   const nowMin = new Date().getHours() * 60 + new Date().getMinutes();
+   const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+   const schedules = LM.get(LM.KEYS.SCHEDULES, [])
+   .filter((s) => s.date === today && nowMin < toMin(s.start) + 60)
+   .sort((a, b) => a.start.localeCompare(b.start));
+
 
     if (schedules.length === 0) {
       el.innerHTML = '<p class="lm-empty">今日の予定はありません</p>';
