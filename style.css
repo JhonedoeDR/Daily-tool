@@ -91,7 +91,7 @@ body {
   right: 0;
   bottom: 0;
   width: min(78vw, 300px);
-  background: #faf8f3;
+  background: var(--paper);
   padding: calc(env(safe-area-inset-top, 0px) + 12px) 0
            calc(env(safe-area-inset-bottom, 0px) + 12px);
   overflow-y: auto;
