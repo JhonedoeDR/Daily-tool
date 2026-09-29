@@ -46,6 +46,10 @@
   let editingId = null;
   let formCategory = null;
 
+  let selectedCategories = new Set();
+  let selectedStatuses = new Set();
+  let filterOpen = null;
+
   // カテゴリごとの「未購入類」ページ
   const pages = {};
 
