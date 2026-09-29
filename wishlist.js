@@ -278,9 +278,9 @@
         >▶</button>
 
         <button
-          type="button"
-          class="lm-btn secondary"
-          data-page-all="${escapeHtml(cat)}"
+         type="button"
+         class="lm-btn secondary lm-list-all-btn"
+         data-page-all="${escapeHtml(cat)}"
         >全表示</button>
       `;
 
