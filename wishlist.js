@@ -111,6 +111,10 @@
     const items = load();
 
     renderTabs();
+    
+    if (current === ALL) {
+     renderFilters();
+  }
 
     const shown =
   current === ALL
