@@ -368,6 +368,58 @@ body {
   line-height: 1.9;
 }
 
+.wl-filters {
+  display: flex;
+  gap: 8px;
+  margin: 4px 0 10px;
+}
+
+.wl-filter {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.wl-filter-trigger {
+  width: 100%;
+  padding: 5px 10px;
+  border: 1px solid var(--paper-line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--text-soft);
+  font-size: 13px;
+}
+
+.wl-filter-trigger.active {
+  color: var(--text);
+}
+
+.wl-filter-options {
+  display: none;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 7px 0 2px;
+}
+
+.wl-filter-options.open {
+  display: flex;
+}
+
+.wl-filter-option {
+  padding: 4px 10px;
+  border: 1px solid var(--paper-line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+.wl-filter-option.active {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--paper);
+}
+
 /* ---------- 時間計算 ----------- */
 
 .lm-btn-tc {
