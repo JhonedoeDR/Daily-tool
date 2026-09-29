@@ -15,7 +15,7 @@ LM.NAV_ITEMS = [
   { href: 'https://jhonedoedr.github.io/MyBookLog/', label: 'よみもの記録', external: true },
 ];
 
-LM.renderNav = function () {
+LM.renderTopMenu = function () {
   if (document.getElementById('lm-menu-btn')) return;
 
   const style = document.createElement('style');
@@ -67,3 +67,12 @@ LM.renderNav = function () {
   document.body.appendChild(btn);
   document.body.appendChild(overlay);
 };
+
+if (typeof LM.renderNav === 'function') {
+  const navContainer = document.getElementById('nav-container');
+  if (navContainer) {
+    LM.renderNav(navContainer);
+  }
+}
+
+LM.renderTopMenu();
