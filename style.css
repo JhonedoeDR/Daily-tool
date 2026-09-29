@@ -228,6 +228,127 @@ body {
 /* ---------- 持ち物 ------------ */
 
 
+/* ---------- ウィッシュリスト --------- */
+
+.wl-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 4px 0 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.wl-tab {
+  flex: 0 0 auto;
+  padding: 5px 12px;
+  font-size: 13px;
+  border: 1px solid var(--paper-line);
+  border-radius: 999px;
+  background: none;
+  color: var(--text-soft);
+}
+
+.wl-tab.active {
+  background: #333;
+  color: #fff;
+  border-color: #333;
+}
+
+.wl-group-title {
+  font-size: 12px;
+  color: var(--text-soft);
+  margin: 10px 0 2px;
+}
+
+.wl-row {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--paper-line);
+  cursor: pointer;
+}
+
+.wl-row-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.wl-row-sub {
+  font-size: 11px;
+  color: var(--text-soft);
+  margin: 1px 0 4px;
+}
+
+.wl-row-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.wl-row-actions select {
+  font-size: 12px;
+  padding: 2px 4px;
+}
+
+.wl-row-actions .lm-btn {
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.wl-badge {
+  border: 1px solid var(--paper-line);
+  border-radius: 4px;
+  padding: 0 4px;
+  margin-right: 4px;
+}
+
+.wl-add-area {
+  margin: 12px 0;
+}
+
+.wl-plan-field {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.wl-plan-field input {
+  width: 18px;
+  height: 18px;
+}
+
+.wl-plan-field label {
+  margin: 0;
+}
+
+.wl-form-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.wl-link-chip {
+  display: inline-block;
+  padding: 1px 7px;
+  border: 1px solid var(--paper-line);
+  border-radius: 999px;
+  text-decoration: none;
+  color: var(--text);
+  background: var(--paper);
+}
+
+.wl-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.wl-detail {
+  font-size: 14px;
+  line-height: 1.9;
+}
 
 /* ---------- 時間計算 ----------- */
 
