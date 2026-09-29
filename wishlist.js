@@ -1,5 +1,5 @@
 (function () {
-  // 種類ごとの基本状態。種類・状態の増減はここだけ直せばよい。
+  // 種類ごとの基本状態
   const TYPES = {
     '本': [
       ['unpurchased', '未購入'],
@@ -46,11 +46,10 @@
   let editingId = null;
   let formCategory = null;
 
-  // カテゴリごとの「未購入類」ページ番号
+  // カテゴリごとの「未購入類」ページ
   const pages = {};
 
   // 「未購入類」に入れる状態
-  // 表示名が「未」で始まるものを自動的に対象にする。
   function isUnpurchasedLike(cat, status) {
     return statusLabel(cat, status).startsWith('未');
   }
@@ -66,7 +65,9 @@
       }
 
       if (!it.status) {
-        it.status = it.purchased ? 'purchased' : TYPES[it.category][0][0];
+        it.status = it.purchased
+          ? 'purchased'
+          : TYPES[it.category][0][0];
         changed = true;
       }
 
@@ -86,7 +87,9 @@
       }
     });
 
-    if (changed) LM.set(LM.KEYS.WISHLIST, items);
+    if (changed) {
+      LM.set(LM.KEYS.WISHLIST, items);
+    }
 
     return items;
   }
@@ -122,13 +125,15 @@
 
     if (current === ALL) {
       CATS.forEach((cat) => {
-        const g = shown.filter((it) => it.category === cat);
+        const group = shown.filter(
+          (it) => it.category === cat
+        );
 
-        if (g.length) {
-          appendAllCategoryGroup(
+        if (group.length) {
+          appendSimpleGroup(
             list,
-            `${cat}(${g.length})`,
-            g
+            `${cat}(${group.length})`,
+            group
           );
         }
       });
@@ -146,44 +151,36 @@
 
   function renderTabs() {
     $('tabs').innerHTML = [ALL, ...CATS]
-      .map((t) =>
-        `<button type="button" class="wl-tab${t === current ? ' active' : ''}" data-tab="${escapeHtml(t)}">${escapeHtml(t)}</button>`
+      .map(
+        (t) =>
+          `<button type="button" class="wl-tab${t === current ? ' active' : ''}" data-tab="${escapeHtml(t)}">${escapeHtml(t)}</button>`
       )
       .join('');
   }
 
   function renderTotals(shown) {
-    const open = shown.filter((it) => isUnpurchasedLike(it.category, it.status));
+    const open = shown.filter((it) =>
+      isUnpurchasedLike(it.category, it.status)
+    );
 
     const total = open.reduce(
-      (s, it) => s + (it.price || 0),
+      (sum, it) => sum + (it.price || 0),
       0
     );
 
     const plan = open
       .filter((it) => it.planThisMonth)
-      .reduce((s, it) => s + (it.price || 0), 0);
+      .reduce(
+        (sum, it) => sum + (it.price || 0),
+        0
+      );
 
     $('totals').innerHTML =
       `<span>未購入類合計 ¥${total.toLocaleString()}</span>` +
       `<span>今月買うもの合計 ¥${plan.toLocaleString()}</span>`;
   }
 
-  // 「すべて」ではカテゴリごとにまとめる。
-  function appendAllCategoryGroup(container, title, items) {
-    const t = document.createElement('div');
-    t.className = 'wl-group-title';
-    t.textContent = title;
-    container.appendChild(t);
-
-    items.forEach((it) => {
-      container.appendChild(rowEl(it));
-    });
-  }
-
-  // カテゴリタブ内の表示。
-  // 「未～」は全部まとめて1グループにする。
-  // それ以外は状態ごとに表示する。
+  // 「未購入類」と、それ以外の状態を表示
   function renderCategoryGroups(container, cat, items) {
     const unpurchasedLike = items.filter((it) =>
       isUnpurchasedLike(cat, it.status)
@@ -191,14 +188,18 @@
 
     const otherGroups = TYPES[cat]
       .filter(([sid]) =>
-        !unpurchasedLike.some((it) => it.status === sid)
+        !unpurchasedLike.some(
+          (it) => it.status === sid
+        )
       )
       .map(([sid, label]) => ({
         sid,
         label,
-        items: items.filter((it) => it.status === sid)
+        items: items.filter(
+          (it) => it.status === sid
+        )
       }))
-      .filter((g) => g.items.length);
+      .filter((group) => group.items.length);
 
     if (unpurchasedLike.length) {
       appendPagedGroup(
@@ -209,20 +210,20 @@
       );
     }
 
-    otherGroups.forEach((g) => {
+    otherGroups.forEach((group) => {
       appendSimpleGroup(
         container,
-        `${g.label}(${g.items.length})`,
-        g.items
+        `${group.label}(${group.items.length})`,
+        group.items
       );
     });
   }
 
   function appendSimpleGroup(container, title, items) {
-    const t = document.createElement('div');
-    t.className = 'wl-group-title';
-    t.textContent = title;
-    container.appendChild(t);
+    const titleEl = document.createElement('div');
+    titleEl.className = 'wl-group-title';
+    titleEl.textContent = title;
+    container.appendChild(titleEl);
 
     items.forEach((it) => {
       container.appendChild(rowEl(it));
@@ -231,6 +232,7 @@
 
   function appendPagedGroup(container, title, items, cat) {
     const page = pages[cat] || 1;
+
     const pageCount = Math.max(
       1,
       Math.ceil(items.length / PAGE_SIZE)
@@ -239,13 +241,18 @@
     const safePage = Math.min(page, pageCount);
     pages[cat] = safePage;
 
-    const start = (safePage - 1) * PAGE_SIZE;
-    const visible = items.slice(start, start + PAGE_SIZE);
+    const start =
+      (safePage - 1) * PAGE_SIZE;
 
-    const t = document.createElement('div');
-    t.className = 'wl-group-title';
-    t.textContent = title;
-    container.appendChild(t);
+    const visible = items.slice(
+      start,
+      start + PAGE_SIZE
+    );
+
+    const titleEl = document.createElement('div');
+    titleEl.className = 'wl-group-title';
+    titleEl.textContent = title;
+    container.appendChild(titleEl);
 
     visible.forEach((it) => {
       container.appendChild(rowEl(it));
@@ -256,58 +263,85 @@
       pager.className = 'wl-pager';
 
       pager.innerHTML = `
-        <button type="button" class="lm-btn secondary" data-page-prev="${escapeHtml(cat)}">
-          ◀
-        </button>
+        <button
+          type="button"
+          class="lm-btn secondary"
+          data-page-prev="${escapeHtml(cat)}"
+        >◀</button>
+
         <span>${safePage}/${pageCount}</span>
-        <button type="button" class="lm-btn secondary" data-page-next="${escapeHtml(cat)}">
-          ▶
-        </button>
-        <button type="button" class="lm-btn secondary" data-page-all="${escapeHtml(cat)}">
-          全表示
-        </button>
+
+        <button
+          type="button"
+          class="lm-btn secondary"
+          data-page-next="${escapeHtml(cat)}"
+        >▶</button>
+
+        <button
+          type="button"
+          class="lm-btn secondary"
+          data-page-all="${escapeHtml(cat)}"
+        >全表示</button>
       `;
 
       container.appendChild(pager);
     }
   }
-  
+
+  // アイテム詳細
   function showDetail(id) {
-  const it = load().find((x) => x.id === id);
-  if (!it) return;
+    const it = load().find(
+      (item) => item.id === id
+    );
 
-  const wrap = document.createElement('div');
-  wrap.style.cssText = 'font-size:14px; line-height:1.9;';
+    if (!it) return;
 
-  const details = [
-    `種類：${escapeHtml(it.category)}`,
-    `状態：${escapeHtml(statusLabel(it.category, it.status))}`,
-    it.price ? `価格：¥${it.price.toLocaleString()}` : '',
-    it.planThisMonth ? '今月買う予定：はい' : '',
-    it.url
-      ? `リンク：<a href="${escapeHtml(it.url)}" target="_blank" rel="noopener">${escapeHtml(it.url)}</a>`
-      : '',
-    it.memo
-      ? `メモ：<br>${escapeHtml(it.memo).replace(/\n/g, '<br>')}`
-      : 'メモ：なし'
-  ].filter(Boolean);
+    const wrap = document.createElement('div');
 
-  wrap.innerHTML = details.map((text) => `<div>${text}</div>`).join('');
+    wrap.style.cssText =
+      'font-size:14px; line-height:1.9;';
 
-  LM.openModal(it.name, wrap);
-}
+    const details = [
+      `種類：${escapeHtml(it.category)}`,
+      `状態：${escapeHtml(
+        statusLabel(it.category, it.status)
+      )}`,
+      it.price
+        ? `価格：¥${it.price.toLocaleString()}`
+        : '',
+      it.planThisMonth
+        ? '今月買う予定：はい'
+        : '',
+      it.url
+        ? `リンク：<a href="${escapeHtml(it.url)}" target="_blank" rel="noopener">${escapeHtml(it.url)}</a>`
+        : '',
+      it.memo
+        ? `メモ：<br>${escapeHtml(it.memo).replace(/\n/g, '<br>')}`
+        : 'メモ：なし'
+    ].filter(Boolean);
 
+    wrap.innerHTML = details
+      .map((text) => `<div>${text}</div>`)
+      .join('');
+
+    LM.openModal(it.name, wrap);
+  }
+
+  // 一覧の1行
   function rowEl(it) {
     const row = document.createElement('div');
+
     row.className = 'wl-row';
-    row.style.cursor = 'pointer';
     row.dataset.detail = it.id;
+    row.style.cursor = 'pointer';
 
     const opts = TYPES[it.category]
       .map(
         ([id, label]) =>
           `<option value="${escapeHtml(id)}"${
-            id === it.status ? ' selected' : ''
+            id === it.status
+              ? ' selected'
+              : ''
           }>${escapeHtml(label)}</option>`
       )
       .join('');
@@ -317,11 +351,13 @@
     if (current === ALL) {
       subs.push(
         `${escapeHtml(it.category)}:${escapeHtml(
-          statusLabel(it.category, it.status)
+          statusLabel(
+            it.category,
+            it.status
+          )
         )}`
       );
     }
-    
 
     if (it.planThisMonth) {
       subs.push('今月買う予定');
@@ -329,9 +365,7 @@
 
     if (it.url) {
       subs.push(
-        `<a class="wl-link-chip" href="${escapeHtml(
-          it.url
-        )}" target="_blank" rel="noopener">リンク</a>`
+        `<a class="wl-link-chip" href="${escapeHtml(it.url)}" target="_blank" rel="noopener">リンク</a>`
       );
     }
 
@@ -364,31 +398,34 @@
           data-edit="${escapeHtml(it.id)}"
           class="lm-btn secondary"
           style="padding:2px 8px; font-size:12px;"
-        >
-          編集
-        </button>
+        >編集</button>
 
         <button
           type="button"
           data-delete="${escapeHtml(it.id)}"
           class="lm-btn secondary"
           style="padding:2px 8px; font-size:12px;"
-        >
-          削除
-        </button>
+        >削除</button>
       </div>
     `;
 
     return row;
   }
 
+  // 状態変更
   function setStatus(id, status) {
     const items = load();
-    const it = items.find((x) => x.id === id);
+
+    const it = items.find(
+      (item) => item.id === id
+    );
 
     if (!it) return;
 
-    if (it.status === 'lent' && status !== 'lent') {
+    if (
+      it.status === 'lent' &&
+      status !== 'lent'
+    ) {
       it.checks.lent = true;
     }
 
@@ -399,43 +436,59 @@
     render();
   }
 
+  // 追加・編集フォーム
   function openForm(cat, item) {
     formCategory = cat;
-    editingId = item ? item.id : null;
+    editingId = item
+      ? item.id
+      : null;
 
     form.reset();
 
-    // 属性選択肢を現在のカテゴリに合わせる
     if (fields.status) {
-      fields.status.innerHTML = TYPES[cat]
-        .map(
-          ([id, label]) =>
-            `<option value="${escapeHtml(id)}">${escapeHtml(label)}</option>`
-        )
-        .join('');
+      fields.status.innerHTML =
+        TYPES[cat]
+          .map(
+            ([id, label]) =>
+              `<option value="${escapeHtml(id)}">${escapeHtml(label)}</option>`
+          )
+          .join('');
     }
 
     if (item) {
-      fields.name.value = item.name;
-      fields.price.value = item.price || '';
-      fields.url.value = item.url || '';
-      fields.plan.checked = !!item.planThisMonth;
-      fields.memo.value = item.memo || '';
+      fields.name.value =
+        item.name;
+
+      fields.price.value =
+        item.price || '';
+
+      fields.url.value =
+        item.url || '';
+
+      fields.plan.checked =
+        !!item.planThisMonth;
+
+      fields.memo.value =
+        item.memo || '';
 
       if (fields.status) {
-        fields.status.value = item.status;
+        fields.status.value =
+          item.status;
       }
     } else {
-      // 新規追加時はカテゴリの最初の状態
       if (fields.status) {
-        fields.status.value = TYPES[cat][0][0];
+        fields.status.value =
+          TYPES[cat][0][0];
       }
     }
 
     $('form-title').textContent =
-      item ? `${cat}を編集` : `${cat}を追加`;
+      item
+        ? `${cat}を編集`
+        : `${cat}を追加`;
 
-    $('form-section').hidden = false;
+    $('form-section').hidden =
+      false;
 
     $('form-section').scrollIntoView({
       behavior: 'smooth'
@@ -449,13 +502,16 @@
     $('form-section').hidden = true;
   }
 
+  // フォーム送信
   form.addEventListener('submit', (e) => {
     e.preventDefault();
 
     const items = load();
 
     const old = editingId
-      ? items.find((it) => it.id === editingId)
+      ? items.find(
+          (it) => it.id === editingId
+        )
       : null;
 
     const status =
@@ -464,20 +520,42 @@
       TYPES[formCategory][0][0];
 
     const data = {
-      id: old ? old.id : LM.uid(),
-      name: fields.name.value.trim(),
-      category: formCategory,
-      price: Number(fields.price.value) || 0,
-      url: fields.url.value.trim(),
-      planThisMonth: fields.plan.checked,
-      memo: fields.memo.value.trim(),
+      id: old
+        ? old.id
+        : LM.uid(),
+
+      name:
+        fields.name.value.trim(),
+
+      category:
+        formCategory,
+
+      price:
+        Number(fields.price.value) || 0,
+
+      url:
+        fields.url.value.trim(),
+
+      planThisMonth:
+        fields.plan.checked,
+
+      memo:
+        fields.memo.value.trim(),
+
       status,
-      purchased: status === 'purchased',
-      checks: old ? old.checks : {},
+
+      purchased:
+        status === 'purchased',
+
+      checks:
+        old
+          ? old.checks
+          : {},
     };
 
     if (old) {
-      items[items.indexOf(old)] = data;
+      items[items.indexOf(old)] =
+        data;
     } else {
       items.push(data);
     }
@@ -487,136 +565,224 @@
     render();
   });
 
-  $('cancel-edit').addEventListener('click', closeForm);
-
-  document.addEventListener('click', (e) => {
-  const d = e.target.dataset;
-
-  if (d.tab) {
-    current = d.tab;
-    closeForm();
-    render();
-    return;
-  }
-
-  if (d.add) {
-    openForm(current);
-    return;
-  }
-
-  if (d.edit) {
-    const it = load().find((x) => x.id === d.edit);
-    if (it) openForm(it.category, it);
-    return;
-  }
-
-  if (d.delete) {
-    if (!confirm('削除しますか?')) return;
-    save(load().filter((it) => it.id !== d.delete));
-    render();
-    return;
-  }
-
-  // 編集・削除・状態変更などの操作部分を押した時は詳細を開かない
-  if (e.target.closest('button, select, a')) return;
-
-  const row = e.target.closest('[data-detail]');
-  if (row) showDetail(row.dataset.detail);
-});
-
-      save(
-        load().filter((it) => it.id !== d.delete)
-      );
-
-      render();
-      return;
-    }
-
-    // ページャー
-    if (d.pagePrev) {
-      pages[d.pagePrev] = Math.max(
-        1,
-        (pages[d.pagePrev] || 1) - 1
-      );
-      render();
-      return;
-    }
-
-    if (d.pageNext) {
-      const items = load().filter(
-        (it) =>
-          it.category === d.pageNext &&
-          isUnpurchasedLike(
-            d.pageNext,
-            it.status
-          )
-      );
-
-      const pageCount = Math.max(
-        1,
-        Math.ceil(items.length / PAGE_SIZE)
-      );
-
-      pages[d.pageNext] = Math.min(
-        pageCount,
-        (pages[d.pageNext] || 1) + 1
-      );
-
-      render();
-      return;
-    }
-
-    if (d.pageAll) {
-      // 0 を「全表示」として扱う
-      pages[d.pageAll] = 0;
-      renderAllPage(d.pageAll);
-      return;
-    }
-  });
-
-  document.addEventListener('change', (e) => {
-    if (e.target.dataset.status) {
-      setStatus(
-        e.target.dataset.status,
-        e.target.value
-      );
-    }
-  });
-
-  function renderAllPage(cat) {
-    const items = load();
-    const shown = items.filter(
-      (it) => it.category === cat
+  $('cancel-edit')
+    .addEventListener(
+      'click',
+      closeForm
     );
 
+  // クリック処理
+  document.addEventListener(
+    'click',
+    (e) => {
+      const d = e.target.dataset;
+
+      // タブ
+      if (d.tab) {
+        current = d.tab;
+        closeForm();
+        render();
+        return;
+      }
+
+      // 追加
+      if (d.add) {
+        openForm(current);
+        return;
+      }
+
+      // 編集
+      if (d.edit) {
+        const it = load().find(
+          (item) => item.id === d.edit
+        );
+
+        if (it) {
+          openForm(
+            it.category,
+            it
+          );
+        }
+
+        return;
+      }
+
+      // 削除
+      if (d.delete) {
+        if (
+          !confirm(
+            '削除しますか?'
+          )
+        ) {
+          return;
+        }
+
+        save(
+          load().filter(
+            (it) =>
+              it.id !== d.delete
+          )
+        );
+
+        render();
+        return;
+      }
+
+      // 前のページ
+      if (d.pagePrev) {
+        pages[d.pagePrev] =
+          Math.max(
+            1,
+            (pages[d.pagePrev] || 1) - 1
+          );
+
+        render();
+        return;
+      }
+
+      // 次のページ
+      if (d.pageNext) {
+        const items =
+          load().filter(
+            (it) =>
+              it.category ===
+                d.pageNext &&
+              isUnpurchasedLike(
+                d.pageNext,
+                it.status
+              )
+          );
+
+        const pageCount =
+          Math.max(
+            1,
+            Math.ceil(
+              items.length /
+                PAGE_SIZE
+            )
+          );
+
+        pages[d.pageNext] =
+          Math.min(
+            pageCount,
+            (pages[d.pageNext] || 1) + 1
+          );
+
+        render();
+        return;
+      }
+
+      // 全表示
+      if (d.pageAll) {
+        renderAllPage(
+          d.pageAll
+        );
+        return;
+      }
+
+      // ボタン・セレクト・リンクを
+      // 押した場合は詳細を開かない
+      if (
+        e.target.closest(
+          'button, select, a'
+        )
+      ) {
+        return;
+      }
+
+      // 行を押したら詳細
+      const row =
+        e.target.closest(
+          '[data-detail]'
+        );
+
+      if (row) {
+        showDetail(
+          row.dataset.detail
+        );
+      }
+    }
+  );
+
+  // 状態セレクト変更
+  document.addEventListener(
+    'change',
+    (e) => {
+      if (
+        e.target.dataset.status
+      ) {
+        setStatus(
+          e.target.dataset.status,
+          e.target.value
+        );
+      }
+    }
+  );
+
+  // 「全表示」
+  function renderAllPage(cat) {
+    const items = load();
+
+    const shown =
+      items.filter(
+        (it) =>
+          it.category === cat
+      );
+
     const list = $('list');
+
     list.innerHTML = '';
 
-    renderCategoryGroupsAll(list, cat, shown);
+    renderCategoryGroupsAll(
+      list,
+      cat,
+      shown
+    );
 
     renderTabs();
     renderTotals(shown);
 
-    const addArea = $('add-area');
-
-    addArea.innerHTML =
+    $('add-area').innerHTML =
       `<button type="button" class="lm-btn" data-add="1">${escapeHtml(cat)}を追加する</button>`;
   }
 
-  function renderCategoryGroupsAll(container, cat, items) {
-    const unpurchasedLike = items.filter((it) =>
-      isUnpurchasedLike(cat, it.status)
-    );
+  function renderCategoryGroupsAll(
+    container,
+    cat,
+    items
+  ) {
+    const unpurchasedLike =
+      items.filter((it) =>
+        isUnpurchasedLike(
+          cat,
+          it.status
+        )
+      );
 
-    const others = TYPES[cat]
-      .filter(([sid]) =>
-        !unpurchasedLike.some((it) => it.status === sid)
-      )
-      .map(([sid, label]) => ({
-        label,
-        items: items.filter((it) => it.status === sid)
-      }))
-      .filter((g) => g.items.length);
+    const others =
+      TYPES[cat]
+        .filter(
+          ([sid]) =>
+            !unpurchasedLike.some(
+              (it) =>
+                it.status === sid
+            )
+        )
+        .map(
+          ([sid, label]) => ({
+            label,
+            items:
+              items.filter(
+                (it) =>
+                  it.status ===
+                  sid
+              )
+          })
+        )
+        .filter(
+          (group) =>
+            group.items.length
+        );
 
     if (unpurchasedLike.length) {
       appendSimpleGroup(
@@ -626,23 +792,34 @@
       );
     }
 
-    others.forEach((g) => {
-      appendSimpleGroup(
-        container,
-        `${g.label}(${g.items.length})`,
-        g.items
-      );
-    });
+    others.forEach(
+      (group) => {
+        appendSimpleGroup(
+          container,
+          `${group.label}(${group.items.length})`,
+          group.items
+        );
+      }
+    );
   }
 
   function escapeHtml(str) {
-    const div = document.createElement('div');
+    const div =
+      document.createElement(
+        'div'
+      );
+
     div.textContent =
-      str == null ? '' : String(str);
+      str == null
+        ? ''
+        : String(str);
+
     return div.innerHTML;
   }
 
   render();
 
-  LM.renderNav($('nav-container'));
+  LM.renderNav(
+    $('nav-container')
+  );
 })();
