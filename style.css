@@ -57,6 +57,77 @@ body {
   margin: 0 0 20px;
 }
 
+/* 右上メニュー */
+#lm-menu-btn {
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 8px);
+  right: 10px;
+  z-index: 900;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--paper-line, #ddd);
+  background: rgba(250, 248, 243, .92);
+  font-size: 20px;
+  line-height: 1;
+  color: #333;
+}
+
+#lm-menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 950;
+  background: rgba(0, 0, 0, .3);
+  display: none;
+}
+
+#lm-menu-overlay.open {
+  display: block;
+}
+
+#lm-menu-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(78vw, 300px);
+  background: #faf8f3;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 0
+           calc(env(safe-area-inset-bottom, 0px) + 12px);
+  overflow-y: auto;
+  box-shadow: -2px 0 12px rgba(0, 0, 0, .15);
+}
+
+#lm-menu-panel .lm-menu-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 16px 8px;
+  color: var(--text-soft, #777);
+  font-size: 12px;
+}
+
+#lm-menu-panel .lm-menu-close {
+  border: none;
+  background: none;
+  font-size: 18px;
+  padding: 4px 8px;
+}
+
+#lm-menu-panel a {
+  display: block;
+  padding: 13px 16px;
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid var(--paper-line, #eee);
+  font-size: 15px;
+}
+
+#lm-menu-panel a.current {
+  font-weight: bold;
+  background: rgba(0, 0, 0, .05);
+}
+
 /* ---------- セクション(手帳の罫線区切り) ---------- */
 .lm-section {
   border-top: 1px solid var(--paper-line);
