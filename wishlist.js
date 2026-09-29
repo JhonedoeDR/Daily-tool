@@ -297,9 +297,7 @@
     if (!it) return;
 
     const wrap = document.createElement('div');
-
-    wrap.style.cssText =
-      'font-size:14px; line-height:1.9;';
+    wrap.className = 'wl-detail';
 
     const details = [
       `種類：${escapeHtml(it.category)}`,
