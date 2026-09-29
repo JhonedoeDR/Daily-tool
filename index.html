@@ -22,20 +22,15 @@
       <div class="hm-circle" id="hm-circle">
         <svg class="hm-ring" viewBox="0 0 200 200" aria-hidden="true">
           <circle class="band" cx="100" cy="100" r="76" />
-          <line class="seg" x1="100" y1="44" x2="100" y2="4" />
-          <line class="seg" x1="156" y1="102" x2="196" y2="103" />
-          <line class="seg" x1="144" y1="134" x2="176" y2="159" />
+          <g id="hm-ring-dyn"></g>
           <circle class="outer" cx="100" cy="100" r="96" />
           <circle class="disc" cx="100" cy="100" r="56" />
         </svg>
-        <div class="hm-inner">
-          <span class="hm-dow" id="hm-dow"></span>
-          <span class="hm-date" id="hm-date"></span>
-          <span class="hm-bars" aria-hidden="true"><i></i><i></i></span>
-        </div>
+        <div class="hm-inner" id="hm-inner"></div>
       </div>
       <button type="button" class="hm-arrow" id="hm-next" aria-label="次の機能">›</button>
     </div>
+    <div class="hm-caption" id="hm-caption"></div>
     <div class="hm-dots" id="hm-dots"></div>
   </section>
 
