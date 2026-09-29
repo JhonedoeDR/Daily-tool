@@ -25,6 +25,15 @@
     { name: 'その他', color: 'var(--paper-line)' },
   ];
 
+  // タイマー(円形カウントダウン)。時刻は「終了する時刻」を保存して計算するので、
+  // 画面を閉じても・タイマーの回数がずれても正確に残り時間が分かる
+  const TIMER_KEY = 'lm_homeTimer';
+  const TIMER_STEP_MIN = 5;
+  const TIMER_MIN = 5;
+  const TIMER_MAX = 180;
+  let currentMode = DEFAULT_CIRCLE_MODE;
+  const timer = loadTimer();
+
   const hasContent = {};
   let refreshCircle = function () {};
 
@@ -65,6 +74,7 @@
       const mode = CIRCLE_MODES[index];
       titleEl.textContent = mode.title;
       circle.dataset.mode = mode.key;
+      currentMode = mode.key;
       renderCircleContent(mode.key);
       [...dotsEl.children].forEach((d, k) => d.setAttribute('aria-current', k === index ? 'true' : 'false'));
       if (dir) {
@@ -103,6 +113,29 @@
     refreshCircle = function () { renderCircleContent(CIRCLE_MODES[index].key); };
     // 予定逆算の針は時間で動くので、表示中だけ30秒ごとに描き直す
     setInterval(() => { if (CIRCLE_MODES[index].key === 'schedule') refreshCircle(); }, 30000);
+
+    // タイマー: 円の中央をタップで 開始/一時停止/再開、下のボタンで時間調整・リセット
+    document.getElementById('hm-inner').addEventListener('click', () => {
+      if (currentMode === 'timecalc') toggleTimer();
+    });
+    document.getElementById('hm-caption').addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-tc]');
+      if (!btn || currentMode !== 'timecalc') return;
+      if (btn.dataset.tc === 'dec') adjustTimer(-TIMER_STEP_MIN);
+      if (btn.dataset.tc === 'inc') adjustTimer(TIMER_STEP_MIN);
+      if (btn.dataset.tc === 'reset') resetTimer();
+    });
+    setInterval(() => {
+      const finished = checkTimerFinish();
+      if (currentMode !== 'timecalc') return;
+      if (finished) { refreshCircle(); return; }
+      if (timer.status === 'running') {
+        // 残り時間と弧だけ更新(下のボタンは作り直さない)
+        const r = modeTimeCalc();
+        document.getElementById('hm-ring-dyn').replaceChildren(...(r.ring || []));
+        document.getElementById('hm-inner').innerHTML = r.inner;
+      }
+    }, 250);
 
     show(index, 0);
   }
@@ -216,9 +249,109 @@
     return { ring, inner: innerHtml(started ? '進行中' : '次の予定', next.start, next.name, dep) };
   }
 
-  // 時間計算: 円形カウントダウンはSTEP 4で作る
+  // 時間計算: 円形カウントダウンのタイマー
   function modeTimeCalc() {
-    return { inner: innerHtml('時間計算', '—', '準備中') };
+    const ms = timerRemainingMs();
+    const totalMs = timer.status === 'idle' ? timer.durationMin * 60000 : timer.totalMs;
+    const frac = timer.status === 'idle' ? 1 : totalMs > 0 ? Math.min(1, ms / totalMs) : 0;
+    const sub = { idle: 'タイマー', running: '残り', paused: '一時停止中', done: 'タイマー' }[timer.status];
+    const note = { idle: 'タップで開始', running: 'タップで一時停止', paused: 'タップで再開', done: '終了' }[timer.status];
+
+    let caption;
+    if (timer.status === 'idle') {
+      caption = `<button type="button" class="hm-tc-btn" data-tc="dec" ${timer.durationMin <= TIMER_MIN ? 'disabled' : ''}>−${TIMER_STEP_MIN}分</button>
+        <button type="button" class="hm-tc-btn" data-tc="inc" ${timer.durationMin >= TIMER_MAX ? 'disabled' : ''}>+${TIMER_STEP_MIN}分</button>`;
+    } else {
+      caption = '<button type="button" class="hm-tc-btn" data-tc="reset">リセット</button>';
+    }
+    return {
+      ring: frac > 0 ? [ringArc(0, frac, 'var(--accent)')] : [],
+      inner: innerHtml(sub, formatClock(ms), note),
+      caption,
+    };
+  }
+
+  function clampTimerMin(v) {
+    const n = Math.round(Number(v) || 25);
+    return Math.min(TIMER_MAX, Math.max(TIMER_MIN, n));
+  }
+
+  function loadTimer() {
+    const saved = LM.get(TIMER_KEY, null) || {};
+    const t = {
+      durationMin: clampTimerMin(saved.durationMin || 25),
+      status: ['idle', 'running', 'paused', 'done'].includes(saved.status) ? saved.status : 'idle',
+      endAt: Number(saved.endAt) || 0,
+      remainingMs: Number(saved.remainingMs) || 0,
+      totalMs: Number(saved.totalMs) || 0,
+    };
+    if (t.status === 'running' && t.endAt <= Date.now()) { t.status = 'done'; t.remainingMs = 0; }
+    if (t.status === 'paused' && t.remainingMs <= 0) t.status = 'idle';
+    if (t.status !== 'idle' && t.totalMs <= 0) t.status = 'idle';
+    return t;
+  }
+
+  function saveTimer() {
+    LM.set(TIMER_KEY, timer);
+  }
+
+  function timerRemainingMs() {
+    if (timer.status === 'running') return Math.max(0, timer.endAt - Date.now());
+    if (timer.status === 'paused') return timer.remainingMs;
+    if (timer.status === 'done') return 0;
+    return timer.durationMin * 60000;
+  }
+
+  function toggleTimer() {
+    const now = Date.now();
+    if (timer.status === 'idle') {
+      timer.totalMs = timer.durationMin * 60000;
+      timer.endAt = now + timer.totalMs;
+      timer.status = 'running';
+    } else if (timer.status === 'running') {
+      timer.remainingMs = Math.max(0, timer.endAt - now);
+      timer.status = 'paused';
+    } else if (timer.status === 'paused') {
+      timer.endAt = now + timer.remainingMs;
+      timer.status = 'running';
+    } else {
+      timer.status = 'idle';
+    }
+    saveTimer();
+    refreshCircle();
+  }
+
+  function resetTimer() {
+    timer.status = 'idle';
+    timer.remainingMs = 0;
+    saveTimer();
+    refreshCircle();
+  }
+
+  function adjustTimer(deltaMin) {
+    if (timer.status !== 'idle') return;
+    timer.durationMin = clampTimerMin(timer.durationMin + deltaMin);
+    saveTimer();
+    refreshCircle();
+  }
+
+  // 走っているタイマーが終わっていたら「終了」にする。変わった時だけtrueを返す
+  function checkTimerFinish() {
+    if (timer.status !== 'running' || Date.now() < timer.endAt) return false;
+    const late = Date.now() - timer.endAt;
+    timer.status = 'done';
+    timer.remainingMs = 0;
+    saveTimer();
+    if (late < 5000) LM.notify('タイマー終了', `${Math.round(timer.totalMs / 60000)}分が経過しました`);
+    return true;
+  }
+
+  function formatClock(ms) {
+    const sec = Math.ceil(ms / 1000);
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const ss = String(sec % 60).padStart(2, '0');
+    return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${String(m).padStart(2, '0')}:${ss}`;
   }
 
   // ウィッシュリスト: 未購入アイテムの種類比(種類は 本/ゲーム/グッズ/その他 の4つ)
