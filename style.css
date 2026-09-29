@@ -1183,3 +1183,51 @@ body {
 .hm-home-disc svg { width: 30px; height: 30px; }
 .hm-home:active .hm-home-disc { transform: translateY(2px); box-shadow: 0 1px 0 #4a9db9; }
 
+
+/* =========================================================
+   新HOME(STEP 2)追加分 - 円の中身
+   STEP 1のブロックの続きとして style.css の一番下に貼る
+   ========================================================= */
+.hm-inner {
+  padding: 0 6px;
+  gap: 1px;
+  text-align: center;
+  overflow: hidden;
+}
+.hm-inner .hm-dow {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+}
+.hm-inner .hm-date {
+  font-size: clamp(24px, 8vw, 34px);
+}
+.hm-note {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-soft);
+}
+.hm-caption {
+  min-height: 18px;
+  margin-top: 2px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px 12px;
+  font-size: 11px;
+  color: var(--text-soft);
+}
+.hm-caption i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 4px;
+  border-radius: 50%;
+  border: 1px solid var(--paper-line);
+}
