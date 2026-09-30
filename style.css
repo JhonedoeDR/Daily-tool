@@ -1375,3 +1375,46 @@ body {
 .hm-more-item:active {
   background: var(--accent-soft);
 }
+
+
+/* =========================================================
+   新HOME(STEP 6)追加分 - 犬(PNG)
+   STEP 5のブロックの続きとして style.css の一番下に貼る
+   ※ STEP 1の「.hm-dog」で始まる古いルールは使わなくなったので、
+     消しても残してもどちらでも動く
+   ========================================================= */
+
+/* ふきだし: セリフ内の改行(\n)をそのまま改行として表示する */
+.hm-bubble {
+  white-space: pre-line;
+}
+
+/* 犬の本体と手を同じ大きさで重ねる */
+.hm-dog-stack {
+  position: relative;
+  width: min(100%, 148px);
+  margin: 0 0 -14px 6px; /* 下にはみ出した分が、メインカードの裏に隠れる */
+  pointer-events: none;
+}
+.hm-dog-img,
+.hm-dog-hands {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.hm-dog-img {
+  position: relative;
+  z-index: 0; /* メインカード(z-index:1)より下 */
+}
+.hm-dog-hands {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 2; /* メインカードより上。手がカードの縁に乗って見える */
+}
+
+/* 犬の本体をカードの裏に回すため、メインカードを犬の上の層に置く */
+.hm-col .lm-section[data-section='task'] {
+  position: relative;
+  z-index: 1;
+}
