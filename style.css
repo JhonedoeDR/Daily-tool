@@ -1267,3 +1267,111 @@ body {
   cursor: default;
 }
 
+
+/* =========================================================
+   新HOME(STEP 5)追加分 - HOME長押しメニュー
+   STEP 4のブロックの続きとして style.css の一番下に貼る
+   ========================================================= */
+
+/* バックアップの実体(画面には出さないが、操作はできる状態にしておく) */
+.hm-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* HOMEボタンの長押し */
+.hm-home {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+.hm-home.is-pressing .hm-home-disc {
+  transform: scale(1.12);
+  transition: transform 0.5s ease-out;
+}
+
+/* メニュー本体。下部メニューより下の層に置き、HOMEボタンは見えたままにする */
+.hm-more {
+  position: fixed;
+  inset: 0;
+  z-index: 700;
+  display: none;
+  background: rgba(60, 60, 60, 0.28);
+  touch-action: none;
+}
+.hm-more.open {
+  display: block;
+}
+.hm-more-panel {
+  position: absolute;
+  left: 50%;
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  width: min(92vw, 400px);
+  box-sizing: border-box;
+  padding: 22px 14px 18px;
+  border: 2px solid var(--accent);
+  border-radius: 28px;
+  background: var(--paper);
+  transform-origin: 50% 100%;
+  transform: translateX(-50%);
+  animation: hm-more-in 0.18s ease-out;
+}
+/* HOMEを指すしっぽ */
+.hm-more-panel::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  width: 16px;
+  height: 16px;
+  margin-left: -8px;
+  background: var(--paper);
+  border-right: 2px solid var(--accent);
+  border-bottom: 2px solid var(--accent);
+  transform: rotate(45deg);
+}
+@keyframes hm-more-in {
+  from { opacity: 0; transform: translateX(-50%) scale(0.92); }
+  to   { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hm-more-panel { animation: none; }
+  .hm-home.is-pressing .hm-home-disc { transition: none; }
+}
+.hm-more-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px 6px;
+}
+.hm-more-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  min-height: 84px;
+  padding: 8px 2px;
+  border: none;
+  border-radius: 16px;
+  background: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-decoration: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.hm-more-item svg {
+  width: 46px;
+  height: 46px;
+}
+.hm-more-item:active {
+  background: var(--accent-soft);
+}
