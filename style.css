@@ -1377,6 +1377,7 @@ body {
 }
 
 
+
 /* =========================================================
    新HOME(STEP 6)追加分 - 犬(PNG)
    STEP 5のブロックの続きとして style.css の一番下に貼る
@@ -1400,13 +1401,16 @@ body {
 .hm-dog-hands {
   display: block;
   width: 100%;
-  --dog-face-scale: 0.80;
-  --dog-face-down: 12px;
   height: auto;
 }
 .hm-dog-img {
   position: relative;
   z-index: 0; /* メインカード(z-index:1)より下 */
+  /* 顔(本体)だけを調整する。手は動かさない */
+  --dog-face-scale: 0.65; /* 小さくする: 小さいほど小さい(1で今まで通り) */
+  --dog-face-down: 25px;  /* 下へ動かす: 大きいほど下がる(0で今まで通り) */
+  transform-origin: 50% 100%;
+  transform: translateY(var(--dog-face-down)) scale(var(--dog-face-scale));
 }
 .hm-dog-hands {
   position: absolute;
