@@ -3,6 +3,9 @@
   const weeklyGridEl = document.getElementById('weekly-grid');
   const weeklyCountEl = document.getElementById('weekly-count');
   const rewardBoxEl = document.getElementById('reward-box');
+  const routineProgressEl = document.getElementById('routine-progress');
+  const routineRewardBoxEl = document.getElementById('routine-reward-box');
+  const routineRewardTitleEl = document.getElementById('routine-reward-title');
 
   let state = LM.getTodoState();
 
@@ -13,18 +16,31 @@
     LM.saveTodoState(state);
   });
 
+  const routineRewardInput = document.getElementById('f-routine-reward');
+  routineRewardInput.value = state.routineReward || '';
+  routineRewardInput.addEventListener('input', () => {
+    state.routineReward = routineRewardInput.value;
+    LM.saveTodoState(state);
+  });
+
   renderGroups();
   renderWeeklyGrid();
+  renderRoutineProgress();
   LM.renderNav(document.getElementById('nav-container'));
 
   document.getElementById('daily-reset-btn').addEventListener('click', () => {
-    const ok = confirm('タスクをリセットします。よろしいですか?\n(週間クリア記録は消えません)');
+    const ok = confirm('タスクをリセットします。よろしいですか?\n(週間・月間の達成記録は消えません。ルーティンの内容も残ります)');
     if (!ok) return;
+    // ルーティンの内容は残す。月間の「今日チェック済み」の印も残す(リセット後の付け直しで二重に数えないため)
+    const routineNames = {};
+    LM.TODO_ROUTINE_IDS.forEach((id) => { routineNames[id] = state.dailyTasks[id].name; });
     state.dailyTasks = LM.defaultTodoTasks();
+    LM.TODO_ROUTINE_IDS.forEach((id) => { state.dailyTasks[id].name = routineNames[id]; });
     state.reflected = LM.defaultTodoReflected();
     LM.saveTodoState(state);
     renderGroups();
     renderWeeklyGrid();
+    renderRoutineProgress();
   });
 
   function renderGroups() {
@@ -50,6 +66,7 @@
           LM.toggleTodoCheck(state, id, checkbox.checked);
           row.classList.toggle('is-checked', checkbox.checked);
           renderWeeklyGrid();
+          renderRoutineProgress();
         });
 
         const nameInput = document.createElement('input');
@@ -80,5 +97,23 @@
     }
     weeklyCountEl.textContent = `${state.weeklyClears} / ${LM.TODO_WEEK_TOTAL}`;
     rewardBoxEl.style.display = state.weeklyClears >= LM.TODO_WEEK_TOTAL ? 'block' : 'none';
+  }
+
+  // 月間ルーティン: イベントと同じバーで表示する
+  function renderRoutineProgress() {
+    const p = LM.calcRoutineProgress(state);
+    routineProgressEl.innerHTML = `
+      <div class="lm-event-top">
+        <span>今月のルーティン</span>
+        <span>${p.rate}%</span>
+      </div>
+      <div class="lm-progress-track">
+        <div class="lm-progress-fill" style="width:${p.rate}%"></div>
+      </div>
+      <div class="lm-event-remain">${p.count} / ${p.required}回 ・ 残り${p.remain}回 ・ 月末まで${p.remainDays}日</div>
+    `;
+    const done = p.count >= p.required;
+    routineRewardBoxEl.style.display = done ? 'block' : 'none';
+    routineRewardTitleEl.textContent = `今月のルーティンを${p.required}回クリアしました`;
   }
 })();
