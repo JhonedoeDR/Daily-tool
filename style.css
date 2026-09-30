@@ -1400,6 +1400,8 @@ body {
 .hm-dog-hands {
   display: block;
   width: 100%;
+  --dog-face-scale: 0.80;
+  --dog-face-down: 12px;
   height: auto;
 }
 .hm-dog-img {
