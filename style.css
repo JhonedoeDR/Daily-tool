@@ -1408,7 +1408,7 @@ body {
   z-index: 0; /* メインカード(z-index:1)より下 */
   /* 顔(本体)だけを調整する。手は動かさない */
   --dog-face-scale: 0.65; /* 小さくする: 小さいほど小さい(1で今まで通り) */
-  --dog-face-down: 18px;  /* 下へ動かす: 大きいほど下がる(0で今まで通り) */
+  --dog-face-down: 16px;  /* 下へ動かす: 大きいほど下がる(0で今まで通り) */
   transform-origin: 50% 100%;
   transform: translateY(var(--dog-face-down)) scale(var(--dog-face-scale));
 }
