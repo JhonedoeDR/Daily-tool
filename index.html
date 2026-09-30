@@ -40,19 +40,13 @@
   <div class="hm-grid">
     <div class="hm-col" id="hm-col-left">
       <div class="hm-dog-area">
-        <div class="hm-bubble">ワンワン!<br />(今日のタスクだワン!)</div>
-        <svg class="hm-dog" viewBox="0 0 140 100" role="img" aria-label="犬(仮のイラスト)">
-          <path class="ear" d="M38 34C18 30 12 56 22 66C32 60 38 48 38 34Z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" />
-          <path class="ear" d="M102 34C122 30 128 56 118 66C108 60 102 48 102 34Z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" />
-          <ellipse class="face" cx="70" cy="56" rx="38" ry="34" stroke="currentColor" stroke-width="2.5" />
-          <circle cx="56" cy="52" r="3.6" fill="currentColor" />
-          <circle cx="84" cy="52" r="3.6" fill="currentColor" />
-          <ellipse cx="70" cy="63" rx="6" ry="4.5" fill="currentColor" />
-          <path d="M70 67.5V72M70 72Q63 78 57 73M70 72Q77 78 83 73" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
-          <path class="tongue" d="M65 76Q70 90 75 76Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
-          <ellipse class="paw" cx="44" cy="94" rx="13" ry="8" stroke="currentColor" stroke-width="2.5" />
-          <ellipse class="paw" cx="96" cy="94" rx="13" ry="8" stroke="currentColor" stroke-width="2.5" />
-        </svg>
+        <div class="hm-bubble" id="hm-bubble">ワンワン!
+(今日のタスクだワン!)</div>
+        <!-- 犬の本体は下の層(メインカードの裏)、手は上の層(メインカードの上)に重ねる -->
+        <div class="hm-dog-stack">
+          <img class="hm-dog-img" id="hm-dog" src="./hm-dog.png" alt="犬" />
+          <img class="hm-dog-hands" id="hm-dog-hands" src="./hm-dog-hands.png" alt="" aria-hidden="true" />
+        </div>
       </div>
 
       <section class="lm-section" data-section="task">
