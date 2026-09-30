@@ -36,6 +36,27 @@
   const LONG_PRESS_MS = 500;
   let moreOpen = false;
 
+  /* ---------- 犬(STEP 6)。画像の場所・状態の条件・セリフはここだけ直せばよい ---------- */
+  const DOG_DIR = './'; // 画像を dog フォルダに入れた場合は './dog/' にする
+  const DOG_IMAGES = {
+    normal: 'hm-dog.png',
+    soon: 'hm-dog-happy.png',      // 予定直前
+    done: 'hm-dog-existing.png',   // メインタスク達成
+    busy: 'hm-dog-stunned.png',    // 忙しい
+    free: 'hm-dog-sleep.png',      // ひま
+  };
+  const DOG_SOON_MIN = 60;          // 次の予定までこの分数以内なら「予定直前」
+  const DOG_BUSY_SCHEDULES = 3;     // これから(または進行中)の予定がこの件数以上なら「忙しい」
+  const DOG_LINES = {
+    normal: ['ワンワン!\n(今日のタスクだワン!)', 'きょうも がんばるワン!', 'やること、ちゃんと見てるワン!'],
+    soon: ['もうすぐ予定だワン!', 'そろそろ準備だワン!', '出発の時間に気をつけるワン!'],
+    done: ['メイン、ぜんぶ終わったワン!', 'えらいワン!すごいワン!', 'やったワン〜!'],
+    busy: ['予定がいっぱいだワン…!', 'いそがしい日だワン…', 'ひとつずつ、いくワン!'],
+    free: ['ふぁ〜…ひまだワン', '今日はのんびりだワン', 'ちょっとお昼寝するワン…'],
+  };
+  let dogState = null;
+  let dogLine = '';
+
   const hasContent = {};
   let refreshCircle = function () {};
 
@@ -51,6 +72,7 @@
   LM.renderNav(document.getElementById('nav-container'));
   setupCircle();
   setupHomeButton();
+  setupDog();
 
   /* ---------- 円の切り替え(左右矢印・ドット・横スワイプ) ---------- */
   function setupCircle() {
@@ -472,6 +494,55 @@
     LM.openModal('データのバックアップ', box);
   }
 
+  /* ---------- 犬: 状態に応じて画像とセリフを切り替える ---------- */
+  function setupDog() {
+    const img = document.getElementById('hm-dog');
+    const hands = document.getElementById('hm-dog-hands');
+    // 画像が見つからない時は、普通の犬に戻す(手が無ければ隠す)
+    img.addEventListener('error', () => {
+      const normal = DOG_DIR + DOG_IMAGES.normal;
+      if (!img.src.endsWith(DOG_IMAGES.normal)) img.src = normal;
+    });
+    hands.addEventListener('error', () => { hands.style.display = 'none'; });
+    hands.src = DOG_DIR + 'hm-dog-hands.png';
+    updateDog(true);
+    setInterval(() => updateDog(false), 30000); // 予定が近づくと変わるので定期的に見直す
+  }
+
+  function decideDogState() {
+    const now = new Date();
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const schedules = LM.get(LM.KEYS.SCHEDULES, [])
+      .filter((s) => s.date === today)
+      .sort((a, b) => a.start.localeCompare(b.start));
+    const ahead = schedules.filter((s) => LM.clockToMinutes(s.end || s.start) >= nowMin);
+    const upcoming = schedules.filter((s) => LM.clockToMinutes(s.start) >= nowMin);
+
+    if (upcoming.length && LM.clockToMinutes(upcoming[0].start) - nowMin <= DOG_SOON_MIN) return 'soon';
+
+    const state = LM.getTodoState();
+    const main = LM.TODO_MAIN_IDS.map((id) => state.dailyTasks[id]).filter((t) => t.name.trim());
+    if (main.length > 0 && main.every((t) => t.checked)) return 'done';
+
+    if (ahead.length >= DOG_BUSY_SCHEDULES) return 'busy';
+
+    const shift = LM.get(LM.KEYS.SHIFTS, []).find((s) => s.date === today);
+    if (schedules.length === 0 && !shift) return 'free';
+    return 'normal';
+  }
+
+  // 状態が変わった時(または初回)だけ、画像とセリフを入れ替える
+  function updateDog(force) {
+    const next = decideDogState();
+    if (!force && next === dogState) return;
+    dogState = next;
+    document.getElementById('hm-dog').src = DOG_DIR + DOG_IMAGES[next];
+    const lines = DOG_LINES[next];
+    const others = lines.filter((l) => l !== dogLine);
+    dogLine = others[Math.floor(Math.random() * others.length)] || lines[0];
+    document.getElementById('hm-bubble').textContent = dogLine;
+  }
+
   /* ---------- セクションの並び替え(右カラム内で、表示があるものを先に) ---------- */
   function reorderSections() {
     const col = document.getElementById('hm-col-right');
@@ -648,6 +719,7 @@
       LM.toggleTodoCheck(s, id, checkbox.checked);
       hasContent.task = renderTasks();
       refreshCircle();
+      updateDog();
     });
 
     return true;
