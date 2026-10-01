@@ -33,8 +33,6 @@
   const TIMER_MAX = 180;
   let currentMode = DEFAULT_CIRCLE_MODE;
   const timer = loadTimer();
-  const LONG_PRESS_MS = 500;
-  let moreOpen = false;
 
   /* ---------- 犬(STEP 6)。画像の場所・状態の条件・セリフはここだけ直せばよい ---------- */
   const DOG_DIR = './'; // 画像を dog フォルダに入れた場合は './dog/' にする
@@ -48,11 +46,11 @@
   const DOG_SOON_MIN = 60;          // 次の予定までこの分数以内なら「予定直前」
   const DOG_BUSY_SCHEDULES = 3;     // これから(または進行中)の予定がこの件数以上なら「忙しい」
   const DOG_LINES = {
-    normal: ['ワンワン!\n(今日のタスクだワン!)', 'ワン！(今日も がんばるワン!)', 'ワン〜(やること、ちゃんと見てるワン!)'],
-    soon: ['ワン！(もうすぐ予定だワン!)', 'ワワン！(そろそろ準備だワン!)', 'ワオ〜ン！(出発の時間に気をつけるワン!)'],
-    done: ['ワンワン！(メインタスク、ぜんぶ終わったワン!)', 'ワンワン！(えらいワン!すごいワン!)', 'ワオ〜ン！(やったワン〜!)'],
-    busy: ['ワ…(予定がいっぱいだワン…)', 'ワン…(いそがしい日だワン…)', 'ワン！(ひとつずつ、がんばるワン!)'],
-    free: ['クゥ〜ン…(ふぁ〜…ひまだワン)', 'ワン〜(今日はのんびりだワン)', 'ワフ…(ちょっとお昼寝するワン…)'],
+    normal: ['ワンワン!\n(今日のタスクだワン!)', 'きょうも がんばるワン!', 'やること、ちゃんと見てるワン!'],
+    soon: ['もうすぐ予定だワン!', 'そろそろ準備だワン!', '出発の時間に気をつけるワン!'],
+    done: ['メイン、ぜんぶ終わったワン!', 'えらいワン!すごいワン!', 'やったワン〜!'],
+    busy: ['予定がいっぱいだワン…!', 'いそがしい日だワン…', 'ひとつずつ、いくワン!'],
+    free: ['ふぁ〜…ひまだワン', '今日はのんびりだワン', 'ちょっとお昼寝するワン…'],
   };
   let dogState = null;
   let dogLine = '';
@@ -68,10 +66,8 @@
   reorderSections();
   setupTaskLink();
   renderNotifyBanner();
-  setupBackup();
   LM.renderNav(document.getElementById('nav-container'));
   setupCircle();
-  setupHomeButton();
   setupDog();
 
   /* ---------- 円の切り替え(左右矢印・ドット・横スワイプ) ---------- */
@@ -403,95 +399,6 @@
       .map((c, i) => (counts[i] ? `<span><i style="background:${c.color}"></i>${escapeHtml(c.name)} ${counts[i]}</span>` : ''))
       .join('');
     return { ring, inner: innerHtml('未購入', String(total), '件'), caption };
-  }
-
-  /* ---------- 下部メニューのHOME
-   * タップ: 一番上へ戻る(メニューが開いていれば閉じる)
-   * 長押し: 「その他の機能」メニューを開く ---------- */
-  function setupHomeButton() {
-    const btn = document.getElementById('hm-home');
-    const more = document.getElementById('hm-more');
-    let holdTimer = null;
-    let held = false;
-    let sx = 0;
-    let sy = 0;
-
-    const cancelHold = () => {
-      clearTimeout(holdTimer);
-      btn.classList.remove('is-pressing');
-    };
-
-    btn.addEventListener('pointerdown', (e) => {
-      held = false;
-      sx = e.clientX;
-      sy = e.clientY;
-      btn.classList.add('is-pressing');
-      clearTimeout(holdTimer);
-      holdTimer = setTimeout(() => {
-        held = true;
-        btn.classList.remove('is-pressing');
-        openMore();
-      }, LONG_PRESS_MS);
-    });
-    // 指が動いたら(スクロールなど)長押しとは見なさない
-    btn.addEventListener('pointermove', (e) => {
-      if (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10) cancelHold();
-    });
-    ['pointerup', 'pointercancel', 'pointerleave'].forEach((t) => btn.addEventListener(t, cancelHold));
-    btn.addEventListener('contextmenu', (e) => e.preventDefault());
-
-    btn.addEventListener('click', () => {
-      if (held) { held = false; return; } // 長押しで開いた直後の「離した指」はタップとして扱わない
-      if (moreOpen) { closeMore(); return; }
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-
-    // メニューの外側をタップ / Escape / 戻るで戻ってきた時に閉じる
-    more.addEventListener('click', (e) => {
-      if (e.target === more) { closeMore(); return; }
-      const item = e.target.closest('.hm-more-item');
-      if (!item) return;
-      if (item.dataset.more === 'backup') {
-        closeMore();
-        openBackupModal();
-      } else {
-        closeMore(); // リンクの移動はそのまま行う
-      }
-    });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMore(); });
-    window.addEventListener('pageshow', closeMore);
-  }
-
-  function openMore() {
-    const more = document.getElementById('hm-more');
-    moreOpen = true;
-    more.classList.add('open');
-    more.setAttribute('aria-hidden', 'false');
-  }
-
-  function closeMore() {
-    const more = document.getElementById('hm-more');
-    moreOpen = false;
-    more.classList.remove('open');
-    more.setAttribute('aria-hidden', 'true');
-  }
-
-  // BACKUP: 保存/復元の本体(#export-btn / #import-input)を操作する。処理はsetupBackupのまま
-  function openBackupModal() {
-    const box = document.createElement('div');
-    box.innerHTML = `
-      <p class="lm-empty" style="margin-bottom:10px;">端末側の事情でデータが消えることがあるため、時々バックアップの保存をおすすめします</p>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <button type="button" class="lm-btn secondary" data-bk="export">バックアップを保存</button>
-        <button type="button" class="lm-btn secondary" data-bk="import">バックアップから復元</button>
-      </div>
-    `;
-    box.addEventListener('click', (e) => {
-      const b = e.target.closest('[data-bk]');
-      if (!b) return;
-      document.getElementById(b.dataset.bk === 'export' ? 'export-btn' : 'import-input').click();
-    });
-    LM.openModal('データのバックアップ', box);
   }
 
   /* ---------- 犬: 状態に応じて画像とセリフを切り替える ---------- */
@@ -844,44 +751,6 @@
       console.error(e);
       if (showFeedback) LM.showToast('登録に失敗しました', 'error');
     }
-  }
-
-  /* ---------- バックアップの保存/復元 ---------- */
-  function setupBackup() {
-    document.getElementById('export-btn').addEventListener('click', () => {
-      try {
-        const data = LM.exportAllData();
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `生活管理バックアップ_${today}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-        LM.showToast('バックアップを保存しました');
-      } catch (err) {
-        console.error(err);
-        LM.showToast('保存できませんでした', 'error');
-      }
-    });
-
-    document.getElementById('import-input').addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          const data = JSON.parse(reader.result);
-          if (!confirm('現在のデータに上書きして復元しますか?')) return;
-          LM.importAllData(data);
-          alert('復元しました');
-          location.reload();
-        } catch (err) {
-          alert('復元に失敗しました。ファイルが正しいか確認してください。');
-        }
-      };
-      reader.readAsText(file);
-    });
   }
 
   function escapeHtml(str) {
