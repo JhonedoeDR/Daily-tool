@@ -1424,3 +1424,58 @@ body {
   position: relative;
   z-index: 1;
 }
+
+/* =========================================================
+   新HOME(STEP 7)追加分 - 犬とボックスを上へ
+   STEP 6のブロックの続きとして style.css の一番下に貼る
+   数値を変えるだけで微調整できる
+   ========================================================= */
+
+/* 上の余白を詰める */
+.lm-page.hm-page {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 6px);
+}
+
+/* 円まわりを小さく(円は幅の58%・最大232px。今までは70%・最大300px) */
+.hm-mode-title {
+  height: 24px;
+  line-height: 24px;
+  font-size: 16px;
+}
+.hm-stage {
+  margin-top: 2px;
+}
+.hm-circle {
+  width: min(58vw, 232px);
+}
+.hm-arrow {
+  height: 48px;
+}
+.hm-caption {
+  min-height: 30px;
+  margin-top: 0;
+}
+.hm-tc-btn {
+  height: 28px;
+  min-width: 64px;
+  font-size: 12px;
+}
+.hm-dots {
+  margin-top: 0;
+}
+.hm-dot {
+  height: 22px;
+}
+
+/* 犬とボックス全体を上へ */
+.hm-grid {
+  margin-top: 2px;
+}
+
+/* 吹き出しと犬を近づける(犬は縮小して下げているので、その分の空きも詰める) */
+.hm-bubble {
+  margin-bottom: 4px;
+}
+.hm-dog-stack {
+  margin-top: -26px; /* 大きいほど(例 -34px)吹き出しに近づく。0で今まで通り */
+}
