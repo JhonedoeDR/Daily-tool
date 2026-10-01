@@ -1,15 +1,20 @@
 (function () {
   const today = LM.todayStr();
 
-  /* ---------- 上部の円形UI(STEP 1: 見た目と切り替えのみ。中身の接続はSTEP 2以降) ----------
-   * 順番は共有文書の機能一覧どおり。初期表示は手描き案に合わせてイベント(仮)。 */
-  const CIRCLE_MODES = [
-    { key: 'schedule', title: 'SCHEDULE', label: '予定逆算' },
-    { key: 'task', title: 'TASKS', label: 'タスク' },
-    { key: 'timecalc', title: 'TIME CALC', label: '時間計算' },
-    { key: 'event', title: 'EVENTS', label: 'イベント' },
-    { key: 'wish', title: 'WISH', label: 'ウィッシュリスト' },
-  ];
+  /* ---------- 上部の円形UI ----------
+   * 並びは基本が「イベント→タスク→スケジュール→時間計算→ウィッシュリスト」。
+   * 今日の予定が表示されている間だけ「イベント→スケジュール→時間計算→タスク→ウィッシュリスト」になる。 */
+  const CIRCLE_DEFS = {
+    event: { title: 'EVENTS', label: 'イベント' },
+    task: { title: 'TASKS', label: 'タスク' },
+    schedule: { title: 'SCHEDULE', label: '予定逆算' },
+    timecalc: { title: 'TIME CALC', label: '時間計算' },
+    wish: { title: 'WISH', label: 'ウィッシュリスト' },
+  };
+  const CIRCLE_ORDER_BASIC = ['event', 'task', 'schedule', 'timecalc', 'wish'];
+  const CIRCLE_ORDER_WITH_SCHEDULE = ['event', 'schedule', 'timecalc', 'task', 'wish'];
+  // 予定が終わってからこの分数が過ぎると、HOMEの予定の表示が消え、円の並びも基本に戻る
+  const SCHEDULE_HIDE_AFTER_MIN = 60;
   const DEFAULT_CIRCLE_MODE = 'event';
 
   // 右カラムの基本順(手描き案どおり)。表示があるものを先に並べる既存の挙動は右カラム内で維持
@@ -53,6 +58,7 @@
     free: ['ふぁ〜…ひまだワン', '今日はのんびりだワン', 'ちょっとお昼寝するワン…'],
   };
   let dogState = null;
+  let scheduleViewKey = '';
   let dogLine = '';
 
   const hasContent = {};
@@ -70,28 +76,79 @@
   setupCircle();
   setupDog();
 
+  /* ---------- 今日の予定の表示条件 ----------
+   * 予定に終了時刻が無い場合は、開始時刻を終了とみなす。終了から60分たつと表示しない */
+  function nowMinutes() {
+    const d = new Date();
+    return d.getHours() * 60 + d.getMinutes();
+  }
+
+  function isScheduleVisible(s, nowMin) {
+    const start = LM.clockToMinutes(s.start);
+    let end = LM.clockToMinutes(s.end || s.start);
+    if (end < start) end += 1440; // 日付をまたぐ予定
+    return nowMin < end + SCHEDULE_HIDE_AFTER_MIN;
+  }
+
+  function visibleSchedules() {
+    const nowMin = nowMinutes();
+    return LM.get(LM.KEYS.SCHEDULES, [])
+      .filter((s) => s.date === today && isScheduleVisible(s, nowMin))
+      .sort((a, b) => a.start.localeCompare(b.start));
+  }
+
+  // 円の並び: 表示中の予定があれば「イベント→スケジュール→時間計算→タスク→ウィッシュ」
+  function circleModes() {
+    const order = visibleSchedules().length > 0 ? CIRCLE_ORDER_WITH_SCHEDULE : CIRCLE_ORDER_BASIC;
+    return order.map((key) => ({ key, ...CIRCLE_DEFS[key] }));
+  }
+
+  // 予定の表示が変わっていたら、カードを描き直して右カラムの並びも見直す
+  function syncScheduleView() {
+    const key = visibleSchedules().map((s) => s.id).join(',');
+    if (key === scheduleViewKey) return;
+    hasContent.schedule = renderSchedules();
+    reorderSections();
+  }
+
   /* ---------- 円の切り替え(左右矢印・ドット・横スワイプ) ---------- */
   function setupCircle() {
     const hero = document.getElementById('hm-hero');
     const titleEl = document.getElementById('hm-mode-title');
     const circle = document.getElementById('hm-circle');
     const dotsEl = document.getElementById('hm-dots');
-    let index = CIRCLE_MODES.findIndex((m) => m.key === DEFAULT_CIRCLE_MODE);
+    let modes = circleModes();
+    let index = modes.findIndex((m) => m.key === DEFAULT_CIRCLE_MODE);
     if (index < 0) index = 0;
 
-    CIRCLE_MODES.forEach((m, i) => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'hm-dot';
-      b.setAttribute('aria-label', m.label);
-      b.addEventListener('click', () => show(i, i > index ? 1 : -1));
-      dotsEl.appendChild(b);
-    });
+    function buildDots() {
+      dotsEl.innerHTML = '';
+      modes.forEach((m, i) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'hm-dot';
+        b.setAttribute('aria-label', m.label);
+        b.addEventListener('click', () => show(i, i > index ? 1 : -1));
+        dotsEl.appendChild(b);
+      });
+    }
+    buildDots();
+
+    // 予定の有無で並びが変わる時、いま見ている機能はそのまま残して、並びとドットだけ入れ替える
+    function refreshOrder() {
+      const next = circleModes();
+      if (next.map((m) => m.key).join() === modes.map((m) => m.key).join()) return;
+      const key = modes[index].key;
+      modes = next;
+      index = Math.max(0, modes.findIndex((m) => m.key === key));
+      buildDots();
+      [...dotsEl.children].forEach((d, k) => d.setAttribute('aria-current', k === index ? 'true' : 'false'));
+    }
 
     function show(i, dir) {
-      const n = CIRCLE_MODES.length;
+      const n = modes.length;
       index = ((i % n) + n) % n;
-      const mode = CIRCLE_MODES[index];
+      const mode = modes[index];
       titleEl.textContent = mode.title;
       circle.dataset.mode = mode.key;
       currentMode = mode.key;
@@ -130,9 +187,13 @@
     }, { passive: true });
     hero.addEventListener('touchcancel', () => { tracking = false; }, { passive: true });
 
-    refreshCircle = function () { renderCircleContent(CIRCLE_MODES[index].key); };
-    // 予定逆算の針は時間で動くので、表示中だけ30秒ごとに描き直す
-    setInterval(() => { if (CIRCLE_MODES[index].key === 'schedule') refreshCircle(); }, 30000);
+    refreshCircle = function () { renderCircleContent(modes[index].key); };
+    // 30秒ごとに: 予定の表示(終了から1時間で消える)と円の並びを見直し、予定逆算の針を描き直す
+    setInterval(() => {
+      syncScheduleView();
+      refreshOrder();
+      if (modes[index].key === 'schedule') refreshCircle();
+    }, 30000);
 
     // タイマー: 円の中央をタップで 開始/一時停止/再開、下のボタンで時間調整・リセット
     document.getElementById('hm-inner').addEventListener('click', () => {
@@ -244,9 +305,7 @@
     }
     const dial = (min) => ((min % 720) / 720) * 360;
 
-    const list = LM.get(LM.KEYS.SCHEDULES, [])
-      .filter((s) => s.date === today)
-      .sort((a, b) => a.start.localeCompare(b.start));
+    const list = visibleSchedules();
     const next = list.find((s) => LM.clockToMinutes(s.end || s.start) >= nowMin);
 
     if (next) {
@@ -419,9 +478,7 @@
   function decideDogState() {
     const now = new Date();
     const nowMin = now.getHours() * 60 + now.getMinutes();
-    const schedules = LM.get(LM.KEYS.SCHEDULES, [])
-      .filter((s) => s.date === today)
-      .sort((a, b) => a.start.localeCompare(b.start));
+    const schedules = visibleSchedules();
     const ahead = schedules.filter((s) => LM.clockToMinutes(s.end || s.start) >= nowMin);
     const upcoming = schedules.filter((s) => LM.clockToMinutes(s.start) >= nowMin);
 
@@ -468,9 +525,8 @@
   /* ---------- 今日の予定 ---------- */
   function renderSchedules() {
     const el = document.getElementById('schedule-list');
-    const schedules = LM.get(LM.KEYS.SCHEDULES, [])
-      .filter((s) => s.date === today)
-      .sort((a, b) => a.start.localeCompare(b.start));
+    const schedules = visibleSchedules();
+    scheduleViewKey = schedules.map((s) => s.id).join(',');
 
     if (schedules.length === 0) {
       el.innerHTML = '<p class="lm-empty">今日の予定はありません</p>';
