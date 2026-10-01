@@ -34,8 +34,6 @@
     <div class="hm-dots" id="hm-dots"></div>
   </section>
 
-  <div id="notify-banner"></div>
-
   <!-- 中段 -->
   <div class="hm-grid">
     <div class="hm-col" id="hm-col-left">
@@ -81,76 +79,13 @@
     </div>
   </div>
 
+  <div id="notify-banner" style="margin-top:12px;"></div>
+
   <div id="nav-container"></div>
 
-  <!-- バックアップの保存/復元の実体。画面には出さず、HOME長押しメニューの「BACKUP」から操作する
-       (IDと動作は従来のまま。home.jsのsetupBackupがそのまま使う) -->
-  <div id="hm-backup-src" class="hm-sr-only" aria-hidden="true">
-    <button type="button" id="export-btn" tabindex="-1">バックアップを保存</button>
-    <input type="file" id="import-input" accept="application/json" tabindex="-1" />
-  </div>
 
 </div>
 
-<!-- 下部固定メニュー -->
-<nav class="hm-nav" aria-label="メインメニュー">
-  <span class="hm-hump" aria-hidden="true"></span>
-
-  <a class="hm-nav-item" href="./schedule.html">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3.5v3M15 3.5v3"/></svg>
-    <span>予定逆算</span>
-  </a>
-
-  <a class="hm-nav-item" href="./todo.html">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3.5" width="14" height="17" rx="2.5"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>
-    <span>タスク</span>
-  </a>
-
-  <button type="button" class="hm-home" id="hm-home" aria-label="HOME" aria-current="page">
-    <span class="hm-home-disc">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4l-8 8h4.5v7.5h7V12H20z"/></svg>
-    </span>
-    <span>HOME</span>
-  </button>
-
-  <a class="hm-nav-item" href="./time-calc.html">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>
-    <span>時間計算</span>
-  </a>
-
-  <a class="hm-nav-item" href="./event.html">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 21V4M6 5h11l-2.5 3.5L17 12H6"/></svg>
-    <span>イベント</span>
-  </a>
-</nav>
-
-<!-- HOME長押しで出る「その他の機能」メニュー(通常時は表示しない) -->
-<div class="hm-more" id="hm-more" aria-hidden="true">
-  <div class="hm-more-panel" id="hm-more-panel" role="menu" aria-label="その他の機能">
-    <div class="hm-more-grid">
-      <a class="hm-more-item" role="menuitem" href="./wishlist.html" title="WISHリスト">
-        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M24 6l5.4 11.2 12.2 1.6-8.9 8.5 2.3 12.1L24 33.4 12.9 39.4l2.3-12.1-8.9-8.5 12.2-1.6z"/></svg>
-        <span>WISH</span>
-      </a>
-      <a class="hm-more-item" role="menuitem" href="./belongings.html" title="持ちもの">
-        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 11a6 6 0 0112 0"/><rect x="11" y="11" width="26" height="30" rx="8"/><rect x="17" y="24" width="14" height="11" rx="3"/><path d="M11 22c-3 1-4 4-4 8M37 22c3 1 4 4 4 8"/></svg>
-        <span>BELONGING</span>
-      </a>
-      <a class="hm-more-item" role="menuitem" href="./shift.html" title="給与・シフト">
-        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="13" width="38" height="22" rx="3"/><circle cx="24" cy="24" r="6"/><path d="M11 19v2M37 27v2"/></svg>
-        <span>SHIFT</span>
-      </a>
-      <a class="hm-more-item" role="menuitem" href="https://jhonedoedr.github.io/MyBookLog/" target="_blank" rel="noopener" title="よみもの記録">
-        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M24 12c-4-3-10-4-17-3v27c7-1 13 0 17 3 4-3 10-4 17-3V9c-7-1-13 0-17 3z"/><path d="M24 12v27M11 16h8M11 22h8M29 16h8M29 22h8"/></svg>
-        <span>BOOKLOG</span>
-      </a>
-      <button type="button" class="hm-more-item" role="menuitem" data-more="backup" title="バックアップ">
-        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="24" cy="24" r="6"/><path d="M21 6h6l1 5 3 1.5 4.5-2.6 4.2 4.2-2.6 4.5L38.5 21l5 1v6l-5 1-1.5 3 2.6 4.5-4.2 4.2-4.5-2.6L27 37l-1 5h-6l-1-5-3-1.5-4.5 2.6-4.2-4.2 2.6-4.5L9.5 29l-5-1v-6l5-1 1.5-3-2.6-4.5 4.2-4.2 4.5 2.6L20 11z"/></svg>
-        <span>BACKUP</span>
-      </button>
-    </div>
-  </div>
-</div>
 
 <script src="./app.js"></script>
 <script src="./renderNav-menu.js"></script>
