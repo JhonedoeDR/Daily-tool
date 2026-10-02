@@ -1,95 +1,94 @@
 <!doctype html>
 <html lang="ja">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-<title>今日のページ</title>
-<link rel="stylesheet" href="./style.css" />
-<link rel="manifest" href="./manifest.json" />
-<link rel="apple-touch-icon" href="./icons/icon-192.png" />
-<link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
-<meta name="theme-color" content="#ffffff" />
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no,viewport-fit=cover"
+    />
+    <title>今日のページ</title>
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
+    <meta name="theme-color" content="#ffffff" />
+  </head>
 
-<div class="lm-page hm-page">
 
-  <!-- 上部:大きな円(STEP 1は見た目と切り替えのみ。中身の接続はSTEP 2以降) -->
-  <section class="hm-hero" id="hm-hero" aria-label="表示の切り替え">
-    <div class="hm-mode-title" id="hm-mode-title" aria-live="polite"></div>
-    <div class="hm-stage">
-      <button type="button" class="hm-arrow" id="hm-prev" aria-label="前の機能">‹</button>
-      <div class="hm-circle" id="hm-circle">
-        <svg class="hm-ring" viewBox="0 0 200 200" aria-hidden="true">
-          <circle class="band" cx="100" cy="100" r="76" />
-          <g id="hm-ring-dyn"></g>
-          <circle class="outer" cx="100" cy="100" r="96" />
-          <circle class="disc" cx="100" cy="100" r="56" />
-        </svg>
-        <div class="hm-inner" id="hm-inner"></div>
-      </div>
-      <button type="button" class="hm-arrow" id="hm-next" aria-label="次の機能">›</button>
-    </div>
-    <div class="hm-caption" id="hm-caption"></div>
-    <div class="hm-dots" id="hm-dots"></div>
-  </section>
+  <body>
+    <div class="lm-page hm-page">
+      <!-- 上部:大きな円(STEP 1は見た目と切り替えのみ。中身の接続はSTEP 2以降) -->
+      <section class="hm-hero" id="hm-hero" aria-label="表示の切り替え">
+        <div class="hm-mode-title" id="hm-mode-title" aria-live="polite"></div>
+        <div class="hm-stage">
+          <button type="button" class="hm-arrow" id="hm-prev" aria-label="前の機能">‹</button>
+          <div class="hm-circle" id="hm-circle">
+            <svg class="hm-ring" viewBox="0 0 200 200" aria-hidden="true">
+              <circle class="band" cx="100" cy="100" r="76" />
+              <g id="hm-ring-dyn"></g>
+              <circle class="outer" cx="100" cy="100" r="96" />
+              <circle class="disc" cx="100" cy="100" r="56" />
+            </svg>
+            <div class="hm-inner" id="hm-inner"></div>
+          </div>
+          <button type="button" class="hm-arrow" id="hm-next" aria-label="次の機能">›</button>
+        </div>
+        <div class="hm-caption" id="hm-caption"></div>
+        <div class="hm-dots" id="hm-dots"></div>
+      </section>
 
-  <!-- 中段 -->
-  <div class="hm-grid">
-    <div class="hm-col" id="hm-col-left">
-      <div class="hm-dog-area">
-        <div class="hm-bubble" id="hm-bubble">ワンワン!
-(今日のタスクだワン!)</div>
-        <!-- 犬の本体は下の層(メインカードの裏)、手は上の層(メインカードの上)に重ねる -->
-        <div class="hm-dog-stack">
-          <img class="hm-dog-img" id="hm-dog" src="./hm-dog.png" alt="犬" />
-          <img class="hm-dog-hands" id="hm-dog-hands" src="./hm-dog-hands.png" alt="" aria-hidden="true" />
+      <!-- 中段 -->
+      <div class="hm-grid">
+        <div class="hm-col" id="hm-col-left">
+          <div class="hm-dog-area">
+            <div class="hm-bubble" id="hm-bubble">ワンワン! (今日のタスクだワン!)</div>
+            <!-- 犬の本体は下の層(メインカードの裏)、手は上の層(メインカードの上)に重ねる -->
+            <div class="hm-dog-stack">
+              <img class="hm-dog-img" id="hm-dog" src="./hm-dog.png" alt="犬" />
+              <img class="hm-dog-hands" id="hm-dog-hands" src="./hm-dog-hands.png" alt="" aria-hidden="true" />
+            </div>
+          </div>
+
+          <section class="lm-section" data-section="task">
+            <div class="lm-section-title">メイン</div>
+            <div id="tasks-list"></div>
+          </section>
+        </div>
+
+        <div class="hm-col" id="hm-col-right">
+          <section class="lm-section" data-section="schedule">
+            <div class="lm-section-title">予定</div>
+            <div id="schedule-list"></div>
+          </section>
+
+          <section class="lm-section" data-section="event">
+            <div class="lm-section-title">イベント</div>
+            <div id="events-list"></div>
+          </section>
+
+          <section class="lm-section" data-section="belongings">
+            <div class="lm-section-title">
+              持ちもの
+              <span class="lm-count" id="belongings-count"></span>
+            </div>
+            <div id="belongings-list" class="lm-card-grid"></div>
+          </section>
+
+          <section class="lm-section" data-section="shift">
+            <div class="lm-section-title">勤務</div>
+            <div id="shift-box"></div>
+          </section>
         </div>
       </div>
 
-      <section class="lm-section" data-section="task">
-        <div class="lm-section-title">メイン</div>
-        <div id="tasks-list"></div>
-      </section>
+      <div id="notify-banner" style="margin-top: 12px"></div>
+
+      <div id="nav-container"></div>
     </div>
 
-    <div class="hm-col" id="hm-col-right">
-      <section class="lm-section" data-section="schedule">
-        <div class="lm-section-title">予定</div>
-        <div id="schedule-list"></div>
-      </section>
-
-      <section class="lm-section" data-section="event">
-        <div class="lm-section-title">イベント</div>
-        <div id="events-list"></div>
-      </section>
-
-      <section class="lm-section" data-section="belongings">
-        <div class="lm-section-title">
-          持ちもの
-          <span class="lm-count" id="belongings-count"></span>
-        </div>
-        <div id="belongings-list" class="lm-card-grid"></div>
-      </section>
-
-      <section class="lm-section" data-section="shift">
-        <div class="lm-section-title">勤務</div>
-        <div id="shift-box"></div>
-      </section>
-    </div>
-  </div>
-
-  <div id="notify-banner" style="margin-top:12px;"></div>
-
-  <div id="nav-container"></div>
-
-
-</div>
-
-
-<script src="./app.js"></script>
-<script src="./renderNav-menu.js"></script>
-<script type="module" src="./firebase-sync.js"></script>
-<script src="./home.js"></script>
-</body>
+    <script src="./app.js"></script>
+    <script src="./renderNav-menu.js"></script>
+    <script type="module" src="./firebase-sync.js"></script>
+    <script src="./home.js"></script>
+  </body>
 </html>
