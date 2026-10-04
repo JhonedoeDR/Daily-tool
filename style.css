@@ -955,7 +955,11 @@ body {
   display: block;
 }
 
-.hm-ring .band  { fill: none; storoke: var(--accent) storoke-width: 40; }
+.hm-ring .band {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 40;
+}
 
 .hm-ring .disc  { 
   fill: var(--paper);
