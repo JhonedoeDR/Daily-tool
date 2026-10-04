@@ -954,7 +954,8 @@ body {
   height: 100%;
   display: block;
 }
-.hm-ring .band  { fill: none; stroke: var(--accent); stroke-opacity: 0.16; stroke-width: 40; }
+
+.hm-ring .band  { fill: none; }
 
 .hm-ring .disc  { 
   fill: var(--paper);
