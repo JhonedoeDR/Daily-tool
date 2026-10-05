@@ -2,7 +2,7 @@
    通知チェック(GitHub Actionsから5分おきに起動される)
    - 起動時、これから8分以内に来る通知予定を探す
    - 見つけたら「予約(重複防止)」→ 指定時刻ちょうどまで待つ → 最新の状態で再判定 → 送信
-   対象: 予定の開始/準備開始、イベント終了間近、タスク(7時/12時/19時)
+   対象: 予定の開始/準備開始、イベント終了間近、タスクの定期通知
    ========================================================= */
 
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
@@ -58,16 +58,31 @@ function minutesToClock(totalMin) {
 function summarizeTasks(state, dayKey) {
   const todo = state.todo;
   // 端末側が今日(4時以降)にまだ開かれていない=リセット済み扱いで、未入力とみなす
-  if (!todo || todo.dayKey !== dayKey) return { entered: 0, unfinished: 0 };
-  let entered = 0;
-  let unfinished = 0;
-  Object.values(todo.dailyTasks || {}).forEach((t) => {
-    if (t && String(t.name || '').trim()) {
-      entered += 1;
-      if (!t.checked) unfinished += 1;
-    }
-  });
-  return { entered, unfinished };
+  if (!todo || todo.dayKey !== dayKey) {
+    return { entered: 0, mainEntered: 0, mainUnfinished: 0, mainComplete: false, otherUnfinished: 0, unfinished: 0 };
+  }
+  const tasks = todo.dailyTasks || {};
+  const entered = Object.values(tasks).filter((task) => task && String(task.name || '').trim()).length;
+  const mainTasks = ['main1', 'main2', 'main3']
+    .map((id) => tasks[id])
+    .filter((task) => task && String(task.name || '').trim());
+  const mainEntered = mainTasks.length;
+  const mainUnfinished = mainTasks.filter((task) => !task.checked).length;
+  const otherUnfinished = Object.entries(tasks)
+    .filter(([id, task]) => !/^main\d+$/.test(id) && task && String(task.name || '').trim() && !task.checked)
+    .length;
+  return {
+    entered,
+    mainEntered,
+    mainUnfinished,
+    mainComplete: mainEntered > 0 && mainUnfinished === 0,
+    otherUnfinished,
+    unfinished: mainUnfinished + otherUnfinished,
+  };
+}
+
+function roundHour(epochMs) {
+  return Math.round(epochMs / HOUR_MS) * HOUR_MS;
 }
 
 /* ---------- 通知予定の一覧を作る ----------
@@ -121,25 +136,49 @@ function buildItems(state, nowMs) {
       });
     });
 
-  // タスク: 7時に未入力なら通知
-  items.push({
-    key: `task-empty:${dayKey}`,
-    at: midnight + 7 * HOUR_MS,
-    build: (st) =>
-      summarizeTasks(st, dayKey).entered === 0
-        ? { title: 'タスクが入力されていません', body: '今日のタスクを入力しましょう' }
-        : null,
-  });
-
-  // タスク: 12時と19時に、入力済みで未達成が残っていれば通知
-  [12, 19].forEach((h) => {
+  // メインタスク未入力: 7時から21時まで3時間ごと(7, 10, 13, 16, 19時)
+  [7, 10, 13, 16, 19].forEach((h) => {
     items.push({
-      key: `task-unfinished:${dayKey}:${h}`,
+      key: `task-empty:${dayKey}:${h}`,
       at: midnight + h * HOUR_MS,
       build: (st) => {
-        const s = summarizeTasks(st, dayKey);
-        return s.entered > 0 && s.unfinished > 0
-          ? { title: '未達成のタスクがあります', body: `未達成 ${s.unfinished}件` }
+        return summarizeTasks(st, dayKey).mainEntered === 0
+          ? { title: 'メインタスクが入力されていません', body: '今日のメインタスクを入力しましょう' }
+          : null;
+      },
+    });
+  });
+
+  const todo = state.todo;
+  const summary = summarizeTasks(state, dayKey);
+  if (todo && todo.dayKey === dayKey && Number(todo.taskEnteredAt) > 0 &&
+      summary.entered > 0 && !summary.mainComplete && summary.unfinished > 0) {
+    const enteredAt = roundHour(Number(todo.taskEnteredAt));
+    const resetAt = jstMidnightEpoch(dayKey) + 24 * HOUR_MS + 4 * HOUR_MS;
+    for (let at = enteredAt + 3 * HOUR_MS; at < resetAt; at += 3 * HOUR_MS) {
+      const reminderAt = at;
+      items.push({
+        key: `task-unfinished:${dayKey}:${reminderAt}`,
+        at: reminderAt,
+        build: (st) => {
+          const current = summarizeTasks(st, dayKey);
+          return current.mainEntered > 0 && !current.mainComplete && current.unfinished > 0
+            ? { title: '未達成のタスクがあります', body: `未達成 ${current.unfinished}件` }
+            : null;
+        },
+      });
+    }
+  }
+
+  // メインタスクを全て達成した後、その他に残っているタスクを19時と22時に通知
+  [19, 22].forEach((h) => {
+    items.push({
+      key: `task-other-unfinished:${dayKey}:${h}`,
+      at: midnight + h * HOUR_MS,
+      build: (st) => {
+        const current = summarizeTasks(st, dayKey);
+        return current.mainComplete && current.otherUnfinished > 0
+          ? { title: 'その他に未達成のタスクがあります', body: `未達成 ${current.otherUnfinished}件` }
           : null;
       },
     });
@@ -241,7 +280,7 @@ async function main() {
   }
 }
 
-module.exports = { jstDateStr, jstMidnightEpoch, summarizeTasks, buildItems, selectDue, calcPrepStartMin };
+module.exports = { jstDateStr, jstMidnightEpoch, summarizeTasks, roundHour, buildItems, selectDue, calcPrepStartMin };
 
 if (require.main === module) {
   main().catch((e) => {

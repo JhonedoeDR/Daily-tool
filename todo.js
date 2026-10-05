@@ -37,6 +37,7 @@
     state.dailyTasks = LM.defaultTodoTasks();
     LM.TODO_ROUTINE_IDS.forEach((id) => { state.dailyTasks[id].name = routineNames[id]; });
     state.reflected = LM.defaultTodoReflected();
+    state.taskEnteredAt = 0;
     LM.saveTodoState(state);
     renderGroups();
     renderWeeklyGrid();
@@ -75,7 +76,7 @@
         nameInput.placeholder = `${g.label}${num} のタスク`;
         nameInput.value = task.name;
         nameInput.addEventListener('input', () => {
-          state.dailyTasks[id].name = nameInput.value;
+          LM.setTodoTaskName(state, id, nameInput.value);
           LM.saveTodoState(state);
         });
 
@@ -83,6 +84,22 @@
         row.appendChild(nameInput);
         groupEl.appendChild(row);
       });
+
+      if (g.key === 'other') {
+        const addButton = document.createElement('button');
+        addButton.type = 'button';
+        addButton.className = 'lm-btn secondary';
+        addButton.style.cssText = 'margin-top:8px; font-size:12px; padding:6px 12px;';
+        addButton.textContent = '＋ その他の枠を追加';
+        addButton.addEventListener('click', () => {
+          state.otherSlotCount = LM.configureOtherTodoSlots(state.otherSlotCount + 1);
+          const newId = `other${state.otherSlotCount}`;
+          state.dailyTasks[newId] = { name: '', checked: false };
+          LM.saveTodoState(state);
+          renderGroups();
+        });
+        groupEl.appendChild(addButton);
+      }
 
       groupsEl.appendChild(groupEl);
     });

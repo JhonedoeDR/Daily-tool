@@ -156,6 +156,7 @@ LM.checkAndNotify = function () {
   const now = new Date();
   const today = LM.todayStr();
   const nowMin = now.getHours() * 60 + now.getMinutes();
+  const dayKey = LM.todoDayKey(now);
 
   // (1)(2) 今日の予定: 開始10分前、準備開始10分前
   const schedules = LM.get(LM.KEYS.SCHEDULES, []).filter((s) => s.date === today);
@@ -193,6 +194,83 @@ LM.checkAndNotify = function () {
       }
     }
   });
+
+  const taskState = LM.get(LM.TODO_KEY, null);
+  const taskSummary = LM.summarizeTodoTasks(taskState, dayKey);
+  const notifyAt = (key, hour, title, body, shouldNotify) => {
+    if (!shouldNotify || Math.abs(nowMin - hour * 60) > 2 || LM._alreadyNotified(key)) return;
+    LM.notify(title, body);
+    LM._markNotified(key);
+  };
+
+  // メインタスクが未入力の間は、7時から19時まで3時間ごとに入力を促す
+  [7, 10, 13, 16, 19].forEach((hour) => {
+    notifyAt(
+      `task-empty:${dayKey}:${hour}`,
+      hour,
+      'メインタスクが入力されていません',
+      '今日のメインタスクを入力しましょう',
+      taskSummary.mainEntered === 0
+    );
+  });
+
+  // メインタスク入力時刻(分を四捨五入)の3時間後から、AM4:00のリセットまで通知
+  const enteredAt = Number(taskState && taskState.taskEnteredAt);
+  if (taskState && taskState.dayKey === dayKey && enteredAt > 0 &&
+      taskSummary.entered > 0 && !taskSummary.mainComplete && taskSummary.unfinished > 0) {
+    const roundedAt = LM.roundTodoEntryTime(enteredAt);
+    const [year, month, day] = dayKey.split('-').map(Number);
+    const resetAt = new Date(year, month - 1, day + 1, 4, 0, 0, 0).getTime();
+    for (let at = roundedAt + 3 * 60 * 60 * 1000; at < resetAt; at += 3 * 60 * 60 * 1000) {
+      if (Math.abs(at - now.getTime()) > 2 * 60 * 1000) continue;
+      const key = `task-unfinished:${dayKey}:${at}`;
+      if (LM._alreadyNotified(key)) continue;
+      LM.notify('未達成のタスクがあります', `未達成 ${taskSummary.unfinished}件`);
+      LM._markNotified(key);
+    }
+  }
+
+  // メインタスクを全て達成した後、その他に残っているタスクを19時と22時に通知
+  [19, 22].forEach((hour) => {
+    notifyAt(
+      `task-other-unfinished:${dayKey}:${hour}`,
+      hour,
+      'その他に未達成のタスクがあります',
+      `未達成 ${taskSummary.otherUnfinished}件`,
+      taskSummary.mainComplete && taskSummary.otherUnfinished > 0
+    );
+  });
+};
+
+LM.roundTodoEntryTime = function (timestamp) {
+  const rounded = new Date(timestamp);
+  rounded.setMinutes(0, 0, 0);
+  if (new Date(timestamp).getMinutes() >= 30) rounded.setHours(rounded.getHours() + 1);
+  return rounded.getTime();
+};
+
+LM.summarizeTodoTasks = function (state, dayKey) {
+  const empty = { entered: 0, mainEntered: 0, mainUnfinished: 0, mainComplete: false, otherUnfinished: 0, unfinished: 0 };
+  if (!state || state.dayKey !== dayKey || !state.dailyTasks) return empty;
+  const mainTasks = LM.TODO_MAIN_IDS
+    .map((id) => state.dailyTasks[id])
+    .filter((task) => task && String(task.name || '').trim());
+  const mainEntered = mainTasks.length;
+  const mainUnfinished = mainTasks.filter((task) => !task.checked).length;
+  const otherIds = LM.TODO_GROUPS.filter((group) => !group.isMain).flatMap((group) => group.ids);
+  const otherUnfinished = otherIds
+    .map((id) => state.dailyTasks[id])
+    .filter((task) => task && String(task.name || '').trim() && !task.checked).length;
+  return {
+    entered: mainEntered + otherIds
+      .map((id) => state.dailyTasks[id])
+      .filter((task) => task && String(task.name || '').trim()).length,
+    mainEntered,
+    mainUnfinished,
+    mainComplete: mainEntered > 0 && mainUnfinished === 0,
+    otherUnfinished,
+    unfinished: mainUnfinished + otherUnfinished,
+  };
 };
 
 // ページ表示時とその後1分ごとにチェック(ページを開いている間のみ動作)
@@ -222,13 +300,14 @@ LM.importAllData = function (data) {
 /* ---------- タスク(固定枠のデイリーTodo・週間メインタスク記録) ---------- */
 LM.TODO_KEY = 'lm_todoState';
 
+LM.TODO_OTHER_DEFAULT_SLOTS = 1;
 LM.TODO_GROUPS = [
   { key: 'main', label: 'メイン', isMain: true, ids: ['main1', 'main2', 'main3'] },
   { key: 'priority', label: '優先', isMain: false, ids: ['pri1', 'pri2', 'pri3'] },
   { key: 'plus', label: 'プラス', isMain: false, ids: ['plus1', 'plus2', 'plus3'] },
   { key: 'gap', label: 'スキマ', isMain: false, ids: ['gap1', 'gap2', 'gap3'] },
   { key: 'routine', label: 'ルーティン', isMain: false, ids: ['rt1', 'rt2', 'rt3'] },
-  { key: 'other', label: 'その他', isMain: false, ids: ['other1'] },
+  { key: 'other', label: 'その他', isMain: false, ids: Array.from({ length: LM.TODO_OTHER_DEFAULT_SLOTS }, (_, i) => `other${i + 1}`) },
 ];
 
 LM.TODO_MAIN_IDS = ['main1', 'main2', 'main3'];
@@ -264,6 +343,16 @@ LM.defaultTodoTasks = function () {
   const tasks = {};
   LM.TODO_GROUPS.forEach((g) => g.ids.forEach((id) => (tasks[id] = { name: '', checked: false })));
   return tasks;
+};
+
+LM.configureOtherTodoSlots = function (count) {
+  const group = LM.TODO_GROUPS.find((g) => g.key === 'other');
+  const parsedCount = Number(count);
+  const slotCount = Number.isSafeInteger(parsedCount) && parsedCount > 0
+    ? Math.max(LM.TODO_OTHER_DEFAULT_SLOTS, parsedCount)
+    : LM.TODO_OTHER_DEFAULT_SLOTS;
+  group.ids = Array.from({ length: slotCount }, (_, i) => `other${i + 1}`);
+  return slotCount;
 };
 
 LM.defaultTodoReflected = function () {
@@ -305,6 +394,8 @@ LM.defaultTodoState = function () {
     routineClears: 0,
     routineReflected: LM.defaultRoutineReflected(),
     routineReward: '',
+    otherSlotCount: LM.TODO_OTHER_DEFAULT_SLOTS,
+    taskEnteredAt: 0,
   };
 };
 
@@ -325,7 +416,20 @@ LM.calcRoutineProgress = function (state, d) {
 LM.getTodoState = function () {
   let state = LM.get(LM.TODO_KEY, null);
   if (!state) state = LM.defaultTodoState();
+  const savedOtherSlots = Number(state.otherSlotCount);
+  const legacyOtherSlots = Object.keys(state.dailyTasks || {}).reduce((max, id) => {
+    const match = /^other(\d+)$/.exec(id);
+    return match ? Math.max(max, Number(match[1])) : max;
+  }, LM.TODO_OTHER_DEFAULT_SLOTS);
+  state.otherSlotCount = LM.configureOtherTodoSlots(
+    Number.isFinite(savedOtherSlots) && savedOtherSlots > 0 ? savedOtherSlots : legacyOtherSlots
+  );
   if (!state.dailyTasks) state.dailyTasks = LM.defaultTodoTasks();
+  LM.TODO_GROUPS.find((g) => g.key === 'other').ids.forEach((id) => {
+    if (!state.dailyTasks[id]) state.dailyTasks[id] = { name: '', checked: false };
+  });
+  const needsTaskEntryMigration = !Object.prototype.hasOwnProperty.call(state, 'taskEnteredAt');
+  if (!Number.isFinite(Number(state.taskEnteredAt))) state.taskEnteredAt = 0;
   if (typeof state.weeklyClears !== 'number') state.weeklyClears = 0;
   if (!state.reflected) state.reflected = LM.defaultTodoReflected();
   if (!state.weekStartDate) state.weekStartDate = LM.todoMondayKey();
@@ -373,6 +477,13 @@ LM.getTodoState = function () {
     });
     state.reflected = LM.defaultTodoReflected();
     state.routineReflected = LM.defaultRoutineReflected();
+    state.taskEnteredAt = 0;
+  }
+
+  if (needsTaskEntryMigration && Object.values(state.dailyTasks).some((task) =>
+    task && String(task.name || '').trim()
+  )) {
+    state.taskEnteredAt = LM.roundTodoEntryTime(Date.now());
   }
 
   LM.set(LM.TODO_KEY, state);
@@ -383,6 +494,21 @@ LM.getTodoState = function () {
 LM.saveTodoState = function (state) {
   LM.set(LM.TODO_KEY, state);
   LM.syncFirebaseDebounced();
+};
+
+LM.setTodoTaskName = function (state, id, name, enteredAt) {
+  const wasEmpty = Object.values(state.dailyTasks).every((task) => !String((task && task.name) || '').trim());
+  state.dailyTasks[id].name = name;
+  const hasTasks = Object.values(state.dailyTasks).some((task) => String((task && task.name) || '').trim());
+  if (!hasTasks) {
+    state.taskEnteredAt = 0;
+  } else if (wasEmpty || !Number(state.taskEnteredAt)) {
+    const timestamp = enteredAt || Date.now();
+    const entered = new Date(timestamp);
+    entered.setMinutes(0, 0, 0);
+    if (new Date(timestamp).getMinutes() >= 30) entered.setHours(entered.getHours() + 1);
+    state.taskEnteredAt = entered.getTime();
+  }
 };
 
 // 予定・イベントの変更をFirestoreへ同期する(準備が間に合っていなければ待ってから送る)
