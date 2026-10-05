@@ -873,6 +873,25 @@ body {
   color: var(--text);
 }
 
+.lm-todo-slot-remove {
+  flex: 0 0 32px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--paper-line);
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--text-soft);
+  font: inherit;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.lm-todo-slot-remove:active {
+  background: var(--accent-soft);
+}
+
 .lm-todo-row.is-checked input[type='text'] {
   color: var(--text-soft);
   text-decoration: line-through;

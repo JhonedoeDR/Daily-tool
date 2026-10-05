@@ -82,6 +82,26 @@
 
         row.appendChild(checkbox);
         row.appendChild(nameInput);
+        if (g.key === 'other' && idx > 0) {
+          const removeButton = document.createElement('button');
+          removeButton.type = 'button';
+          removeButton.className = 'lm-todo-slot-remove';
+          removeButton.textContent = '-';
+          removeButton.setAttribute('aria-label', 'この追加枠を削除');
+          removeButton.addEventListener('click', () => {
+            for (let slot = idx + 1; slot < state.otherSlotCount; slot += 1) {
+              state.dailyTasks[`other${slot}`] = state.dailyTasks[`other${slot + 1}`];
+            }
+            delete state.dailyTasks[`other${state.otherSlotCount}`];
+            state.otherSlotCount = LM.configureOtherTodoSlots(state.otherSlotCount - 1);
+            if (!Object.values(state.dailyTasks).some((item) => String((item && item.name) || '').trim())) {
+              state.taskEnteredAt = 0;
+            }
+            LM.saveTodoState(state);
+            renderGroups();
+          });
+          row.appendChild(removeButton);
+        }
         groupEl.appendChild(row);
       });
 
