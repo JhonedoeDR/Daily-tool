@@ -1,15 +1,15 @@
 (function () {
   const today = LM.todayStr();
 
-  /* ---------- 上部の円形UI(STEP 1: 見た目と切り替えのみ。中身の接続はSTEP 2以降) ----------
-   * 順番は共有文書の機能一覧どおり。初期表示は手描き案に合わせてイベント(仮)。 */
+  /* ---------- 上部の円形UI ---------- */
   const CIRCLE_MODES = [
-    { key: 'schedule', title: 'SCHEDULE', label: '予定逆算' },
-    { key: 'task', title: 'TASKS', label: 'タスク' },
-    { key: 'timecalc', title: 'TIME CALC', label: '時間計算' },
     { key: 'event', title: 'EVENTS', label: 'イベント' },
+    { key: 'task', title: 'TASKS', label: 'タスク' },
+    { key: 'schedule', title: 'SCHEDULE', label: '予定逆算' },
+    { key: 'timecalc', title: 'TIME CALC', label: '時間計算' },
     { key: 'wish', title: 'WISH', label: 'ウィッシュリスト' },
   ];
+  const SCHEDULE_PRIORITY_ORDER = ['event', 'schedule', 'timecalc', 'task', 'wish'];
   const DEFAULT_CIRCLE_MODE = 'event';
 
   // 右カラムの基本順(手描き案どおり)。表示があるものを先に並べる既存の挙動は右カラム内で維持
@@ -76,22 +76,27 @@
     const titleEl = document.getElementById('hm-mode-title');
     const circle = document.getElementById('hm-circle');
     const dotsEl = document.getElementById('hm-dots');
-    let index = CIRCLE_MODES.findIndex((m) => m.key === DEFAULT_CIRCLE_MODE);
+    let modes = getCircleModes();
+    let index = modes.findIndex((m) => m.key === DEFAULT_CIRCLE_MODE);
     if (index < 0) index = 0;
 
-    CIRCLE_MODES.forEach((m, i) => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'hm-dot';
-      b.setAttribute('aria-label', m.label);
-      b.addEventListener('click', () => show(i, i > index ? 1 : -1));
-      dotsEl.appendChild(b);
-    });
+    renderModeDots();
+
+    function renderModeDots() {
+      dotsEl.replaceChildren(...modes.map((mode, i) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'hm-dot';
+        button.setAttribute('aria-label', mode.label);
+        button.addEventListener('click', () => show(i, i > index ? 1 : -1));
+        return button;
+      }));
+    }
 
     function show(i, dir) {
-      const n = CIRCLE_MODES.length;
+      const n = modes.length;
       index = ((i % n) + n) % n;
-      const mode = CIRCLE_MODES[index];
+      const mode = modes[index];
       titleEl.textContent = mode.title;
       circle.dataset.mode = mode.key;
       currentMode = mode.key;
@@ -130,9 +135,27 @@
     }, { passive: true });
     hero.addEventListener('touchcancel', () => { tracking = false; }, { passive: true });
 
-    refreshCircle = function () { renderCircleContent(CIRCLE_MODES[index].key); };
-    // 予定逆算の針は時間で動くので、表示中だけ30秒ごとに描き直す
-    setInterval(() => { if (CIRCLE_MODES[index].key === 'schedule') refreshCircle(); }, 30000);
+    function refreshModeOrder() {
+      const nextModes = getCircleModes();
+      if (nextModes.map((mode) => mode.key).join(',') === modes.map((mode) => mode.key).join(',')) {
+        return false;
+      }
+      const activeKey = modes[index].key;
+      modes = nextModes;
+      index = modes.findIndex((mode) => mode.key === activeKey);
+      if (index < 0) index = 0;
+      renderModeDots();
+      show(index, 0);
+      return true;
+    }
+
+    refreshCircle = function () {
+      if (!refreshModeOrder()) renderCircleContent(modes[index].key);
+    };
+    // 予定開始から1時間後の並び順復帰と、時計盤の針を定期的に更新する
+    setInterval(() => {
+      if (!refreshModeOrder() && modes[index].key === 'schedule') refreshCircle();
+    }, 30000);
 
     // タイマー: 円の中央をタップで 開始/一時停止/再開、下のボタンで時間調整・リセット
     document.getElementById('hm-inner').addEventListener('click', () => {
@@ -158,6 +181,17 @@
     }, 250);
 
     show(index, 0);
+  }
+
+  function getCircleModes() {
+    const now = new Date();
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const hasRecentSchedule = LM.get(LM.KEYS.SCHEDULES, []).some((schedule) => {
+      if (schedule.date !== LM.todayStr() || !/^\d{2}:\d{2}$/.test(schedule.start || '')) return false;
+      return nowMin < LM.clockToMinutes(schedule.start) + 60;
+    });
+    const order = hasRecentSchedule ? SCHEDULE_PRIORITY_ORDER : CIRCLE_MODES.map((mode) => mode.key);
+    return order.map((key) => CIRCLE_MODES.find((mode) => mode.key === key));
   }
 
   /* ---------- 円の中身(STEP 2: 既存データを読むだけで、データは書き換えない) ---------- */
