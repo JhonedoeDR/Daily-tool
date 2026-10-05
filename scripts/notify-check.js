@@ -54,36 +54,20 @@ function minutesToClock(totalMin) {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-/* ---------- タスクの集計(タスクの「1日」はAM4:00区切り、メイン/その他で分けて集計) ---------- */
+/* ---------- タスクの集計(タスクの「1日」はAM4:00区切り) ---------- */
 function summarizeTasks(state, dayKey) {
   const todo = state.todo;
   // 端末側が今日(4時以降)にまだ開かれていない=リセット済み扱いで、未入力とみなす
-  if (!todo || todo.dayKey !== dayKey) {
-    return { mainEntered: 0, mainUnfinished: 0, otherEntered: 0, otherUnfinished: 0, enteredAt: null };
-  }
-  let mainEntered = 0;
-  let mainUnfinished = 0;
-  let otherEntered = 0;
-  let otherUnfinished = 0;
-  Object.entries(todo.dailyTasks || {}).forEach(([id, t]) => {
-    if (!t || !String(t.name || '').trim()) return;
-    if (id.startsWith('main')) {
-      mainEntered += 1;
-      if (!t.checked) mainUnfinished += 1;
-    } else {
-      otherEntered += 1;
-      if (!t.checked) otherUnfinished += 1;
+  if (!todo || todo.dayKey !== dayKey) return { entered: 0, unfinished: 0 };
+  let entered = 0;
+  let unfinished = 0;
+  Object.values(todo.dailyTasks || {}).forEach((t) => {
+    if (t && String(t.name || '').trim()) {
+      entered += 1;
+      if (!t.checked) unfinished += 1;
     }
   });
-  return { mainEntered, mainUnfinished, otherEntered, otherUnfinished, enteredAt: todo.enteredAt || null };
-}
-
-// JSTで「分を四捨五入」して時刻ちょうどにする(例 9:40→10:00, 9:20→9:00)
-function roundToHourJst(epochMs) {
-  const localMs = epochMs + JST_OFFSET_MS;
-  let hourMs = Math.floor(localMs / HOUR_MS) * HOUR_MS;
-  if (localMs - hourMs >= 30 * MIN_MS) hourMs += HOUR_MS;
-  return hourMs - JST_OFFSET_MS;
+  return { entered, unfinished };
 }
 
 /* ---------- 通知予定の一覧を作る ----------
@@ -137,50 +121,25 @@ function buildItems(state, nowMs) {
       });
     });
 
-  // タスク: AM7:00〜PM9:00、3時間ごとに未入力なら通知(メインタスクが1つでも入力されたら以降は出ない)
-  for (let h = 7; h <= 21; h += 3) {
-    items.push({
-      key: `task-empty:${dayKey}:${h}`,
-      at: midnight + h * HOUR_MS,
-      build: (st) =>
-        summarizeTasks(st, dayKey).mainEntered === 0
-          ? { title: 'タスクが入力されていません', body: '今日のタスクを入力しましょう' }
-          : null,
-    });
-  }
+  // タスク: 7時に未入力なら通知
+  items.push({
+    key: `task-empty:${dayKey}`,
+    at: midnight + 7 * HOUR_MS,
+    build: (st) =>
+      summarizeTasks(st, dayKey).entered === 0
+        ? { title: 'タスクが入力されていません', body: '今日のタスクを入力しましょう' }
+        : null,
+  });
 
-  // タスク: 入力時刻(分は四捨五入)から3時間ごと、AM4:00のリセットまで。メインタスクが全て達成されたら停止
-  {
-    const snapshot = summarizeTasks(state, dayKey);
-    if (snapshot.enteredAt) {
-      const dayStart = jstMidnightEpoch(dayKey) + 4 * HOUR_MS; // この「タスクの日」が始まったAM4:00
-      const resetAt = dayStart + 24 * HOUR_MS; // 次のAM4:00(リセット時刻)
-      let t = roundToHourJst(snapshot.enteredAt);
-      while (t < dayStart) t += 3 * HOUR_MS;
-      for (; t < resetAt; t += 3 * HOUR_MS) {
-        const hoursFromStart = Math.round((t - dayStart) / HOUR_MS);
-        items.push({
-          key: `task-unfinished:${dayKey}:${hoursFromStart}`,
-          at: t,
-          build: (st) => {
-            const s = summarizeTasks(st, dayKey);
-            if (s.mainUnfinished === 0) return null;
-            return { title: '未達成のタスクがあります', body: `未達成 ${s.mainUnfinished + s.otherUnfinished}件` };
-          },
-        });
-      }
-    }
-  }
-
-  // タスク: その他(優先・プラス・スキマ・ルーティンなど、メイン以外)が残っていれば19時・22時に通知
-  [19, 22].forEach((h) => {
+  // タスク: 12時と19時に、入力済みで未達成が残っていれば通知
+  [12, 19].forEach((h) => {
     items.push({
-      key: `task-other-remain:${dayKey}:${h}`,
+      key: `task-unfinished:${dayKey}:${h}`,
       at: midnight + h * HOUR_MS,
       build: (st) => {
         const s = summarizeTasks(st, dayKey);
-        return s.otherUnfinished > 0
-          ? { title: '未達成のタスクが残っています', body: `その他のタスク 未達成 ${s.otherUnfinished}件` }
+        return s.entered > 0 && s.unfinished > 0
+          ? { title: '未達成のタスクがあります', body: `未達成 ${s.unfinished}件` }
           : null;
       },
     });
@@ -282,7 +241,7 @@ async function main() {
   }
 }
 
-module.exports = { jstDateStr, jstMidnightEpoch, summarizeTasks, buildItems, selectDue, calcPrepStartMin, roundToHourJst };
+module.exports = { jstDateStr, jstMidnightEpoch, summarizeTasks, buildItems, selectDue, calcPrepStartMin };
 
 if (require.main === module) {
   main().catch((e) => {
