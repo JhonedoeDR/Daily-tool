@@ -50,12 +50,20 @@
   cancelBtn.addEventListener('click', resetForm);
 
   function onGlobalClick(e) {
-    const editId = e.target.dataset.edit;
-    const deleteId = e.target.dataset.delete;
-    const updateId = e.target.dataset.updateCurrent;
-    const prevKind = e.target.dataset.prev;
-    const nextKind = e.target.dataset.next;
-    const listAllKind = e.target.dataset.listAll;
+    if (!(e.target instanceof Element)) return;
+    const action = e.target.closest(
+      '[data-edit], [data-delete], [data-update-current], [data-prev], [data-next], [data-list-all]'
+    );
+    if (!action) return;
+
+    const {
+      edit: editId,
+      delete: deleteId,
+      updateCurrent: updateId,
+      prev: prevKind,
+      next: nextKind,
+      listAll: listAllKind,
+    } = action.dataset;
 
     if (editId) startEdit(editId);
 
@@ -68,8 +76,8 @@
     }
 
     if (updateId) {
-      const input = document.querySelector(`input[data-current-input="${updateId}"]`);
-      if (!input) return;
+      const input = action.parentElement.querySelector('input[data-current-input]');
+      if (!input || input.dataset.currentInput !== updateId) return;
       const events = LM.get(LM.KEYS.EVENTS, []);
       const ev = events.find((e2) => e2.id === updateId);
       if (ev) ev.current = Number(input.value) || 0;
@@ -123,7 +131,9 @@
         const aActive = a.start <= today ? 0 : 1;
         const bActive = b.start <= today ? 0 : 1;
         if (aActive !== bActive) return aActive - bActive;
-        return a.end.localeCompare(b.end);
+        return aActive === 0
+          ? a.end.localeCompare(b.end)
+          : a.start.localeCompare(b.start);
       });
   }
 
@@ -191,8 +201,8 @@
         </div>
         <div class="lm-event-remain">残り${remainDays}日 ・ 残り${remain.toLocaleString()}${escapeHtml(ev.unit)} ・ 1日あたり${perDay.toLocaleString()}${escapeHtml(ev.unit)}必要</div>
         <div style="display:flex; align-items:center; gap:6px; margin-top:6px;">
-          <input type="number" inputmode="numeric" pattern="[0-9]*" data-current-input="${ev.id}" value="${ev.current}" style="width:100px; font-family:var(--font-body); font-size:16px; padding:6px 8px; border:1px solid var(--paper-line); border-radius:6px;" />
-          <button type="button" data-update-current="${ev.id}" class="lm-btn secondary" style="padding:6px 10px; font-size:12px;">現在値を更新</button>
+          <input type="number" inputmode="numeric" pattern="[0-9]*" data-current-input="${escapeHtml(ev.id)}" value="${escapeHtml(ev.current)}" style="width:100px; font-family:var(--font-body); font-size:16px; padding:6px 8px; border:1px solid var(--paper-line); border-radius:6px;" />
+          <button type="button" data-update-current="${escapeHtml(ev.id)}" class="lm-btn secondary" style="padding:6px 10px; font-size:12px;">現在値を更新</button>
         </div>
       `;
     }
@@ -200,13 +210,13 @@
     box.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:baseline;">
         <strong>${escapeHtml(ev.name)}</strong>
-        <span style="font-size:12px; color:var(--text-soft);">${ev.start}〜${ev.end}</span>
+        <span style="font-size:12px; color:var(--text-soft);">${escapeHtml(ev.start)}〜${escapeHtml(ev.end)}</span>
       </div>
-      <div style="font-size:13px; color:var(--text-soft); margin:2px 0;">${ev.current.toLocaleString()} / ${ev.target.toLocaleString()}${escapeHtml(ev.unit)}</div>
+      <div style="font-size:13px; color:var(--text-soft); margin:2px 0;">${formatNumber(ev.current)} / ${formatNumber(ev.target)}${escapeHtml(ev.unit)}</div>
       ${progressHtml}
       <div style="display:flex; gap:6px; margin-top:8px;">
-        <button type="button" data-edit="${ev.id}" class="lm-btn secondary" style="padding:4px 10px; font-size:12px;">編集</button>
-        <button type="button" data-delete="${ev.id}" class="lm-btn secondary" style="padding:4px 10px; font-size:12px;">削除</button>
+        <button type="button" data-edit="${escapeHtml(ev.id)}" class="lm-btn secondary" style="padding:4px 10px; font-size:12px;">編集</button>
+        <button type="button" data-delete="${escapeHtml(ev.id)}" class="lm-btn secondary" style="padding:4px 10px; font-size:12px;">削除</button>
       </div>
     `;
     return box;
@@ -215,6 +225,11 @@
   function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str == null ? '' : String(str);
-    return div.innerHTML;
+    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function formatNumber(value) {
+    const number = Number(value);
+    return (Number.isFinite(number) ? number : 0).toLocaleString();
   }
 })();
