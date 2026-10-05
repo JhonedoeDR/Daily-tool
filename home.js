@@ -14,8 +14,6 @@
   setupTaskLink();
 
   renderNotifyBanner();
-  setupBackup();
-  LM.renderNav(document.getElementById('nav-container'));
 
   /* ---------- セクションの並び替え(表示があるものを先に、基本順はイベント→予定→持ちもの→タスク→勤務) ---------- */
   function reorderSections() {
