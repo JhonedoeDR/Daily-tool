@@ -954,20 +954,10 @@ body {
   height: 100%;
   display: block;
 }
-
-.hm-ring .band {
-  fill: none;
-  stroke: var(--accent);
-  stroke-width: 40;
-}
-
-.hm-ring .disc  { 
-  fill: var(--paper);
-  filter: drop-shadow(0 10px 25px rgba(48, 67, 74, 0.25) );
-}
-
+.hm-ring .band  { fill: none; stroke: var(--accent); stroke-opacity: 0.16; stroke-width: 40; }
+.hm-ring .outer { fill: none; stroke: var(--accent); stroke-width: 3; }
+.hm-ring .disc  { fill: var(--paper); stroke: var(--paper-line); stroke-width: 1.5; }
 .hm-ring .seg   { stroke: var(--accent); stroke-opacity: 0.55; stroke-width: 1.2; stroke-linecap: round; }
-
 .hm-inner {
   position: absolute;
   left: 22%; right: 22%; top: 22%; bottom: 22%;
@@ -1100,6 +1090,18 @@ body {
   border-bottom: 1.5px solid var(--accent);
   transform: rotate(45deg);
 }
+.hm-dog {
+  display: block;
+  position: relative;
+  z-index: 1; /* 前足がメインカードの上に乗る */
+  width: min(100%, 148px);
+  height: auto;
+  margin: 0 0 -14px 6px;
+  color: var(--text);
+}
+.hm-dog .face, .hm-dog .paw { fill: var(--paper); }
+.hm-dog .ear { fill: var(--accent-soft); }
+.hm-dog .tongue { fill: #f49aa8; }
 
 /* ---------- 下部固定メニュー ---------- */
 .hm-nav {
