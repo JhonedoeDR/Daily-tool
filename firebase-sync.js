@@ -1,6 +1,9 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js';
-import { getFirestore, doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js';
+import { getFirestore, doc, setDoc } from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js';
 import { getMessaging, getToken } from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-messaging.js';
+import { getAuth, signInAnonymously } from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js';
+import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-functions.js';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com/firebasejs/12.15.0/firebase-app-check.js';
 
 const firebaseConfig = {
   apiKey: 'AIzaSyAjcD8w1rMolAw_q3f6n02B2N8JJuhgFB0',
@@ -15,13 +18,52 @@ const firebaseConfig = {
 const VAPID_KEY = 'BExAl_zmANkdrShHTTNzV_79GzjwuESS4Yi9eNzt89BNRLrFj2Ttk7CrXEHv92ozd7GSFhEOmjw38DenaOeI0NU';
 
 const app = initializeApp(firebaseConfig);
+const appCheckSiteKey = document.querySelector('meta[name="firebase-app-check-site-key"]')?.content.trim();
+if (!appCheckSiteKey) {
+  reportFirebaseConfigError('Firebase App Check site key is missing; server notification registration is unavailable.');
+} else {
+  try {
+    initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(appCheckSiteKey),
+      isTokenAutoRefreshEnabled: true,
+    });
+  } catch (error) {
+    console.error('Firebase App Check initialization failed', error);
+    reportFirebaseConfigError(`Firebase App Check initialization failed: ${error.message || error}`);
+  }
+}
+
 const db = getFirestore(app);
+const auth = getAuth(app);
+const functions = getFunctions(app);
 const STATE_REF_PATH = ['notify', 'state'];
+let authPromise = null;
+
+function reportFirebaseConfigError(message) {
+  console.error(message);
+  window.dispatchEvent(new CustomEvent('lm-firebase-error', {
+    detail: { action: 'Firebase App Check設定', message },
+  }));
+}
+
+function ensureAuthenticated() {
+  if (auth.currentUser) return Promise.resolve(auth.currentUser);
+  if (!authPromise) {
+    authPromise = signInAnonymously(auth)
+      .then((credential) => credential.user)
+      .catch((error) => {
+        authPromise = null;
+        throw error;
+      });
+  }
+  return authPromise;
+}
 
 window.LMFirebase = {
   // 予定・イベントのデータをFirestoreへ同期する(通知チェックはGitHub Actions側がこれを見て行う)
   async syncData() {
     try {
+      await ensureAuthenticated();
       const schedules = JSON.parse(localStorage.getItem('lm_schedules') || '[]');
       const events = JSON.parse(localStorage.getItem('lm_events') || '[]');
       // タスクは通知の判定に必要な部分だけ送る(日付区切り・各枠の名前と達成状況)
@@ -48,12 +90,8 @@ window.LMFirebase = {
       const messaging = getMessaging(app);
       const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: reg });
       if (!token) return null;
-
-      const ref = doc(db, ...STATE_REF_PATH);
-      const snap = await getDoc(ref);
-      const existing = snap.exists() ? snap.data().tokens || [] : [];
-      const tokens = Array.from(new Set([...existing, token]));
-      await setDoc(ref, { tokens }, { merge: true });
+      await ensureAuthenticated();
+      await httpsCallable(functions, 'registerNotificationToken')({ token });
       return token;
     } catch (e) {
       console.error('FCMトークンの登録に失敗', e);
