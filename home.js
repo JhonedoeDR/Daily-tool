@@ -20,8 +20,9 @@
   const RING_LEN = 2 * Math.PI * RING_R;
   const WISH_CATEGORIES = [
     { name: '本', color: 'var(--accent)' },
+    { name: '映像･作品', color: 'var(--accent-soft)' },
     { name: 'ゲーム', color: 'var(--accent-soft)' },
-    { name: 'グッズ', color: '#4a9db9' },
+    { name: '生活雑貨', color: '#4a9db9' },
     { name: 'その他', color: 'var(--paper-line)' },
   ];
 
@@ -51,6 +52,23 @@
   LM.renderNav(document.getElementById('nav-container'));
   setupCircle();
   setupHomeButton();
+  window.addEventListener('pageshow', (e) => {
+    if (e.persisted) refreshHomeData();
+  });
+  window.addEventListener('storage', (e) => {
+    const dataKeys = [LM.KEYS.EVENTS, LM.KEYS.SCHEDULES, LM.KEYS.WISHLIST, LM.TODO_KEY];
+    if (e.key === null || dataKeys.includes(e.key)) refreshHomeData();
+  });
+
+  function refreshHomeData() {
+    hasContent.event = renderEvents();
+    hasContent.task = renderTasks();
+    hasContent.schedule = renderSchedules();
+    hasContent.belongings = renderBelongings();
+    hasContent.shift = renderShift();
+    reorderSections();
+    refreshCircle();
+  }
 
   /* ---------- 円の切り替え(左右矢印・ドット・横スワイプ) ---------- */
   function setupCircle() {
@@ -356,9 +374,13 @@
     return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${String(m).padStart(2, '0')}:${ss}`;
   }
 
-  // ウィッシュリスト: 未購入アイテムの種類比(種類は 本/ゲーム/グッズ/その他 の4つ)
+  // ウィッシュリスト: 未購入・未視聴など、まだ完了していないアイテムの種類比
   function modeWish() {
-    const items = LM.get(LM.KEYS.WISHLIST, []).filter((it) => !it.purchased);
+    const items = LM.get(LM.KEYS.WISHLIST, []).filter((it) =>
+      typeof it.status === 'string'
+        ? ['unpurchased', 'undownload', 'want'].includes(it.status)
+        : !it.purchased
+    );
     const counts = WISH_CATEGORIES.map(() => 0);
     items.forEach((it) => {
       let i = WISH_CATEGORIES.findIndex((c) => c.name === it.category);
