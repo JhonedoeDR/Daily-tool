@@ -208,12 +208,7 @@ async function main() {
     return;
   }
   const state = snap.data();
-  const devices = await db.collection('notifyDevices').get();
-  const recipients = devices.docs.flatMap((device) => {
-    const tokens = Array.isArray(device.data().tokens) ? device.data().tokens : [];
-    return tokens.map((token) => ({ uid: device.id, token }));
-  });
-  if (recipients.length === 0) {
+  if ((state.tokens || []).length === 0) {
     console.log('登録されたトークンがありません');
     return;
   }
@@ -239,7 +234,7 @@ async function main() {
     else console.log(`スキップ(送信済み/他の実行が担当): ${it.key}`);
   }
 
-  const invalidTokens = new Map();
+  const invalidTokens = new Set();
   for (const it of claimedItems) {
     const waitMs = it.at - Date.now();
     if (waitMs > 0) {
@@ -254,37 +249,34 @@ async function main() {
       console.log(`条件を満たさないため送信しません: ${it.key}`);
       continue;
     }
-    for (let offset = 0; offset < recipients.length; offset += 500) {
-      const batch = recipients.slice(offset, offset + 500);
-      try {
-        // data-onlyで送る(表示はService Worker側で1回だけ行う)
-        const res = await admin.messaging().sendEachForMulticast({
-          tokens: batch.map((recipient) => recipient.token),
-          data: { title: msg.title, body: msg.body },
-          webpush: { headers: { Urgency: 'high', TTL: '300' } },
-        });
-        console.log(`送信「${msg.title}」 成功:${res.successCount} 失敗:${res.failureCount}`);
-        res.responses.forEach((response, i) => {
-          if (response.success) return;
-          const code = response.error && response.error.code;
-          console.log(`  token[${offset + i}] NG: ${code} / ${response.error && response.error.message}`);
-          if (code === 'messaging/registration-token-not-registered' || code === 'messaging/invalid-registration-token') {
-            const { uid, token } = batch[i];
-            if (!invalidTokens.has(uid)) invalidTokens.set(uid, new Set());
-            invalidTokens.get(uid).add(token);
-          }
-        });
-      } catch (e) {
-        console.error('送信失敗', e);
-      }
+    const tokens = fresh.tokens || [];
+    if (tokens.length === 0) continue;
+
+    try {
+      // data-onlyで送る(表示はService Worker側で1回だけ行う)
+      const res = await admin.messaging().sendEachForMulticast({
+        tokens,
+        data: { title: msg.title, body: msg.body },
+        webpush: { headers: { Urgency: 'high', TTL: '300' } },
+      });
+      console.log(`送信「${msg.title}」 成功:${res.successCount} 失敗:${res.failureCount}`);
+      res.responses.forEach((r, i) => {
+        if (r.success) return;
+        const code = r.error && r.error.code;
+        console.log(`  token[${i}] NG: ${code} / ${r.error && r.error.message}`);
+        if (code === 'messaging/registration-token-not-registered' || code === 'messaging/invalid-registration-token') {
+          invalidTokens.add(tokens[i]);
+        }
+      });
+    } catch (e) {
+      console.error('送信失敗', e);
     }
   }
 
-  // 無効トークンだけを対象ユーザーのレコードから取り除く
-  for (const [uid, tokens] of invalidTokens) {
-    await db.collection('notifyDevices').doc(uid).update({
-      tokens: admin.firestore.FieldValue.arrayRemove(...tokens),
-    });
+  // 無効になったトークンだけを安全に取り除く(他の端末の登録と競合しないようarrayRemove)
+  if (invalidTokens.size > 0) {
+    await stateRef.update({ tokens: admin.firestore.FieldValue.arrayRemove(...invalidTokens) });
+    console.log(`無効なトークンを${invalidTokens.size}件削除しました`);
   }
 }
 
