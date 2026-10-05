@@ -90,7 +90,7 @@
         addButton.type = 'button';
         addButton.className = 'lm-btn secondary';
         addButton.style.cssText = 'margin-top:8px; font-size:12px; padding:6px 12px;';
-        addButton.textContent = '＋ その他の枠を追加';
+        addButton.textContent = '＋ 枠を追加';
         addButton.addEventListener('click', () => {
           state.otherSlotCount = LM.configureOtherTodoSlots(state.otherSlotCount + 1);
           const newId = `other${state.otherSlotCount}`;
