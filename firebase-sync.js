@@ -26,14 +26,7 @@ window.LMFirebase = {
       const events = JSON.parse(localStorage.getItem('lm_events') || '[]');
       // タスクは通知の判定に必要な部分だけ送る(日付区切り・各枠の名前と達成状況)
       const todoRaw = JSON.parse(localStorage.getItem('lm_todoState') || 'null');
-      const todo = todoRaw
-        ? {
-            dayKey: todoRaw.dayKey || '',
-            dailyTasks: todoRaw.dailyTasks || {},
-            enteredAt: typeof todoRaw.enteredAt === 'number' ? todoRaw.enteredAt : null,
-            otherSlotCount: todoRaw.otherSlotCount || 1,
-          }
-        : null;
+      const todo = todoRaw ? { dayKey: todoRaw.dayKey || '', dailyTasks: todoRaw.dailyTasks || {} } : null;
       await setDoc(doc(db, ...STATE_REF_PATH), { schedules, events, todo, updatedAt: Date.now() }, { merge: true });
     } catch (e) {
       console.error('Firestore sync failed', e);
@@ -66,5 +59,7 @@ window.LMFirebase = {
   },
 };
 
+// 準備ができたことを他のスクリプト(app.js等)に伝える
+window.dispatchEvent(new Event('lm-firebase-ready'));
 // 準備ができたことを他のスクリプト(app.js等)に伝える
 window.dispatchEvent(new Event('lm-firebase-ready'));
