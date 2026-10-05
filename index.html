@@ -19,7 +19,7 @@
     <div class="lm-page hm-page">
       <!-- 上部:大きな円(STEP 1は見た目と切り替えのみ。中身の接続はSTEP 2以降) -->
       <section class="hm-hero" id="hm-hero" aria-label="表示の切り替え">
-        <div class="hm-mode-title" id="hm-mode-title" aria-live="polite"></div>
+        <div class="hm-mode-title" id="hm-mode-title" aria-live="polite">EVENTS</div>
         <div class="hm-stage">
           <button type="button" class="hm-arrow" id="hm-prev" aria-label="前の機能">‹</button>
           <div class="hm-circle" id="hm-circle">
@@ -29,7 +29,10 @@
               <circle class="outer" cx="100" cy="100" r="96" fill="none" stroke="var(--accent, #5ebfe0)" stroke-width="3" />
               <circle class="disc" cx="100" cy="100" r="56" fill="var(--paper, #fff)" stroke="var(--paper-line, #b8dce8)" stroke-width="1.5" />
             </svg>
-            <div class="hm-inner" id="hm-inner"></div>
+            <div class="hm-inner" id="hm-inner">
+              <span class="hm-dow">イベント</span>
+              <span class="hm-date">読込中</span>
+            </div>
           </div>
           <button type="button" class="hm-arrow" id="hm-next" aria-label="次の機能">›</button>
         </div>
@@ -83,6 +86,8 @@
 
       <div id="notify-banner" style="margin-top: 12px"></div>
 
+      <button type="button" id="export-btn" hidden></button>
+      <input type="file" id="import-input" accept="application/json,.json" hidden />
       <div id="nav-container"></div>
     </div>
 

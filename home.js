@@ -40,6 +40,7 @@
   const hasContent = {};
   let refreshCircle = function () {};
 
+  setupCircle();
   hasContent.event = renderEvents();
   hasContent.task = renderTasks();
   hasContent.schedule = renderSchedules();
@@ -50,7 +51,6 @@
   renderNotifyBanner();
   setupBackup();
   LM.renderNav(document.getElementById('nav-container'));
-  setupCircle();
   setupHomeButton();
   window.addEventListener('pageshow', (e) => {
     if (e.persisted) refreshHomeData();
