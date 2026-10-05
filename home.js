@@ -229,6 +229,7 @@
     return true;
   }
 
+  
   /* ---------- 今日のイベント(タップでイベントページへ) ---------- */
   function renderEvents() {
     const el = document.getElementById('events-list');
