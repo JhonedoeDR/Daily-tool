@@ -1,6 +1,5 @@
 (function () {
   const today = LM.todayStr();
-  document.getElementById('date-header').textContent = LM.formatDateHeader(today);
 
   const SECTION_ORDER = ['event', 'task', 'schedule', 'belongings', 'shift'];
   const hasContent = {};
