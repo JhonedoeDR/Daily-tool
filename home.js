@@ -34,9 +34,6 @@
   const TIMER_MAX = 180;
   let currentMode = DEFAULT_CIRCLE_MODE;
   const timer = loadTimer();
-  const LONG_PRESS_MS = 500;
-  let moreOpen = false;
-
   const hasContent = {};
   let refreshCircle = function () {};
 
@@ -51,7 +48,6 @@
   renderNotifyBanner();
   setupBackup();
   LM.renderNav(document.getElementById('nav-container'));
-  setupHomeButton();
   window.addEventListener('pageshow', (e) => {
     if (e.persisted) refreshHomeData();
   });
@@ -437,95 +433,6 @@
       .map((c, i) => (counts[i] ? `<span><i style="background:${c.color}"></i>${escapeHtml(c.name)} ${counts[i]}</span>` : ''))
       .join('');
     return { ring, inner: innerHtml('未購入', String(total), '件'), caption };
-  }
-
-  /* ---------- 下部メニューのHOME
-   * タップ: 一番上へ戻る(メニューが開いていれば閉じる)
-   * 長押し: 「その他の機能」メニューを開く ---------- */
-  function setupHomeButton() {
-    const btn = document.getElementById('hm-home');
-    const more = document.getElementById('hm-more');
-    let holdTimer = null;
-    let held = false;
-    let sx = 0;
-    let sy = 0;
-
-    const cancelHold = () => {
-      clearTimeout(holdTimer);
-      btn.classList.remove('is-pressing');
-    };
-
-    btn.addEventListener('pointerdown', (e) => {
-      held = false;
-      sx = e.clientX;
-      sy = e.clientY;
-      btn.classList.add('is-pressing');
-      clearTimeout(holdTimer);
-      holdTimer = setTimeout(() => {
-        held = true;
-        btn.classList.remove('is-pressing');
-        openMore();
-      }, LONG_PRESS_MS);
-    });
-    // 指が動いたら(スクロールなど)長押しとは見なさない
-    btn.addEventListener('pointermove', (e) => {
-      if (Math.abs(e.clientX - sx) > 10 || Math.abs(e.clientY - sy) > 10) cancelHold();
-    });
-    ['pointerup', 'pointercancel', 'pointerleave'].forEach((t) => btn.addEventListener(t, cancelHold));
-    btn.addEventListener('contextmenu', (e) => e.preventDefault());
-
-    btn.addEventListener('click', () => {
-      if (held) { held = false; return; } // 長押しで開いた直後の「離した指」はタップとして扱わない
-      if (moreOpen) { closeMore(); return; }
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-
-    // メニューの外側をタップ / Escape / 戻るで戻ってきた時に閉じる
-    more.addEventListener('click', (e) => {
-      if (e.target === more) { closeMore(); return; }
-      const item = e.target.closest('.hm-more-item');
-      if (!item) return;
-      if (item.dataset.more === 'backup') {
-        closeMore();
-        openBackupModal();
-      } else {
-        closeMore(); // リンクの移動はそのまま行う
-      }
-    });
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMore(); });
-    window.addEventListener('pageshow', closeMore);
-  }
-
-  function openMore() {
-    const more = document.getElementById('hm-more');
-    moreOpen = true;
-    more.classList.add('open');
-    more.setAttribute('aria-hidden', 'false');
-  }
-
-  function closeMore() {
-    const more = document.getElementById('hm-more');
-    moreOpen = false;
-    more.classList.remove('open');
-    more.setAttribute('aria-hidden', 'true');
-  }
-
-  // BACKUP: 保存/復元の本体(#export-btn / #import-input)を操作する。処理はsetupBackupのまま
-  function openBackupModal() {
-    const box = document.createElement('div');
-    box.innerHTML = `
-      <p class="lm-empty" style="margin-bottom:10px;">端末側の事情でデータが消えることがあるため、時々バックアップの保存をおすすめします</p>
-      <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <button type="button" class="lm-btn secondary" data-bk="export">バックアップを保存</button>
-        <button type="button" class="lm-btn secondary" data-bk="import">バックアップから復元</button>
-      </div>
-    `;
-    box.addEventListener('click', (e) => {
-      const b = e.target.closest('[data-bk]');
-      if (!b) return;
-      document.getElementById(b.dataset.bk === 'export' ? 'export-btn' : 'import-input').click();
-    });
-    LM.openModal('データのバックアップ', box);
   }
 
   /* ---------- セクションの並び替え(右カラム内で、表示があるものを先に) ---------- */
