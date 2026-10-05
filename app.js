@@ -6,16 +6,15 @@
 const LM = {};
 
 /* ---------- localStorage キー一覧 ----------
- * lm_schedules      : 予定 [{id, name, date, start, end, place, travelMin, prepMin, arriveBeforeMin, belongingSetId, memo}]
- * lm_belongingSets   : 持ちものセット [{id, name, items:[{id, name}]}]
- * lm_dailyChecks     : 日付ごとの持ちものチェック { "2026-09-18": { checkedItemIds: [...] } }
- * lm_tasks           : 日付ごとのタスク { "2026-09-18": [{id, text, done}] }
- * lm_shifts          : シフト [{id, date, start, end, breakMin}]
- * lm_wageSettings    : 給与設定 {hourlyWage, transportFee}
- * lm_events          : イベント [{id, name, start, end, target, current, unit}]
- * lm_wishlist        : 欲しいものリスト [{id, name, category, price, url, desire, planThisMonth, purchased, memo}]
+ * lm_schedules     : 予定 [{id, name, date, start, end, place, travelMin, prepMin, arriveBeforeMin, belongingSetId, memo}]
+ * lm_belongingSets : 持ちものセット [{id, name, items:[{id, name}]}]
+ * lm_dailyChecks   : 日付ごとの持ちものチェック { "2026-09-18": { checkedItemIds: [...] } }
+ * lm_tasks         : 日付ごとのタスク { "2026-09-18": [{id, text, done}] }
+ * lm_shifts        : シフト [{id, date, start, end, breakMin}]
+ * lm_wageSettings  : 給与設定 {hourlyWage, transportFee}
+ * lm_events        : イベント [{id, name, start, end, target, current, unit}]
+ * lm_wishlist      : 欲しいものリスト [{id, name, category, price, url, desire, planThisMonth, purchased, memo}]
  * -------------------------------------------- */
-
 LM.KEYS = {
   SCHEDULES: 'lm_schedules',
   BELONGING_SETS: 'lm_belongingSets',
@@ -143,6 +142,7 @@ LM._alreadyNotified = function (key) {
   const notified = LM.get(LM.NOTIFIED_KEY, []);
   return notified.includes(key);
 };
+
 LM._markNotified = function (key) {
   const notified = LM.get(LM.NOTIFIED_KEY, []);
   notified.push(key);
@@ -152,6 +152,7 @@ LM._markNotified = function (key) {
 
 LM.checkAndNotify = function () {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
   const now = new Date();
   const today = LM.todayStr();
   const nowMin = now.getHours() * 60 + now.getMinutes();
@@ -220,30 +221,30 @@ LM.importAllData = function (data) {
 
 /* ---------- タスク(固定枠のデイリーTodo・週間メインタスク記録) ---------- */
 LM.TODO_KEY = 'lm_todoState';
-// 「その他」グループだけはスロット数が可変(state.otherSlotCountで管理、デフォルト1)
-LM.TODO_FIXED_GROUPS = [
+
+LM.TODO_GROUPS = [
   { key: 'main', label: 'メイン', isMain: true, ids: ['main1', 'main2', 'main3'] },
   { key: 'priority', label: '優先', isMain: false, ids: ['pri1', 'pri2', 'pri3'] },
   { key: 'plus', label: 'プラス', isMain: false, ids: ['plus1', 'plus2', 'plus3'] },
   { key: 'gap', label: 'スキマ', isMain: false, ids: ['gap1', 'gap2', 'gap3'] },
   { key: 'routine', label: 'ルーティン', isMain: false, ids: ['rt1', 'rt2', 'rt3'] },
+  { key: 'other', label: 'その他', isMain: false, ids: ['other1'] },
 ];
-LM.TODO_OTHER_DEFAULT_COUNT = 1;
-LM.todoOtherIds = function (count) {
-  const n = count || LM.TODO_OTHER_DEFAULT_COUNT;
-  const ids = [];
-  for (let i = 1; i <= n; i++) ids.push(`other${i}`);
-  return ids;
-};
-// 表示用の全グループ一覧(その他はstateのスロット数に応じて組み立てる)
-LM.getTodoGroups = function (state) {
-  return [
-    ...LM.TODO_FIXED_GROUPS,
-    { key: 'other', label: 'その他', isMain: false, ids: LM.todoOtherIds(state && state.otherSlotCount) },
-  ];
-};
+
 LM.TODO_MAIN_IDS = ['main1', 'main2', 'main3'];
 LM.TODO_WEEK_TOTAL = 14;
+
+/* ---------- ルーティンの月間達成(ご褒美) ----------
+ * ・ルーティン枠(rt1〜rt3)は、名前だけが1か月間、翌日以降も自動で引き継がれる(チェックは毎日リセット)
+ * ・必要達成数 = 枠の数 × その月の日数 × 2/3 (3枠・30日なら60、31日なら62)
+ * ・毎日2/3を満たす必要はなく、月全体の合計で数える(取りこぼしは後の日に全部クリアして取り返せる)
+ * ・名前のあるルーティンを、その日に初めてチェックした時だけ+1(チェックを外しても減らない。メインの週間記録と同じ考え方)
+ * ・月が変わると(AM4:00基準)達成数とご褒美の文字はリセットされる
+ * -------------------------------------------- */
+LM.TODO_ROUTINE_IDS = ['rt1', 'rt2', 'rt3'];
+LM.TODO_ROUTINE_RATE = 2 / 3;
+// true にすると、月が変わってもルーティンの名前を引き継ぐ(達成数・ご褒美は月ごとにリセット)
+LM.TODO_ROUTINE_KEEP_NAMES_ACROSS_MONTHS = false;
 
 // 週の始まり(月曜)をAM4:00basisで算出(4:00より前はまだ前日=前週として扱う)
 LM.todoMondayKey = function (d) {
@@ -259,27 +260,22 @@ LM.todoMondayKey = function (d) {
   return `${y}-${m}-${dd}`;
 };
 
-LM.defaultTodoTasks = function (otherSlotCount) {
+LM.defaultTodoTasks = function () {
   const tasks = {};
-  LM.getTodoGroups({ otherSlotCount }).forEach((g) => g.ids.forEach((id) => (tasks[id] = { name: '', checked: false })));
+  LM.TODO_GROUPS.forEach((g) => g.ids.forEach((id) => (tasks[id] = { name: '', checked: false })));
   return tasks;
 };
+
 LM.defaultTodoReflected = function () {
   const r = {};
   LM.TODO_MAIN_IDS.forEach((id) => (r[id] = false));
   return r;
 };
-LM.defaultTodoState = function () {
-  return {
-    dailyTasks: LM.defaultTodoTasks(LM.TODO_OTHER_DEFAULT_COUNT),
-    otherSlotCount: LM.TODO_OTHER_DEFAULT_COUNT,
-    enteredAt: null,
-    weeklyClears: 0,
-    reflected: LM.defaultTodoReflected(),
-    weekStartDate: LM.todoMondayKey(),
-    dayKey: LM.todoDayKey(),
-    reward: '',
-  };
+
+LM.defaultRoutineReflected = function () {
+  const r = {};
+  LM.TODO_ROUTINE_IDS.forEach((id) => (r[id] = false));
+  return r;
 };
 
 // タスクの「1日」の区切りをAM4:00とする(4:00より前は前日扱い)
@@ -292,17 +288,53 @@ LM.todoDayKey = function (d) {
   return `${y}-${m}-${day}`;
 };
 
+// ルーティンの「月」もAM4:00基準(毎月1日のAM4:00に切り替わる)。例: "2026-09"
+LM.routineMonthKey = function (d) {
+  return LM.todoDayKey(d).slice(0, 7);
+};
+
+LM.defaultTodoState = function () {
+  return {
+    dailyTasks: LM.defaultTodoTasks(),
+    weeklyClears: 0,
+    reflected: LM.defaultTodoReflected(),
+    weekStartDate: LM.todoMondayKey(),
+    dayKey: LM.todoDayKey(),
+    reward: '',
+    routineMonthKey: LM.routineMonthKey(),
+    routineClears: 0,
+    routineReflected: LM.defaultRoutineReflected(),
+    routineReward: '',
+  };
+};
+
+// 今月のルーティン進捗: { count, required, remain, rate, daysInMonth, remainDays, routineCount }
+LM.calcRoutineProgress = function (state, d) {
+  d = d || new Date();
+  const dayKey = LM.todoDayKey(d);
+  const [y, m, day] = dayKey.split('-').map(Number);
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const required = Math.ceil(LM.TODO_ROUTINE_IDS.length * daysInMonth * LM.TODO_ROUTINE_RATE);
+  const count = state.routineClears || 0;
+  const remain = Math.max(0, required - count);
+  const rate = required > 0 ? Math.min(100, Math.round((count / required) * 100)) : 0;
+  const remainDays = daysInMonth - day + 1; // 今日を含む
+  return { count, required, remain, rate, daysInMonth, remainDays };
+};
+
 LM.getTodoState = function () {
   let state = LM.get(LM.TODO_KEY, null);
   if (!state) state = LM.defaultTodoState();
-  if (typeof state.otherSlotCount !== 'number' || state.otherSlotCount < 1) state.otherSlotCount = LM.TODO_OTHER_DEFAULT_COUNT;
-  if (!state.dailyTasks) state.dailyTasks = LM.defaultTodoTasks(state.otherSlotCount);
-  if (typeof state.enteredAt !== 'number') state.enteredAt = null;
+  if (!state.dailyTasks) state.dailyTasks = LM.defaultTodoTasks();
   if (typeof state.weeklyClears !== 'number') state.weeklyClears = 0;
   if (!state.reflected) state.reflected = LM.defaultTodoReflected();
   if (!state.weekStartDate) state.weekStartDate = LM.todoMondayKey();
   if (!state.dayKey) state.dayKey = LM.todoDayKey();
   if (typeof state.reward !== 'string') state.reward = '';
+  if (typeof state.routineClears !== 'number') state.routineClears = 0;
+  if (!state.routineReflected) state.routineReflected = LM.defaultRoutineReflected();
+  if (typeof state.routineReward !== 'string') state.routineReward = '';
+  if (!state.routineMonthKey) state.routineMonthKey = LM.routineMonthKey();
 
   const thisMonday = LM.todoMondayKey();
   if (state.weekStartDate !== thisMonday) {
@@ -312,14 +344,35 @@ LM.getTodoState = function () {
     state.reward = '';
   }
 
-  // AM4:00を過ぎたら日付が変わったとみなし、入力・チェック・追加したその他スロット・入力時刻を自動リセット(週間記録は保持)
+  // 月が変わったら、ルーティンの達成数・ご褒美をリセット(名前は設定により引き継ぐか消す)
+  const thisMonth = LM.routineMonthKey();
+  if (state.routineMonthKey !== thisMonth) {
+    state.routineMonthKey = thisMonth;
+    state.routineClears = 0;
+    state.routineReflected = LM.defaultRoutineReflected();
+    state.routineReward = '';
+    if (!LM.TODO_ROUTINE_KEEP_NAMES_ACROSS_MONTHS) {
+      LM.TODO_ROUTINE_IDS.forEach((id) => {
+        if (state.dailyTasks[id]) state.dailyTasks[id].name = '';
+      });
+    }
+  }
+
+  // AM4:00を過ぎたら日付が変わったとみなし、入力・チェックを自動リセット(週間記録は保持)
+  // ただしルーティンの名前だけは翌日に引き継ぐ
   const today = LM.todoDayKey();
   if (state.dayKey !== today) {
+    const routineNames = {};
+    LM.TODO_ROUTINE_IDS.forEach((id) => {
+      routineNames[id] = (state.dailyTasks[id] && state.dailyTasks[id].name) || '';
+    });
     state.dayKey = today;
-    state.otherSlotCount = LM.TODO_OTHER_DEFAULT_COUNT;
-    state.dailyTasks = LM.defaultTodoTasks(state.otherSlotCount);
+    state.dailyTasks = LM.defaultTodoTasks();
+    LM.TODO_ROUTINE_IDS.forEach((id) => {
+      state.dailyTasks[id].name = routineNames[id];
+    });
     state.reflected = LM.defaultTodoReflected();
-    state.enteredAt = null;
+    state.routineReflected = LM.defaultRoutineReflected();
   }
 
   LM.set(LM.TODO_KEY, state);
@@ -349,6 +402,7 @@ LM.syncFirebaseDebounced = function (delayMs) {
     LM.syncFirebase();
   }, delayMs || 2000);
 };
+
 // 画面を閉じる/別アプリに切り替える時に、待機中の同期があれば今すぐ送る
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden' && LM._syncTimer) {
@@ -359,11 +413,21 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // メインタスクを初めてチェックした時だけ週間クリア数を+1する(週をまたぐとリセット)
+// ルーティン(名前のあるもの)も、その日に初めてチェックした時だけ月間クリア数を+1する
 LM.toggleTodoCheck = function (state, id, checked) {
   state.dailyTasks[id].checked = checked;
   if (LM.TODO_MAIN_IDS.includes(id) && checked && !state.reflected[id] && state.weeklyClears < LM.TODO_WEEK_TOTAL) {
     state.weeklyClears += 1;
     state.reflected[id] = true;
+  }
+  if (
+    LM.TODO_ROUTINE_IDS.includes(id) &&
+    checked &&
+    !state.routineReflected[id] &&
+    (state.dailyTasks[id].name || '').trim()
+  ) {
+    state.routineClears += 1;
+    state.routineReflected[id] = true;
   }
   LM.saveTodoState(state);
 };
@@ -434,18 +498,21 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-/* ---------- ナビゲーション(共通フッターボタン)描画 ---------- */
+/* ---------- ナビゲーション(共通フッターボタン)描画 ----------
+ * 【旧ボタン】今は使っていません。各ページは renderNav-menu.js を読み込むため、
+ * この LM.renderNav はそちらの定義で上書きされ、画面には出ません(コードだけ残しています)。
+ * ------------------------------------------------------------- */
 LM.renderNav = function (container) {
   const nav = document.createElement('nav');
   nav.className = 'lm-nav';
   const items = [
     { href: './schedule.html', label: '予定・逆算' },
     { href: './belongings.html', label: '持ちもの' },
-    { href: './time-calc.html', label: '時間計算' },
     { href: './todo.html', label: 'タスク' },
-    { href: './shift.html', label: '給与・シフト' },
-    { href: './wishlist.html', label: '欲しいもの' },
+    { href: './wishlist.html', label: 'WISHリスト' },
+    { href: './time-calc.html', label: '時間計算' },
     { href: './event.html', label: 'イベント' },
+    { href: './shift.html', label: '給与・シフト' },
     { href: 'https://jhonedoedr.github.io/MyBookLog/', label: 'よみもの記録', external: true },
   ];
   items.forEach((it) => {
