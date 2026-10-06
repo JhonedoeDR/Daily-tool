@@ -272,8 +272,8 @@
     const done = main.filter((t) => t.checked).length;
     if (main.length === 0) return { inner: innerHtml('メイン', '—', '未登録') };
     return {
-      ring: [ringArc(0, done / main.length, 'var(--accent)')],
-      inner: innerHtml('メイン', `${done}/${main.length}`, '達成'),
+     ...progressRing(done / main.length),
+     inner: innerHtml('メイン', `${done}/${main.length}`, '達成'),
     };
   }
 
