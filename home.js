@@ -670,7 +670,7 @@
     const el = document.getElementById('shift-box');
     const shifts = LM.get(LM.KEYS.SHIFTS, [])
       .filter((s) => s.date === today)
-      .sort((a, b) => a.start.localeCompare(b.start));
+      .sort((a, b) => (a.start || '').localeCompare(b.start || ''));
 
     if (shifts.length === 0) {
       el.innerHTML = '<p class="lm-empty">今日の履修・シフトはありません</p>';
@@ -686,15 +686,19 @@
       const label = document.createElement('strong');
       label.textContent = `${shift.kind === 'class' ? '授業' : 'シフト'}${shift.name ? `・${shift.name}` : ''}`;
       const details = document.createElement('span');
-      details.textContent = `${shift.start}〜${shift.end}${shift.location ? ` ・ ${shift.location}` : ''}`;
+      details.textContent = `${shift.start && shift.end ? `${shift.start}〜${shift.end}` : '時間未設定'}${shift.location ? ` ・ ${shift.location}` : ''}`;
       item.append(label, details);
       if (shift.kind !== 'class') {
-        const { workMin, pay } = LM.calcShiftPay(shift, wageSettings);
-        const h = Math.floor(workMin / 60);
-        const m = workMin % 60;
         const wage = document.createElement('span');
         wage.className = 'lm-shift-pay';
-        wage.textContent = `実働${h}時間${m}分 ・ 見込み ¥${pay.toLocaleString()}`;
+        if (shift.start && shift.end) {
+          const { workMin, pay } = LM.calcShiftPay(shift, wageSettings);
+          const h = Math.floor(workMin / 60);
+          const m = workMin % 60;
+          wage.textContent = `実働${h}時間${m}分 ・ 見込み ¥${pay.toLocaleString()}`;
+        } else {
+          wage.textContent = '給与見込みは時間未設定';
+        }
         item.appendChild(wage);
       }
       box.appendChild(item);

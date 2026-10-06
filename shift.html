@@ -15,24 +15,82 @@
     <a class="lm-back-link" href="./index.html">← 今日のページに戻る</a>
     <h1 class="lm-date-header">履修・シフト</h1>
 
-    <section class="lm-section" style="border-top:none;">
+    <section class="lm-section hs-agenda" style="border-top:none;">
+      <div class="hs-calendar-nav">
+        <button type="button" class="lm-btn secondary" id="calendar-prev" aria-label="前の月">‹</button>
+        <strong id="calendar-title"></strong>
+        <div class="hs-calendar-controls">
+          <button type="button" class="lm-btn secondary" id="today-button">今日</button>
+          <button type="button" class="lm-btn secondary" id="calendar-toggle" aria-pressed="false">カレンダー</button>
+          <button type="button" class="lm-btn secondary" id="calendar-next" aria-label="次の月">›</button>
+        </div>
+      </div>
+      <div class="hs-date-strip" id="date-strip" aria-label="日付を選択"></div>
+      <div class="hs-calendar-grid" id="calendar-grid" aria-label="月間カレンダー" hidden></div>
+      <div class="hs-day-heading" id="selected-date-label"></div>
+      <details class="hs-add-details" id="add-plan-details">
+        <summary class="lm-btn">＋ 予定を追加</summary>
+        <form id="add-plan-form" class="hs-inline-form">
+          <div class="lm-field">
+            <label for="add-template">予定テンプレート</label>
+            <select id="add-template" required></select>
+          </div>
+          <div class="lm-field">
+            <label for="add-repeat">追加方法</label>
+            <select id="add-repeat">
+              <option value="once">選択日のみ</option>
+              <option value="weekly">毎週くり返す</option>
+            </select>
+          </div>
+          <div class="lm-field">
+            <label for="add-start-date">開始日</label>
+            <input id="add-start-date" type="date" required />
+          </div>
+          <div class="lm-field hs-repeat-fields" hidden>
+            <label for="add-until-date">くり返し終了日</label>
+            <input id="add-until-date" type="date" />
+          </div>
+          <div class="lm-field hs-once-fields">
+            <label>時間(任意)</label>
+            <div class="hs-time-range">
+              <input id="add-start-time" type="time" aria-label="開始時刻" />
+              <span>〜</span>
+              <input id="add-end-time" type="time" aria-label="終了時刻" />
+            </div>
+          </div>
+          <fieldset class="lm-field hs-repeat-fields" id="add-weekdays" hidden>
+            <legend>曜日と時間(時間は任意)</legend>
+            <div class="hs-weekday-schedule">
+              <label><input type="checkbox" name="add-weekday" value="0" /><span>日</span><input type="time" data-weekday-start="0" aria-label="日曜日の開始時刻" disabled /><span>〜</span><input type="time" data-weekday-end="0" aria-label="日曜日の終了時刻" disabled /></label>
+              <label><input type="checkbox" name="add-weekday" value="1" /><span>月</span><input type="time" data-weekday-start="1" aria-label="月曜日の開始時刻" disabled /><span>〜</span><input type="time" data-weekday-end="1" aria-label="月曜日の終了時刻" disabled /></label>
+              <label><input type="checkbox" name="add-weekday" value="2" /><span>火</span><input type="time" data-weekday-start="2" aria-label="火曜日の開始時刻" disabled /><span>〜</span><input type="time" data-weekday-end="2" aria-label="火曜日の終了時刻" disabled /></label>
+              <label><input type="checkbox" name="add-weekday" value="3" /><span>水</span><input type="time" data-weekday-start="3" aria-label="水曜日の開始時刻" disabled /><span>〜</span><input type="time" data-weekday-end="3" aria-label="水曜日の終了時刻" disabled /></label>
+              <label><input type="checkbox" name="add-weekday" value="4" /><span>木</span><input type="time" data-weekday-start="4" aria-label="木曜日の開始時刻" disabled /><span>〜</span><input type="time" data-weekday-end="4" aria-label="木曜日の終了時刻" disabled /></label>
+              <label><input type="checkbox" name="add-weekday" value="5" /><span>金</span><input type="time" data-weekday-start="5" aria-label="金曜日の開始時刻" disabled /><span>〜</span><input type="time" data-weekday-end="5" aria-label="金曜日の終了時刻" disabled /></label>
+              <label><input type="checkbox" name="add-weekday" value="6" /><span>土</span><input type="time" data-weekday-start="6" aria-label="土曜日の開始時刻" disabled /><span>〜</span><input type="time" data-weekday-end="6" aria-label="土曜日の終了時刻" disabled /></label>
+            </div>
+          </fieldset>
+          <div class="lm-field">
+            <label for="add-location">場所(任意)</label>
+            <input id="add-location" type="text" maxlength="80" />
+          </div>
+          <div class="lm-field hs-add-shift-only" hidden>
+            <label for="add-break">休憩時間(分)</label>
+            <input id="add-break" type="number" inputmode="numeric" min="0" value="0" />
+          </div>
+          <div id="add-preview" class="lm-empty"></div>
+          <button type="submit" class="lm-btn">カレンダーに追加</button>
+        </form>
+      </details>
+      <div id="day-list"></div>
+    </section>
+
+    <section class="lm-section">
       <div class="lm-section-title">
         今月の給与見込み
         <span class="lm-count" id="month-label"></span>
       </div>
       <div id="month-summary" class="lm-shift-box"></div>
-    </section>
-
-    <section class="lm-section">
-      <div class="lm-section-title">カレンダー</div>
-      <div class="hs-calendar-nav">
-        <button type="button" class="lm-btn secondary" id="calendar-prev" aria-label="前の月">‹</button>
-        <strong id="calendar-title"></strong>
-        <button type="button" class="lm-btn secondary" id="calendar-next" aria-label="次の月">›</button>
-      </div>
-      <div class="hs-calendar-grid" id="calendar-grid" aria-label="月間カレンダー"></div>
-      <div class="hs-day-heading" id="selected-date-label"></div>
-      <div id="day-list"></div>
     </section>
 
     <section class="lm-section">
@@ -48,64 +106,24 @@
     </section>
 
     <section class="lm-section">
-      <div class="lm-section-title">予定を登録</div>
-      <form id="shift-form">
+      <div class="hs-section-heading">
+        <div class="lm-section-title">予定テンプレート</div>
+        <button type="button" class="lm-btn secondary" id="template-toggle" aria-expanded="false">予定を登録</button>
+      </div>
+      <div id="template-list"></div>
+      <form id="template-form" class="hs-template-form" hidden>
         <div class="lm-field">
-          <label for="f-kind">種類</label>
-          <select id="f-kind">
+          <label for="template-kind">種類</label>
+          <select id="template-kind">
             <option value="class">授業・履修</option>
             <option value="shift">アルバイトのシフト</option>
           </select>
         </div>
         <div class="lm-field">
-          <label for="f-name">授業名・勤務先</label>
-          <input id="f-name" type="text" maxlength="60" required placeholder="例: 情報処理 / カフェ" />
+          <label for="template-name">予定の名前</label>
+          <input id="template-name" type="text" maxlength="60" required placeholder="例: 情報処理 / カフェ" />
         </div>
-        <div class="lm-field">
-          <label for="f-location">教室・場所(任意)</label>
-          <input id="f-location" type="text" maxlength="80" />
-        </div>
-        <div class="lm-field">
-          <label for="f-repeat">登録方法</label>
-          <select id="f-repeat">
-            <option value="once">1日のみ</option>
-            <option value="weekly">毎週くり返す</option>
-          </select>
-        </div>
-        <div class="lm-field">
-          <label for="f-date">開始日</label>
-          <input id="f-date" type="date" required />
-        </div>
-        <div class="lm-field hs-weekly-only" hidden>
-          <label for="f-repeat-until">くり返し終了日</label>
-          <input id="f-repeat-until" type="date" />
-        </div>
-        <fieldset class="lm-field hs-weekly-only" id="weekday-fields" hidden>
-          <legend>曜日(複数選択できます)</legend>
-          <div class="hs-weekdays">
-            <label><input type="checkbox" name="weekday" value="0" />日</label>
-            <label><input type="checkbox" name="weekday" value="1" />月</label>
-            <label><input type="checkbox" name="weekday" value="2" />火</label>
-            <label><input type="checkbox" name="weekday" value="3" />水</label>
-            <label><input type="checkbox" name="weekday" value="4" />木</label>
-            <label><input type="checkbox" name="weekday" value="5" />金</label>
-            <label><input type="checkbox" name="weekday" value="6" />土</label>
-          </div>
-        </fieldset>
-        <div class="lm-field">
-          <label for="f-start">開始時刻</label>
-          <input id="f-start" type="time" required />
-        </div>
-        <div class="lm-field">
-          <label for="f-end">終了時刻</label>
-          <input id="f-end" type="time" required />
-        </div>
-        <div class="lm-field hs-shift-only">
-          <label for="f-break">休憩時間(分)</label>
-          <input id="f-break" type="number" inputmode="numeric" pattern="[0-9]*" min="0" value="0" />
-        </div>
-        <div id="calc-preview" class="lm-empty"></div>
-        <button type="submit" class="lm-btn" style="margin-top:8px;">登録</button>
+        <button type="submit" class="lm-btn">テンプレートを保存</button>
       </form>
     </section>
 

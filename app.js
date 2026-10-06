@@ -11,6 +11,7 @@ const LM = {};
  * lm_dailyChecks   : 日付ごとの持ちものチェック { "2026-09-18": { checkedItemIds: [...] } }
  * lm_todoState     : タスク状態 { dailyTasks, weeklyClears, reflected, ... }
  * lm_shifts        : 履修・シフト [{id, date, kind, name, location, start, end, breakMin, seriesId?}]
+ * lm_shiftTemplates: 履修・シフトの予定テンプレート [{id, kind, name}]
  * lm_wageSettings  : 給与設定 {hourlyWage, transportFee}
  * lm_events        : イベント [{id, name, start, end, target, current, unit}]
  * lm_wishlist      : 欲しいものリスト [{id, name, category, price, url, desire, planThisMonth, purchased, memo}]
@@ -21,6 +22,7 @@ LM.KEYS = {
   DAILY_CHECKS: 'lm_dailyChecks',
   TASKS: 'lm_todoState',
   SHIFTS: 'lm_shifts',
+  SHIFT_TEMPLATES: 'lm_shiftTemplates',
   WAGE_SETTINGS: 'lm_wageSettings',
   EVENTS: 'lm_events',
   WISHLIST: 'lm_wishlist',

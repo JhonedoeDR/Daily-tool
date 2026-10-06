@@ -1597,11 +1597,74 @@ body {
   gap: 12px;
   margin-bottom: 10px;
 }
+.hs-calendar-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 .hs-calendar-nav .lm-btn {
   min-width: 42px;
   padding: 8px 12px;
   font-size: 20px;
   line-height: 1;
+}
+.hs-calendar-controls .lm-btn {
+  min-width: 0;
+  padding: 8px 10px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.hs-agenda {
+  scroll-margin-top: 8px;
+}
+.hs-date-strip {
+  display: flex;
+  overflow-x: auto;
+  gap: 6px;
+  padding: 4px max(12px, calc(50% - 28px)) 10px;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.hs-date-strip::-webkit-scrollbar {
+  display: none;
+}
+.hs-date-chip {
+  display: flex;
+  flex: 0 0 56px;
+  min-height: 62px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: 1px solid var(--paper-line);
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--text-soft);
+  font: inherit;
+  scroll-snap-align: center;
+  cursor: pointer;
+}
+.hs-date-chip strong {
+  color: var(--text);
+  font-size: 17px;
+  line-height: 1;
+}
+.hs-date-chip[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.hs-date-chip.is-today strong {
+  color: var(--accent);
+}
+.hs-agenda[hidden],
+.hs-calendar-grid[hidden],
+.hs-template-form[hidden],
+.hs-repeat-fields[hidden],
+.hs-once-fields[hidden],
+.hs-add-shift-only[hidden] {
+  display: none;
 }
 .hs-calendar-grid {
   display: grid;
@@ -1668,6 +1731,74 @@ body {
   margin: 16px 0 6px;
   font-weight: 700;
 }
+.hs-add-details {
+  margin: 8px 0;
+}
+.hs-add-details > summary {
+  display: block;
+  text-align: center;
+  list-style: none;
+  cursor: pointer;
+}
+.hs-add-details > summary::-webkit-details-marker {
+  display: none;
+}
+.hs-inline-form {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.55);
+}
+.hs-inline-form fieldset {
+  min-width: 0;
+  border: 1px solid var(--paper-line);
+  border-radius: 8px;
+  padding: 10px;
+}
+.hs-inline-form legend {
+  padding: 0 4px;
+  color: var(--text-soft);
+  font-size: 13px;
+}
+.hs-time-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.hs-time-range input {
+  min-width: 0;
+  flex: 1;
+}
+.hs-weekday-schedule {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hs-weekday-schedule label {
+  display: grid;
+  grid-template-columns: 24px 20px minmax(0, 1fr) 12px minmax(0, 1fr);
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+}
+.hs-weekday-schedule input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+.hs-weekday-schedule input[type='time'] {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 4px;
+  border: 1px solid var(--paper-line);
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+  font-size: 14px;
+}
+.hs-weekday-schedule input[type='time']:disabled {
+  opacity: 0.4;
+}
 .hs-day-item {
   display: flex;
   align-items: center;
@@ -1725,6 +1856,60 @@ body {
 .hs-weekly-only[hidden],
 .hs-shift-only[hidden] {
   display: none;
+}
+.hs-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.hs-section-heading .lm-section-title {
+  margin: 0;
+}
+.hs-section-heading .lm-btn {
+  padding: 8px 12px;
+  font-size: 12px;
+}
+.hs-template-form {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.55);
+}
+.hs-template-form .lm-field {
+  margin-bottom: 10px;
+}
+.hs-template-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--paper-line);
+}
+.hs-template-row:last-child {
+  border-bottom: 0;
+}
+.hs-template-name {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+  overflow-wrap: anywhere;
+}
+.hs-template-name span {
+  color: var(--text-soft);
+  font-size: 11px;
+}
+.hs-template-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 4px;
+}
+.hs-template-actions .lm-btn {
+  padding: 7px;
+  font-size: 11px;
 }
 .hm-today-shift {
   display: flex;
