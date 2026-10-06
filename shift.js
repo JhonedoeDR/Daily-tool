@@ -425,8 +425,9 @@
       getTemplateKey(item) === template.id
     );
     const attended = entries.filter((item) => item.attended === true).length;
+    const registered = entries.filter((item) => item.scheduleRegistered === true).length;
     const required = Math.max(0, Number(template.attendanceRequired) || 0);
-    return { attended, required, remaining: Math.max(0, required - attended) };
+    return { attended, registered, required, remaining: Math.max(0, required - attended) };
   }
 
   function getTemplates() {
@@ -551,7 +552,7 @@
         const capacity = document.createElement('small');
         const skippedSections = getSkippedSections(template, selectedDate);
         const attendance = getAttendanceProgress(template);
-        capacity.textContent = `区分ごと${template.unitCapacity || 1}回 ・ 出席${attendance.attended}/${attendance.required}（残り${attendance.remaining}）${skippedSections.length ? `・今年度スキップ${skippedSections.join('・')}` : ''}`;
+        capacity.textContent = `区分ごと${template.unitCapacity || 1}回 ・ 出席${attendance.attended}/${attendance.required}（残り${attendance.remaining}） ・ 履修登録${attendance.registered}/${attendance.required}${skippedSections.length ? `・今年度スキップ${skippedSections.join('・')}` : ''}`;
         row.appendChild(capacity);
       }
       const belongings = (template.belongingSetIds || [])
@@ -584,7 +585,7 @@
       const kind = document.createElement('span');
       if (template.kind === 'class') {
         const attendance = getAttendanceProgress(template);
-        kind.textContent = `授業・履修 ・ 区分ごと${template.unitCapacity || 1}回 ・ 出席${attendance.attended}/${attendance.required}（残り${attendance.remaining}）`;
+        kind.textContent = `授業・履修 ・ 区分ごと${template.unitCapacity || 1}回 ・ 出席${attendance.attended}/${attendance.required}（残り${attendance.remaining}） ・ 履修登録${attendance.registered}/${attendance.required}`;
       } else {
         kind.textContent = 'アルバイトのシフト';
       }
