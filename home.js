@@ -206,7 +206,7 @@
   function ringArc(from, to, color) {
     const len = Math.max(0, (to - from) * RING_LEN);
     return svgEl('circle', {
-      cx: 100, cy: 100, r: RING_R, 'stroke-width': 40, fill: 'none',
+      cx: 100, cy: 100, r: RING_R, 'stroke-width': BAND_W, fill: 'none',
       'stroke-dasharray': `${len} ${RING_LEN - len}`,
       'stroke-dashoffset': -from * RING_LEN,
       transform: 'rotate(-90 100 100)',
@@ -217,6 +217,32 @@
     const rad = (deg * Math.PI) / 180;
     return [100 + r * Math.sin(rad), 100 - r * Math.cos(rad)];
   }
+  
+  // 進行表示: 真上(開始地点)から時計回りに黄色い弧が伸び、終点(現在の進行度)につまみが付く。つまみは飾りで操作不可
+ function progressRing(frac) {
+  const f = Math.max(0, Math.min(1, frac || 0));
+  const ring = [];
+  if (f > 0) {
+    const len = f * RING_LEN;
+    ring.push(svgEl('circle', {
+      cx: 100, cy: 100, r: RING_R, fill: 'none',
+      'stroke-width': ARC_W, 'stroke-linecap': 'round',
+      'stroke-dasharray': `${len} ${RING_LEN - len}`,
+      transform: 'rotate(-90 100 100)',
+    }, { stroke: 'var(--accent-soft)' }));
+  }
+  const [kx, ky] = polar(RING_R, f * 360);
+  const top = [
+    svgEl('circle', { cx: kx, cy: ky, r: KNOB_R }, { fill: 'var(--paper)' }),
+    svgEl('circle', { cx: kx, cy: ky, r: KNOB_R - 3.4 }, { fill: 'var(--accent)' }),
+  ];
+  return { ring, top };
+ }
+
+  function setRing(r) {
+  document.getElementById('hm-ring-dyn').replaceChildren(...(r.ring || []));
+  document.getElementById('hm-ring-top').replaceChildren(...(r.top || []));
+ }
 
   function renderCircleContent(key) {
     const build = {
@@ -227,7 +253,7 @@
       wish: modeWish,
     }[key];
     const r = build();
-    document.getElementById('hm-ring-dyn').replaceChildren(...(r.ring || []));
+    setRing(r);
     document.getElementById('hm-inner').innerHTML = r.inner;
     document.getElementById('hm-caption').innerHTML = r.caption || '';
   }
