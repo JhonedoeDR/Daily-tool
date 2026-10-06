@@ -1226,38 +1226,44 @@
 
     addField('予定の名前', 'name', 'text', item.name, { maxlength: '60', required: '' });
     const dateInput = addField('日付', 'date', 'date', item.date, { required: '' });
-    let periodInput = null;
+    let periodOptions = null;
     if (item.kind === 'class') {
       const field = document.createElement('div');
-      field.className = 'lm-field';
-      const label = document.createElement('label');
-      label.textContent = '授業時限';
-      const select = document.createElement('select');
-      select.name = 'period';
-      select.required = true;
-      label.htmlFor = 'shift-edit-period';
-      select.id = label.htmlFor;
-      field.append(label, select);
+      field.className = 'lm-field hs-edit-period-field';
+      const label = document.createElement('span');
+      label.className = 'hs-field-label';
+      label.textContent = '授業時限（複数選択可）';
+      periodOptions = document.createElement('div');
+      periodOptions.className = 'hs-period-options';
+      const help = document.createElement('small');
+      help.textContent = '選択した時限ごとに予定を作成します。';
+      field.append(label, periodOptions, help);
       form.appendChild(field);
-      periodInput = select;
-      const updatePeriods = (preferred = '') => {
+      const updatePeriods = (selectedPeriods = []) => {
         const periods = getPeriodsForDate(dateInput.value);
-        select.replaceChildren();
-        const placeholder = document.createElement('option');
-        placeholder.value = '';
-        placeholder.textContent = periods.length ? '時限を選択してください' : 'この曜日は時限を選べません';
-        select.appendChild(placeholder);
+        periodOptions.replaceChildren();
+        if (periods.length === 0) {
+          const unavailable = document.createElement('span');
+          unavailable.className = 'lm-empty';
+          unavailable.textContent = 'この曜日は時限を選べません';
+          periodOptions.appendChild(unavailable);
+          return;
+        }
         periods.forEach((period) => {
-          const option = document.createElement('option');
-          option.value = String(period.number);
-          option.textContent = `${period.number}限目 ${period.start}〜${period.end}`;
-          select.appendChild(option);
+          const optionLabel = document.createElement('label');
+          optionLabel.className = 'hs-period-option';
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.name = 'periods';
+          checkbox.value = String(period.number);
+          checkbox.checked = selectedPeriods.includes(period.number);
+          const text = document.createElement('span');
+          text.textContent = `${period.number}限目 ${period.start}〜${period.end}`;
+          optionLabel.append(checkbox, text);
+          periodOptions.appendChild(optionLabel);
         });
-        select.value = preferred && periods.some((period) => String(period.number) === String(preferred))
-          ? String(preferred)
-          : '';
       };
-      updatePeriods(item.periodNumber || '');
+      updatePeriods(item.periodNumber ? [Number(item.periodNumber)] : []);
       dateInput.addEventListener('change', () => updatePeriods());
     } else {
       addField('開始時刻(任意)', 'start', 'time', item.start);
@@ -1319,12 +1325,14 @@
         LM.showToast('開始時刻と終了時刻は両方入力するか、両方空欄にしてください', 'error');
         return;
       }
-      const selectedPeriod = item.kind === 'class'
-        ? getPeriodsForDate(fields.date.value).find((period) => String(period.number) === periodInput.value)
-        : null;
-      if (item.kind === 'class' && !selectedPeriod) {
-        LM.showToast('日付と時限を確認してください', 'error');
-        periodInput.focus();
+      const selectedPeriods = item.kind === 'class'
+        ? [...periodOptions.querySelectorAll('input:checked')]
+          .map((input) => getPeriodsForDate(fields.date.value)
+            .find((period) => String(period.number) === input.value))
+          .filter(Boolean)
+        : [];
+      if (item.kind === 'class' && selectedPeriods.length === 0) {
+        LM.showToast('授業時限を1つ以上選択してください', 'error');
         return;
       }
       const shifts = LM.get(LM.KEYS.SHIFTS, []);
@@ -1334,32 +1342,49 @@
         LM.closeModal();
         return;
       }
-      if (item.kind === 'class' && shifts.some((shift) =>
+      const conflict = selectedPeriods.find((period) => shifts.some((shift) =>
         shift.id !== id &&
         shift.kind === 'class' &&
         getTemplateKey(shift) === getTemplateKey(item) &&
         shift.date === fields.date.value &&
         Boolean(shift.isExam) === Boolean(item.isExam) &&
-        Number(shift.periodNumber) === selectedPeriod.number
-      )) {
+        Number(shift.periodNumber) === period.number
+      ));
+      if (conflict) {
         LM.showToast('この科目の予定は、選択した時限にすでに登録されています', 'error');
         return;
       }
-      shifts[index] = {
-        ...shifts[index],
+      const commonUpdates = {
         name: fields.name.value.trim(),
         date: fields.date.value,
-        ...(selectedPeriod ? {
-          periodNumber: selectedPeriod.number,
-          start: selectedPeriod.start,
-          end: selectedPeriod.end,
-        } : {
-          start: fields.start.value,
-          end: fields.end.value,
-        }),
         location: fields.location.value.trim(),
         belongingSetIds: [...belongingList.querySelectorAll('input:checked')].map((input) => input.value),
       };
+      if (item.kind === 'class') {
+        const [firstPeriod, ...additionalPeriods] = selectedPeriods;
+        shifts[index] = {
+          ...shifts[index],
+          ...commonUpdates,
+          periodNumber: firstPeriod.number,
+          start: firstPeriod.start,
+          end: firstPeriod.end,
+        };
+        shifts.push(...additionalPeriods.map((period) => ({
+          ...shifts[index],
+          id: LM.uid(),
+          periodNumber: period.number,
+          start: period.start,
+          end: period.end,
+          attended: false,
+        })));
+      } else {
+        shifts[index] = {
+          ...shifts[index],
+          ...commonUpdates,
+          start: fields.start.value,
+          end: fields.end.value,
+        };
+      }
       if (!LM.set(LM.KEYS.SHIFTS, shifts)) return;
       selectedDate = fields.date.value;
       shownMonth = new Date(`${selectedDate}T00:00:00`);
