@@ -21,6 +21,19 @@
   const stepIndicator = document.getElementById('step-indicator');
   const cancelBtn = document.getElementById('cancel-edit');
   const steps = Array.from(document.querySelectorAll('.lm-step'));
+  const formTabs = [...document.querySelectorAll('[data-form-tab]')];
+  const schedulePanel = document.getElementById('tab-panel-schedule');
+  const deadlinePanel = document.getElementById('tab-panel-deadline');
+  const deadlineForm = document.getElementById('deadline-form');
+  const deadlineFields = {
+    name: document.getElementById('d-name'),
+    date: document.getElementById('d-date'),
+    time: document.getElementById('d-time'),
+  };
+  const deadlineTitle = document.getElementById('deadline-form-title');
+  const deadlineCancelBtn = document.getElementById('deadline-cancel-edit');
+  let editingDeadlineId = null;
+
 
   let editingId = null;
   let currentStep = 1;
@@ -677,9 +690,99 @@
     return candidates.find((shift) => shift.start === schedule.start) || candidates[0] || null;
   }
 
+   /* ---------- 期限・締切 ---------- */
+  function switchFormTab(tab) {
+    const isDeadline = tab === 'deadline';
+    schedulePanel.hidden = isDeadline;
+    deadlinePanel.hidden = !isDeadline;
+    formTabs.forEach((button) => {
+      const active = button.dataset.formTab === tab;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
+  }
+
+  function saveDeadline() {
+    const name = deadlineFields.name.value.trim();
+    if (!name || !deadlineFields.date.value || !deadlineFields.time.value) {
+      deadlineForm.reportValidity();
+      return;
+    }
+    const schedules = LM.get(LM.KEYS.SCHEDULES, []);
+    const data = {
+      id: editingDeadlineId || LM.uid(),
+      kind: 'deadline',
+      name,
+      date: deadlineFields.date.value,
+      start: deadlineFields.time.value,
+      end: '',
+      place: '',
+      travelMin: 0,
+      prepMin: 0,
+      arriveBeforeMin: 0,
+      belongingSetIds: [],
+      memo: '',
+    };
+    if (editingDeadlineId) {
+      const idx = schedules.findIndex((s) => s.id === editingDeadlineId);
+      if (idx !== -1) schedules[idx] = data;
+      else schedules.push(data);
+    } else {
+      schedules.push(data);
+    }
+    if (!LM.set(LM.KEYS.SCHEDULES, schedules)) return;
+    LM.syncFirebase();
+    resetDeadlineForm();
+    renderList();
+    renderCalendar();
+  }
+
+  function startDeadlineEdit(id) {
+    const schedule = LM.get(LM.KEYS.SCHEDULES, []).find((s) => s.id === id);
+    if (!schedule) return;
+    editingDeadlineId = id;
+    deadlineFields.name.value = schedule.name;
+    deadlineFields.date.value = schedule.date;
+    deadlineFields.time.value = schedule.start;
+    deadlineTitle.textContent = '締切を編集';
+    deadlineCancelBtn.style.display = 'inline-block';
+    switchFormTab('deadline');
+    window.scrollTo({ top: deadlinePanel.offsetTop - 20, behavior: 'smooth' });
+  }
+
+  function resetDeadlineForm() {
+    editingDeadlineId = null;
+    deadlineForm.reset();
+    deadlineFields.date.value = LM.todayStr();
+    deadlineTitle.textContent = '締切を登録';
+    deadlineCancelBtn.style.display = 'none';
+    history.replaceState(null, '', location.pathname);
+  }
+
+  function showDeadlineConfirm(schedule) {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'font-size:14px; line-height:1.9;';
+    wrap.innerHTML = `
+      <div><span style="color:var(--text-soft);">締切日</span> ${LM.formatDateHeader(schedule.date)}</div>
+      <div><span style="color:var(--text-soft);">締切時刻</span> ${schedule.start}</div>
+    `;
+    LM.openModal(schedule.name, wrap);
+  }
+
+  formTabs.forEach((button) => {
+    button.addEventListener('click', () => switchFormTab(button.dataset.formTab));
+  });
+  deadlineForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    saveDeadline();
+  });
+  deadlineCancelBtn.addEventListener('click', resetDeadlineForm);
+  deadlineFields.date.value = LM.todayStr();
+
   function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str == null ? '' : String(str);
     return div.innerHTML;
   }
+  
 })();
