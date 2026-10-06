@@ -33,7 +33,16 @@
   const deadlineTitle = document.getElementById('deadline-form-title');
   const deadlineCancelBtn = document.getElementById('deadline-cancel-edit');
   let editingDeadlineId = null;
-
+  const presetPanel = document.getElementById('tab-panel-preset');
+  const presetForm = document.getElementById('preset-form');
+  const presetFields = {
+    name: document.getElementById('p-name'),
+    travel: document.getElementById('p-travel'),
+    prep: document.getElementById('p-prep'),
+    arrive: document.getElementById('p-arrive'),
+  };
+  const presetList = document.getElementById('preset-list');
+  const ROUTE_PRESET_KEY = LM.KEYS.ROUTE_PRESETS || 'lm_routePresets';
 
   let editingId = null;
   let currentStep = 1;
