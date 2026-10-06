@@ -484,6 +484,7 @@
   function showConfirm(id) {
     const schedule = LM.get(LM.KEYS.SCHEDULES, []).find((s) => s.id === id);
     if (!schedule) return;
+    if (schedule.kind === 'deadline') { showDeadlineConfirm(schedule); return; }
     const sets = LM.get(LM.KEYS.BELONGING_SETS, []);
     const selectedIds = schedule.belongingSetIds || (schedule.belongingSetId ? [schedule.belongingSetId] : []);
     const belongingNames = selectedIds
