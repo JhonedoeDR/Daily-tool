@@ -1537,11 +1537,11 @@ body {
 .hm-ring .outer { stroke-width: 1.5; }
 .hm-ring .disc {
   stroke-width: 1.2;
-  filter: drop-shadow(0 2px 4px rgba(48, 67, 74, 0.16));
+  filter: url(#hm-disc-shadow);
 }
 #hm-ring-top { overflow: visible; }
 .hm-progress-knob {
-  filter: drop-shadow(0 2px 3px rgba(48, 67, 74, 0.2));
+  filter: url(#hm-knob-shadow);
 }
 .hm-inner { z-index: 3; }
 
