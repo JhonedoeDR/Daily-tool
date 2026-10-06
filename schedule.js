@@ -700,10 +700,10 @@
   }
 
    /* ---------- 期限・締切 ---------- */
-  function switchFormTab(tab) {
-    const isDeadline = tab === 'deadline';
-    schedulePanel.hidden = isDeadline;
-    deadlinePanel.hidden = !isDeadline;
+    function switchFormTab(tab) {
+    schedulePanel.hidden = tab !== 'schedule';
+    deadlinePanel.hidden = tab !== 'deadline';
+    presetPanel.hidden = tab !== 'preset';
     formTabs.forEach((button) => {
       const active = button.dataset.formTab === tab;
       button.classList.toggle('is-active', active);
