@@ -30,6 +30,16 @@
       <div class="hs-date-strip" id="date-strip" aria-label="日付を選択"></div>
       <div class="hs-calendar-grid" id="calendar-grid" aria-label="月間カレンダー" hidden></div>
       <div class="hs-day-heading" id="selected-date-label"></div>
+      <div class="hs-class-filters">
+        <label for="class-subject-filter">科目</label>
+        <select id="class-subject-filter">
+          <option value="">すべて</option>
+        </select>
+        <label for="class-section-filter">区分</label>
+        <select id="class-section-filter" disabled>
+          <option value="">すべて</option>
+        </select>
+      </div>
       <details class="hs-add-details" id="add-plan-details">
         <summary class="lm-btn">＋ 予定を追加</summary>
         <form id="add-plan-form" class="hs-inline-form">
@@ -39,39 +49,12 @@
             <div id="add-template-chips" class="hs-template-chips" role="group" aria-label="予定テンプレート"></div>
           </div>
           <div class="lm-field">
-            <label for="add-repeat">追加方法</label>
-            <select id="add-repeat">
-              <option value="once">選択日のみ</option>
-              <option value="weekly">毎週くり返す</option>
-            </select>
-          </div>
-          <div class="lm-field">
-            <label for="add-start-date">開始日</label>
-            <input id="add-start-date" type="date" required />
-          </div>
-          <div class="lm-field hs-once-fields">
             <label>時間(任意)</label>
             <div class="hs-time-range">
               <input id="add-start-time" type="time" aria-label="開始時刻" />
               <span>〜</span>
               <input id="add-end-time" type="time" aria-label="終了時刻" />
             </div>
-          </div>
-          <fieldset class="lm-field hs-repeat-fields" id="add-weekdays" hidden>
-            <legend>曜日と時間(時間は任意)</legend>
-            <div class="hs-weekday-schedule">
-              <label><input type="checkbox" name="add-weekday" value="0" /><span>日</span><input type="time" data-weekday-start="0" aria-label="日曜日の開始時刻" disabled /><span>〜</span><input type="time" data-weekday-end="0" aria-label="日曜日の終了時刻" disabled /></label>
-              <label><input type="checkbox" name="add-weekday" value="1" /><span>月</span><input type="time" data-weekday-start="1" aria-label="月曜日の開始時刻" disabled /><span>〜</span><input type="time" data-weekday-end="1" aria-label="月曜日の終了時刻" disabled /></label>
-              <label><input type="checkbox" name="add-weekday" value="2" /><span>火</span><input type="time" data-weekday-start="2" aria-label="火曜日の開始時刻" disabled /><span>〜</span><input type="time" data-weekday-end="2" aria-label="火曜日の終了時刻" disabled /></label>
-              <label><input type="checkbox" name="add-weekday" value="3" /><span>水</span><input type="time" data-weekday-start="3" aria-label="水曜日の開始時刻" disabled /><span>〜</span><input type="time" data-weekday-end="3" aria-label="水曜日の終了時刻" disabled /></label>
-              <label><input type="checkbox" name="add-weekday" value="4" /><span>木</span><input type="time" data-weekday-start="4" aria-label="木曜日の開始時刻" disabled /><span>〜</span><input type="time" data-weekday-end="4" aria-label="木曜日の終了時刻" disabled /></label>
-              <label><input type="checkbox" name="add-weekday" value="5" /><span>金</span><input type="time" data-weekday-start="5" aria-label="金曜日の開始時刻" disabled /><span>〜</span><input type="time" data-weekday-end="5" aria-label="金曜日の終了時刻" disabled /></label>
-              <label><input type="checkbox" name="add-weekday" value="6" /><span>土</span><input type="time" data-weekday-start="6" aria-label="土曜日の開始時刻" disabled /><span>〜</span><input type="time" data-weekday-end="6" aria-label="土曜日の終了時刻" disabled /></label>
-            </div>
-          </fieldset>
-          <div class="lm-field hs-repeat-fields" hidden>
-            <label for="add-until-date">くり返し終了日</label>
-            <input id="add-until-date" type="date" />
           </div>
           <div class="lm-field">
             <label for="add-location">場所(任意)</label>
@@ -82,9 +65,11 @@
             <input id="add-break" type="number" inputmode="numeric" min="0" value="0" />
           </div>
           <div id="add-preview" class="lm-empty"></div>
-          <button type="submit" class="lm-btn">カレンダーに追加</button>
+          <p class="hs-add-instruction" id="add-instruction">テンプレートを選んだあと、登録したい日付をタップしてください。</p>
+          <button type="button" class="lm-btn secondary" id="cancel-add-mode">登録モードを終了</button>
         </form>
       </details>
+      <div class="hs-add-undo" id="add-undo" hidden></div>
       <div id="day-list"></div>
     </section>
 
@@ -104,6 +89,11 @@
         <div class="lm-field">
           <label for="template-name">予定の名前</label>
           <input id="template-name" type="text" maxlength="60" required placeholder="例: 情報処理 / カフェ" />
+        </div>
+        <div class="lm-field hs-template-class-only" id="template-class-fields">
+          <label for="template-unit-capacity">区分ごとの最大授業数</label>
+          <input id="template-unit-capacity" type="number" inputmode="numeric" min="1" placeholder="例: 3" required />
+          <small>前期(4〜8月)は区分1〜8、後期(9〜2月)は区分9〜16に割り当てます。</small>
         </div>
         <fieldset class="lm-field hs-template-belongings">
           <legend>持ちものセット(任意・複数選択可)</legend>

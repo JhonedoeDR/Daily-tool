@@ -2008,6 +2008,27 @@ body {
 .hs-day-heading {
   margin: 8px 0 4px;
 }
+.hs-class-filters {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 8px;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+.hs-class-filters select {
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--paper-line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+}
+.hs-class-filters select:disabled {
+  opacity: 0.5;
+}
 .hs-add-details {
   margin: 4px 0;
 }
@@ -2166,6 +2187,43 @@ body {
   min-width: 0;
   max-height: 150px;
   overflow-y: auto;
+}
+.hs-add-instruction {
+  margin: 4px 0 10px;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+.hs-add-undo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--paper-line);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 12px;
+}
+.hs-add-undo[hidden],
+.hs-template-class-only[hidden] {
+  display: none !important;
+}
+.hs-add-undo .lm-btn {
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  font-size: 11px;
+}
+.hs-page.is-adding-plan .hs-date-chip.is-placement-target,
+.hs-page.is-adding-plan .hs-calendar-day.is-placement-target {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 1px;
+  cursor: crosshair;
+}
+.hs-page.is-adding-plan .hs-date-chip.is-placement-target:hover,
+.hs-page.is-adding-plan .hs-calendar-day.is-placement-target:hover {
+  background: var(--accent-soft);
 }
 .hs-edit-form .lm-field {
   margin-bottom: 10px;
