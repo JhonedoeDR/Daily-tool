@@ -843,5 +843,6 @@
 
   // カレンダーが再描画されるたびに祝日の印を付け直す(子要素の入れ替わりだけを監視するので、ループしない)
   new MutationObserver(apply).observe(grid, { childList: true });
-  refresh();
+    refresh();
+  })();
 })();
