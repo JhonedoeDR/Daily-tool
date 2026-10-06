@@ -175,7 +175,7 @@
       if (timer.status === 'running') {
         // 残り時間と弧だけ更新(下のボタンは作り直さない)
         const r = modeTimeCalc();
-        document.getElementById('hm-ring-dyn').replaceChildren(...(r.ring || []));
+        setRing(r);
         document.getElementById('hm-inner').innerHTML = r.inner;
       }
     }, 250);
