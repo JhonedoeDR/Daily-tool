@@ -225,9 +225,39 @@ LM.checkAndNotify = function () {
   const nowMin = now.getHours() * 60 + now.getMinutes();
   // タスクの境界は 04:00 で切り替える。予定類の 00:00 枠とは別管理。
   const dayKey = LM.taskDayKey(now);
+  
+  /* ---------- 締切の通知(通知設定で選んだ「◯分前」に通知) ---------- */
+ LM.DEADLINE_NOTIFY_OPTIONS = [
+  { id: '30m', label: '30分前', min: 30 },
+  { id: '1h', label: '1時間前', min: 60 },
+  { id: '3h', label: '3時間前', min: 180 },
+  { id: '1d', label: '前日', min: 1440 },
+  { id: '3d', label: '3日前', min: 4320 },
+  { id: '1w', label: '1週間前', min: 10080 },
+];
+
+ LM.checkDeadlineNotify = function () {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const now = Date.now();
+  LM.get(LM.KEYS.SCHEDULES, []).forEach((s) => {
+    if (s.kind !== 'deadline' || !s.date || !s.start || !Array.isArray(s.notifyBefore)) return;
+    const dueAt = new Date(`${s.date}T${s.start}:00`).getTime();
+    s.notifyBefore.forEach((id) => {
+      const opt = LM.DEADLINE_NOTIFY_OPTIONS.find((o) => o.id === id);
+      if (!opt) return;
+      const at = dueAt - opt.min * 60 * 1000;
+      if (Math.abs(at - now) > 2 * 60 * 1000) return;
+      const key = `deadline:${s.id}:${id}:${s.date}:${s.start}`;
+      if (LM._alreadyNotified(key)) return;
+      LM.notify('締切が近づいています', `${s.name}(${LM.formatDateHeader(s.date)} ${s.start}・締切の${opt.label})`);
+      LM._markNotified(key);
+    });
+   });
+ };
+
 
   // (1)(2) 今日の予定: 開始10分前、準備開始10分前
-  const schedules = LM.get(LM.KEYS.SCHEDULES, []).filter((s) => s.date === today);
+  const schedules = LM.get(LM.KEYS.SCHEDULES, []).filter((s) => s.date === today && s.kind !== 'deadline');
   schedules.forEach((s) => {
     const startMin = LM.clockToMinutes(s.start);
     if (Math.abs(startMin - nowMin) <= 2) {
@@ -249,6 +279,7 @@ LM.checkAndNotify = function () {
       }
     }
   });
+    LM.checkDeadlineNotify();
 
   // (3) イベント終了3日前以内、かつ1日1回だけ通知
   const events = LM.get(LM.KEYS.EVENTS, []).filter((ev) => ev.end >= today);
