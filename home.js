@@ -279,18 +279,25 @@
 
   // イベント: 終了日が一番近いイベントの達成率(現在値÷目標。既存カードの%と同じ値)
   function modeEvent() {
-    const events = LM.get(LM.KEYS.EVENTS, [])
-      .filter((ev) => ev.end >= today)
-      .sort((a, b) => a.end.localeCompare(b.end));
-    if (events.length === 0) return { inner: innerHtml('イベント', '—', '開催中なし') };
-    const ev = events[0];
-    const p = LM.calcEventProgress(ev, today);
-    return {
-      ring: [ringArc(0, p.rate / 100, 'var(--accent)')],
-      inner: innerHtml(ev.name, `${p.rate}%`, `残り${p.remainDays}日`),
-      caption: events.length > 1 ? `ほか${events.length - 1}件` : '',
-    };
-  }
+  const events = LM.get(LM.KEYS.EVENTS, [])
+    .filter((ev) => ev.end >= today)
+    .sort((a, b) => a.end.localeCompare(b.end));
+  if (events.length === 0) return { inner: innerHtml('イベント', '—', '開催中なし') };
+  const ev = events[0];
+  const p = LM.calcEventProgress(ev, today);
+  const cur = Number(ev.current) || 0;
+  const goal = Number(ev.target) || 0;
+  const hasNums = goal > 0;
+  const value = hasNums ? `${cur}/${goal}` : `${p.rate}%`;
+  const sizeCls = value.length >= 11 ? ' is-xs' : value.length >= 9 ? ' is-s' : '';
+  const inner = `<span class="hm-date${sizeCls}">${escapeHtml(value)}</span>`
+    + (hasNums ? `<span class="hm-pct">${p.rate}%</span>` : '');
+  const caption = `<span class="hm-cap-name">${escapeHtml(ev.name)}</span>`
+    + `<span>残り${p.remainDays}日</span>`
+    + (events.length > 1 ? `<span>ほか${events.length - 1}件</span>` : '');
+  return { ...progressRing(p.rate / 100), inner, caption };
+}
+
 
   // 予定逆算: 12時間の文字盤に、今の時刻の針と一番近い予定の印を出す
   function modeSchedule() {
@@ -345,10 +352,11 @@
       caption = '<button type="button" class="hm-tc-btn" data-tc="reset">リセット</button>';
     }
     return {
-      ring: frac > 0 ? [ringArc(0, frac, 'var(--accent)')] : [],
-      inner: innerHtml(sub, formatClock(ms), note),
-      caption,
-    };
+    ...progressRing(frac),
+    inner: innerHtml(sub, formatClock(ms), note),
+    caption,
+  };
+
   }
 
   function clampTimerMin(v) {
