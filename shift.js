@@ -35,7 +35,6 @@
   const classEntryTypeField = document.getElementById('class-entry-type-field');
   const classEntryType = document.getElementById('class-entry-type');
   const calendarGrid = document.getElementById('calendar-grid');
-  const dateStrip = document.getElementById('date-strip');
   const calendarTitle = document.getElementById('calendar-title');
   const selectedDateLabel = document.getElementById('selected-date-label');
   const dayList = document.getElementById('day-list');
@@ -225,9 +224,7 @@
   classEntryType.addEventListener('change', () => {
     renderPlacementPeriods();
     updatePlacementButton();
-    [dateStrip, calendarGrid].forEach((container) => {
-      container.querySelectorAll('[data-date]').forEach((button) => setPlacementDateStyle(button, button.dataset.date));
-    });
+    calendarGrid.querySelectorAll('[data-date]').forEach((button) => setPlacementDateStyle(button, button.dataset.date));
   });
   templatePager.addEventListener('click', (event) => {
     const button = event.target.closest('[data-template-page]');
@@ -249,10 +246,6 @@
   document.getElementById('calendar-next').addEventListener('click', () => moveMonth(1));
   document.getElementById('today-button').addEventListener('click', goToToday);
   calendarGrid.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-date]');
-    if (button) handleDateTap(button.dataset.date);
-  });
-  dateStrip.addEventListener('click', (event) => {
     const button = event.target.closest('[data-date]');
     if (button) handleDateTap(button.dataset.date);
   });
@@ -673,10 +666,8 @@
     addInstruction.textContent = template
       ? `選択中: ${template.name}。日付を選び、時限を確認して登録してください。`
       : 'テンプレートを選んだあと、登録したい日付をタップしてください。';
-    [dateStrip, calendarGrid].forEach((container) => {
-      container.querySelectorAll('[data-date]').forEach((button) => {
-        setPlacementDateStyle(button, button.dataset.date);
-      });
+    calendarGrid.querySelectorAll('[data-date]').forEach((button) => {
+      setPlacementDateStyle(button, button.dataset.date);
     });
     renderDayList();
     renderPlacementPeriods();
@@ -1070,66 +1061,13 @@
     }
     renderDayList();
     renderCalendarSelection();
-    updateDateStripSelection();
-  }
-
-  function updateDateStripSelection() {
-    dateStrip.querySelectorAll('[data-date]').forEach((button) => {
-      button.setAttribute('aria-pressed', String(button.dataset.date === selectedDate));
-    });
-  }
-
-  function centerSelectedDateInStrip() {
-    const active = dateStrip.querySelector(`[data-date="${selectedDate}"]`);
-    if (!active) return;
-    const stripLeft = dateStrip.getBoundingClientRect().left;
-    const buttonLeft = active.getBoundingClientRect().left;
-    const left = dateStrip.scrollLeft + buttonLeft - stripLeft
-      - (dateStrip.clientWidth - active.offsetWidth) / 2;
-    dateStrip.scrollTo({ left, behavior: 'smooth' });
   }
 
   function renderAll() {
     renderClassFilters();
-    renderDateStrip();
     renderCalendar();
     renderDayList();
     renderMonthSummary();
-  }
-
-  function renderDateStrip() {
-    const year = shownMonth.getFullYear();
-    const month = shownMonth.getMonth();
-    const days = new Date(year, month + 1, 0).getDate();
-    const eventsByDate = groupByDate(groupClassEvents(filterClassEvents(LM.get(LM.KEYS.SHIFTS, []))));
-    calendarTitle.textContent = `${year}年${month + 1}月`;
-    dateStrip.replaceChildren();
-    for (let day = 1; day <= days; day += 1) {
-      const date = LM.scheduleDateKey(new Date(year, month, day));
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'hs-date-chip';
-      button.dataset.date = date;
-      button.setAttribute('aria-pressed', String(date === selectedDate));
-      setPlacementDateStyle(button, date);
-      const dateObj = new Date(`${date}T00:00:00`);
-      const weekday = document.createElement('span');
-      weekday.textContent = WEEKDAYS[dateObj.getDay()];
-      const dayNumber = document.createElement('strong');
-      dayNumber.textContent = String(day);
-      button.append(weekday, dayNumber);
-      const eventCount = (eventsByDate.get(date) || []).length;
-      if (eventCount > 0) {
-        const indicator = document.createElement('span');
-        indicator.className = 'hs-date-indicator';
-        indicator.textContent = eventCount > 1 ? String(eventCount) : '';
-        indicator.setAttribute('aria-label', `予定${eventCount}件`);
-        button.appendChild(indicator);
-      }
-      if (date === LM.todayStr()) button.classList.add('is-today');
-      dateStrip.appendChild(button);
-    }
-    requestAnimationFrame(centerSelectedDateInStrip);
   }
 
   function renderCalendar() {
