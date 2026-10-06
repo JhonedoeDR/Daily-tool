@@ -51,7 +51,7 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 // --- オフライン用キャッシュ ---
-const CACHE_NAME = 'lm-cache-v12';
+const CACHE_NAME = 'lm-cache-v13';
 const ASSETS = [
   './',
   './index.html',

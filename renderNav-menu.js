@@ -76,9 +76,9 @@ LM.renderNav = function () {
       <span>時間計算</span>
     </a>
 
-    <a class="hm-nav-item" href="./event.html"${cur('event.html')}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 21V4M6 5h11l-2.5 3.5L17 12H6"/></svg>
-      <span>イベント</span>
+    <a class="hm-nav-item" href="./shift.html"${cur('shift.html')}>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3.5v3M15 3.5v3"/></svg>
+      <span>履修・シフト</span>
     </a>
   `;
 
@@ -98,9 +98,9 @@ LM.renderNav = function () {
           <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 11a6 6 0 0112 0"/><rect x="11" y="11" width="26" height="30" rx="8"/><rect x="17" y="24" width="14" height="11" rx="3"/><path d="M11 22c-3 1-4 4-4 8M37 22c3 1 4 4 4 8"/></svg>
           <span>BELONGING</span>
         </a>
-        <a class="hm-more-item" role="menuitem" href="./shift.html" title="履修・シフト">
-          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="13" width="38" height="22" rx="3"/><circle cx="24" cy="24" r="6"/><path d="M11 19v2M37 27v2"/></svg>
-          <span>CLASS / SHIFT</span>
+        <a class="hm-more-item" role="menuitem" href="./event.html" title="イベント">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 42V7M12 8h26l-6 9 6 9H12"/></svg>
+          <span>EVENT</span>
         </a>
         <a class="hm-more-item" role="menuitem" href="https://jhonedoedr.github.io/MyBookLog/" target="_blank" rel="noopener" title="よみもの記録">
           <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M24 12c-4-3-10-4-17-3v27c7-1 13 0 17 3 4-3 10-4 17-3V9c-7-1-13 0-17 3z"/><path d="M24 12v27M11 16h8M11 22h8M29 16h8M29 22h8"/></svg>
