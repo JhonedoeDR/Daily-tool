@@ -9,7 +9,7 @@ const LM = {};
  * lm_schedules     : 予定 [{id, name, date, start, end, place, travelMin, prepMin, arriveBeforeMin, belongingSetId, memo}]
  * lm_belongingSets : 持ちものセット [{id, name, items:[{id, name}]}]
  * lm_dailyChecks   : 日付ごとの持ちものチェック { "2026-09-18": { checkedItemIds: [...] } }
- * lm_tasks         : 日付ごとのタスク { "2026-09-18": [{id, text, done}] }
+ * lm_todoState     : タスク状態 { dailyTasks, weeklyClears, reflected, ... }
  * lm_shifts        : シフト [{id, date, start, end, breakMin}]
  * lm_wageSettings  : 給与設定 {hourlyWage, transportFee}
  * lm_events        : イベント [{id, name, start, end, target, current, unit}]
@@ -19,7 +19,7 @@ LM.KEYS = {
   SCHEDULES: 'lm_schedules',
   BELONGING_SETS: 'lm_belongingSets',
   DAILY_CHECKS: 'lm_dailyChecks',
-  TASKS: 'lm_tasks',
+  TASKS: 'lm_todoState',
   SHIFTS: 'lm_shifts',
   WAGE_SETTINGS: 'lm_wageSettings',
   EVENTS: 'lm_events',
@@ -54,12 +54,31 @@ LM.uid = function () {
 };
 
 /* ---------- 日付ユーティリティ ---------- */
-LM.todayStr = function () {
-  const d = new Date();
+// 予定・イベント・勤務・持ちものの「今日」は 00:00 リセット。
+// タスク系は 04:00 リセットの別軸で管理する。
+LM.scheduleDateKey = function (d) {
+  d = d || new Date();
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${day}`;
+};
+
+LM.todayStr = function () {
+  return LM.scheduleDateKey(new Date());
+};
+
+LM.taskDayKey = function (d) {
+  d = d || new Date();
+  const shifted = new Date(d.getTime() - 4 * 60 * 60 * 1000);
+  const y = shifted.getFullYear();
+  const m = String(shifted.getMonth() + 1).padStart(2, '0');
+  const day = String(shifted.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+LM.todoDayKey = function (d) {
+  return LM.taskDayKey(d);
 };
 
 LM.formatDateHeader = function (dateStr) {
@@ -156,7 +175,8 @@ LM.checkAndNotify = function () {
   const now = new Date();
   const today = LM.todayStr();
   const nowMin = now.getHours() * 60 + now.getMinutes();
-  const dayKey = LM.todoDayKey(now);
+  // タスクの境界は 04:00 で切り替える。予定類の 00:00 枠とは別管理。
+  const dayKey = LM.taskDayKey(now);
 
   // (1)(2) 今日の予定: 開始10分前、準備開始10分前
   const schedules = LM.get(LM.KEYS.SCHEDULES, []).filter((s) => s.date === today);
@@ -298,7 +318,7 @@ LM.importAllData = function (data) {
 };
 
 /* ---------- タスク(固定枠のデイリーTodo・週間メインタスク記録) ---------- */
-LM.TODO_KEY = 'lm_todoState';
+LM.TODO_KEY = LM.KEYS.TASKS;
 
 LM.TODO_OTHER_DEFAULT_SLOTS = 1;
 LM.TODO_GROUPS = [
@@ -325,7 +345,8 @@ LM.TODO_ROUTINE_RATE = 2 / 3;
 // true にすると、月が変わってもルーティンの名前を引き継ぐ(達成数・ご褒美は月ごとにリセット)
 LM.TODO_ROUTINE_KEEP_NAMES_ACROSS_MONTHS = false;
 
-// 週の始まり(月曜)をAM4:00basisで算出(4:00より前はまだ前日=前週として扱う)
+// 週の始まり(月曜)はタスク境界の AM4:00 を基準に算出する。
+// 04:00より前はまだ前日で、前週として扱う。
 LM.todoMondayKey = function (d) {
   d = d || new Date();
   const shifted = new Date(d.getTime() - 4 * 60 * 60 * 1000);
@@ -367,17 +388,7 @@ LM.defaultRoutineReflected = function () {
   return r;
 };
 
-// タスクの「1日」の区切りをAM4:00とする(4:00より前は前日扱い)
-LM.todoDayKey = function (d) {
-  d = d || new Date();
-  const shifted = new Date(d.getTime() - 4 * 60 * 60 * 1000);
-  const y = shifted.getFullYear();
-  const m = String(shifted.getMonth() + 1).padStart(2, '0');
-  const day = String(shifted.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-};
-
-// ルーティンの「月」もAM4:00基準(毎月1日のAM4:00に切り替わる)。例: "2026-09"
+// ルーティンの「月」もタスク境界の AM4:00 を基準とする。
 LM.routineMonthKey = function (d) {
   return LM.todoDayKey(d).slice(0, 7);
 };
