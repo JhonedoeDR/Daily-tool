@@ -743,6 +743,7 @@
       arriveBeforeMin: 0,
       belongingSetIds: [],
       memo: '',
+      notifyBefore: getSelectedDeadlineNotify(),
     };
     if (editingDeadlineId) {
       const idx = schedules.findIndex((s) => s.id === editingDeadlineId);
@@ -765,6 +766,10 @@
     deadlineFields.name.value = schedule.name;
     deadlineFields.date.value = schedule.date;
     deadlineFields.time.value = schedule.start;
+    const selectedNotify = Array.isArray(schedule.notifyBefore) ? schedule.notifyBefore : [];
+    deadlineNotifyList.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+      cb.checked = selectedNotify.includes(cb.value);
+    });
     deadlineTitle.textContent = '締切を編集';
     deadlineCancelBtn.style.display = 'inline-block';
     switchFormTab('deadline');
@@ -780,12 +785,16 @@
     history.replaceState(null, '', location.pathname);
   }
 
-  function showDeadlineConfirm(schedule) {
+    function showDeadlineConfirm(schedule) {
+    const notifyLabels = (schedule.notifyBefore || [])
+      .map((id) => (LM.DEADLINE_NOTIFY_OPTIONS.find((o) => o.id === id) || {}).label)
+      .filter(Boolean);
     const wrap = document.createElement('div');
     wrap.style.cssText = 'font-size:14px; line-height:1.9;';
     wrap.innerHTML = `
       <div><span style="color:var(--text-soft);">締切日</span> ${LM.formatDateHeader(schedule.date)}</div>
       <div><span style="color:var(--text-soft);">締切時刻</span> ${schedule.start}</div>
+      <div><span style="color:var(--text-soft);">通知</span> ${notifyLabels.length ? notifyLabels.join('、') : '(なし)'}</div>
     `;
     LM.openModal(schedule.name, wrap);
   }
@@ -909,6 +918,26 @@
   });
   presetCancelBtn.addEventListener('click', resetPresetForm);
   renderPresetList();
+
+    function renderDeadlineNotifyOptions() {
+    deadlineNotifyList.replaceChildren();
+    LM.DEADLINE_NOTIFY_OPTIONS.forEach((opt) => {
+      const label = document.createElement('label');
+      label.className = 'lm-check-item';
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.value = opt.id;
+      const text = document.createElement('span');
+      text.textContent = opt.label;
+      label.append(input, text);
+      deadlineNotifyList.appendChild(label);
+    });
+  }
+
+  function getSelectedDeadlineNotify() {
+    return Array.from(deadlineNotifyList.querySelectorAll('input[type="checkbox"]:checked')).map((cb) => cb.value);
+  }
+
 
   function escapeHtml(str) {
     const div = document.createElement('div');
