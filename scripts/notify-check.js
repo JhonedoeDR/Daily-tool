@@ -11,6 +11,21 @@ const MIN_MS = 60 * 1000;
 const LOOKAHEAD_MS = 8 * MIN_MS; // これより先の予定は次回以降の実行に任せる
 const GRACE_MS = 4 * MIN_MS; // 時刻を少し過ぎていても送る猶予(実行が1回飛んだ時の保険)
 
+// 締切の通知設定(app.js の LM.DEADLINE_NOTIFY_OPTIONS と同じ内容にしておく)
+const DEADLINE_NOTIFY_OPTIONS = {
+  '30m': { min: 30, label: '30分前' },
+  '1h': { min: 60, label: '1時間前' },
+  '3h': { min: 180, label: '3時間前' },
+  '1d': { min: 1440, label: '前日' },
+  '3d': { min: 4320, label: '3日前' },
+  '1w': { min: 10080, label: '1週間前' },
+};
+
+function formatDateJa(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  return `${d.getUTCMonth() + 1}月${d.getUTCDate()}日(${['日', '月', '火', '水', '木', '金', '土'][d.getUTCDay()]})`;
+}
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /* ---------- 日付・時刻ユーティリティ(すべてJST基準) ---------- */
@@ -95,7 +110,7 @@ function buildItems(state, nowMs) {
 
   // 予定: 開始時刻と準備開始時刻
   (state.schedules || [])
-    .filter((s) => s.date === today && s.start)
+    .filter((s) => s.date === today && s.start && s.kind !== 'deadline')
     .forEach((s) => {
       items.push({
         key: `start:${s.id}:${today}`,
@@ -183,6 +198,32 @@ function buildItems(state, nowMs) {
       },
     });
   });
+  
+    // 締切: 通知設定で選んだ「◯分前」に通知(未来の日付の締切も対象)
+  (state.schedules || [])
+    .filter((s) => s.kind === 'deadline' && s.date && s.start && Array.isArray(s.notifyBefore))
+    .forEach((s) => {
+      const dueAt = jstMidnightEpoch(s.date) + clockToMinutes(s.start) * MIN_MS;
+      s.notifyBefore.forEach((id) => {
+        const opt = DEADLINE_NOTIFY_OPTIONS[id];
+        if (!opt) return;
+        items.push({
+          key: `deadline:${s.id}:${id}:${s.date}:${s.start}`,
+          at: dueAt - opt.min * MIN_MS,
+          build: (st) => {
+            const cur = (st.schedules || []).find((x) => x.id === s.id);
+            if (!cur || cur.kind !== 'deadline') return null;
+            // 削除・日時変更・通知設定の解除があれば送らない(変更後は別のキーで改めて予約される)
+            if (cur.date !== s.date || cur.start !== s.start) return null;
+            if (!Array.isArray(cur.notifyBefore) || !cur.notifyBefore.includes(id)) return null;
+            return {
+              title: '締切が近づいています',
+              body: `${cur.name}(${formatDateJa(cur.date)} ${cur.start}・締切の${opt.label})`,
+            };
+          },
+        });
+      });
+    });
 
   return items;
 }
