@@ -33,6 +33,8 @@
   const deadlineTitle = document.getElementById('deadline-form-title');
   const deadlineCancelBtn = document.getElementById('deadline-cancel-edit');
   let editingDeadlineId = null;
+  const deadlineNotifyList = document.getElementById('d-notify-list');
+  renderDeadlineNotifyOptions();
   const presetPanel = document.getElementById('tab-panel-preset');
   const presetForm = document.getElementById('preset-form');
   const presetFields = {
