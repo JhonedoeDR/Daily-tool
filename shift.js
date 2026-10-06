@@ -24,6 +24,10 @@
   const classSectionFilter = document.getElementById('class-section-filter');
   const templateUnitCapacity = document.getElementById('template-unit-capacity');
   const templateClassFields = document.getElementById('template-class-fields');
+  const templateExamMode = document.getElementById('template-exam-mode');
+  const templateSkipSectionList = document.getElementById('template-skip-section-list');
+  const classEntryTypeField = document.getElementById('class-entry-type-field');
+  const classEntryType = document.getElementById('class-entry-type');
   const calendarGrid = document.getElementById('calendar-grid');
   const dateStrip = document.getElementById('date-strip');
   const calendarTitle = document.getElementById('calendar-title');
@@ -64,6 +68,7 @@
       templateSave.textContent = 'テンプレートを保存';
       templateCancel.hidden = true;
       populateTemplateBelongings([]);
+      populateSkippedSections([]);
       updateTemplateKindFields();
       templateName.focus();
     }
@@ -117,11 +122,21 @@
       templateUnitCapacity.focus();
       return;
     }
+    if (templateKind.value === 'class' &&
+        Number(templateUnitCapacity.value) > 1000) {
+      LM.showToast('区分ごとの授業数は1000以下で入力してください', 'error');
+      templateUnitCapacity.focus();
+      return;
+    }
     const templates = getTemplates();
     const data = {
       kind: templateKind.value,
       name,
       ...(templateKind.value === 'class' ? { unitCapacity: Number(templateUnitCapacity.value) || 1 } : {}),
+      ...(templateKind.value === 'class' ? {
+        examMode: templateExamMode.checked,
+        skippedSections: getSelectedSkippedSections(),
+      } : {}),
       belongingSetIds: [...templateBelongingList.querySelectorAll('input:checked')].map((input) => input.value),
     };
     const wasEditing = Boolean(editingTemplateId);
@@ -134,6 +149,7 @@
     if (!wasEditing) {
       const template = updated[updated.length - 1];
       addTemplate.value = template.id;
+      classEntryType.value = 'class';
       updateAddForm();
       addDetails.open = true;
     }
@@ -144,6 +160,7 @@
     if (!button) return;
     if (button.dataset.addTemplate) {
       addTemplate.value = button.dataset.addTemplate;
+      classEntryType.value = 'class';
       updateAddForm();
       addDetails.open = true;
       return;
@@ -163,6 +180,7 @@
   addTemplateChips.addEventListener('click', (event) => {
     const chip = event.target.closest('[data-template-chip]');
     if (!chip) return;
+    if (addTemplate.value !== chip.dataset.templateChip) classEntryType.value = 'class';
     addTemplate.value = chip.dataset.templateChip;
     updateAddForm();
   });
@@ -176,6 +194,7 @@
     openTemplateListModal();
   });
   templateKind.addEventListener('change', updateTemplateKindFields);
+  templateExamMode.addEventListener('change', updateAddForm);
   addForm.addEventListener('input', updatePreview);
   addForm.addEventListener('submit', (event) => event.preventDefault());
 
@@ -268,6 +287,27 @@
     });
   }
 
+  function populateSkippedSections(selectedSections) {
+    templateSkipSectionList.replaceChildren();
+    for (let section = 1; section <= 16; section += 1) {
+      const label = document.createElement('label');
+      label.className = 'hs-skip-section';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.value = String(section);
+      checkbox.checked = selectedSections.includes(section);
+      const text = document.createElement('span');
+      text.textContent = `区分${section}`;
+      label.append(checkbox, text);
+      templateSkipSectionList.appendChild(label);
+    }
+  }
+
+  function getSelectedSkippedSections() {
+    return [...templateSkipSectionList.querySelectorAll('input:checked')]
+      .map((input) => Number(input.value));
+  }
+
   function startTemplateEdit(id) {
     const template = getTemplates().find((item) => item.id === id);
     if (!template) return;
@@ -275,6 +315,8 @@
     templateKind.value = template.kind;
     templateName.value = template.name;
     templateUnitCapacity.value = String(template.unitCapacity || 1);
+    templateExamMode.checked = template.examMode === true;
+    populateSkippedSections(template.skippedSections || []);
     updateTemplateKindFields();
     populateTemplateBelongings(template.belongingSetIds || []);
     templateSave.textContent = '変更を保存';
@@ -292,6 +334,8 @@
     templateSave.textContent = 'テンプレートを保存';
     templateCancel.hidden = true;
     templateUnitCapacity.value = '';
+    templateExamMode.checked = false;
+    populateSkippedSections([]);
     updateTemplateKindFields();
     populateTemplateBelongings([]);
   }
@@ -308,7 +352,7 @@
       row.append(title, type);
       if (template.kind === 'class') {
         const capacity = document.createElement('small');
-        capacity.textContent = `区分ごと${template.unitCapacity || 1}回`;
+        capacity.textContent = `区分ごと${template.unitCapacity || 1}回${template.examMode ? '・試験あり' : ''}${(template.skippedSections || []).length ? `・スキップ区分${template.skippedSections.join('・')}` : ''}`;
         row.appendChild(capacity);
       }
       const belongings = (template.belongingSetIds || [])
@@ -340,7 +384,7 @@
       title.textContent = template.name;
       const kind = document.createElement('span');
       kind.textContent = template.kind === 'class'
-        ? `授業・履修 ・ 区分ごと${template.unitCapacity || 1}回`
+        ? `授業・履修 ・ 区分ごと${template.unitCapacity || 1}回${template.examMode ? ' ・ 試験あり' : ''}${(template.skippedSections || []).length ? ` ・ スキップ区分${template.skippedSections.join('・')}` : ''}`
         : 'アルバイトのシフト';
       name.append(title, kind);
 
@@ -405,13 +449,18 @@
       chip.className = 'hs-template-chip';
       chip.dataset.templateChip = template.id;
       chip.setAttribute('aria-pressed', String(template.id === addTemplate.value));
-      chip.textContent = template.kind === 'class'
-        ? `${template.name} (科目)`
-        : `${template.name} (シフト)`;
+      const eventCount = LM.get(LM.KEYS.SHIFTS, []).filter((item) =>
+        item.templateId === template.id || (!item.templateId && item.name === template.name && item.kind === template.kind)
+      ).length;
+      chip.textContent = `${template.name} (${eventCount})`;
       addTemplateChips.appendChild(chip);
     });
     const template = templates.find((item) => item.id === addTemplate.value);
     document.querySelector('.hs-add-shift-only').hidden = !template || template.kind === 'class';
+    classEntryTypeField.hidden = !template || template.kind !== 'class' || template.examMode !== true;
+    if (!classEntryTypeField.hidden && !['class', 'exam'].includes(classEntryType.value)) {
+      classEntryType.value = 'class';
+    }
     addInstruction.textContent = template
       ? `選択中: ${template.name}。登録したい日付をタップすると、その日に追加します。`
       : 'テンプレートを選んだあと、登録したい日付をタップしてください。';
@@ -433,6 +482,7 @@
 
   function resetAddMode() {
     addTemplate.value = '';
+    classEntryType.value = 'class';
     addStartTime.value = '';
     addEndTime.value = '';
     addLocation.value = '';
@@ -468,24 +518,32 @@
     }
 
     const shifts = LM.get(LM.KEYS.SHIFTS, []);
+    const isExam = template.kind === 'class' && classEntryType.value === 'exam' && template.examMode === true;
     if (template.kind === 'class') {
       if (shifts.some((item) =>
         item.kind === 'class' &&
         getTemplateKey(item) === template.id &&
-        item.date === date
+        item.date === date &&
+        Boolean(item.isExam) === isExam
       )) {
-        LM.showToast('この科目はすでに同じ日に登録されています', 'error');
+        LM.showToast(isExam ? 'この科目の試験はすでに同じ日に登録されています' : 'この科目はすでに同じ日に登録されています', 'error');
         return;
       }
       const term = getSchoolTerm(date);
-      if (term) {
+      if (term && !isExam) {
+        const skippedSections = template.skippedSections || [];
+        const availableSections = Array.from(
+          { length: term.lastSection - term.firstSection + 1 },
+          (_, index) => term.firstSection + index
+        ).filter((section) => !skippedSections.includes(section));
         const count = shifts.filter((item) =>
           item.kind === 'class' &&
+          !item.isExam &&
           getTemplateKey(item) === template.id &&
           getSchoolTerm(item.date)?.key === term.key
         ).length;
-        if (count >= (Number(template.unitCapacity) || 1) * 8) {
-          LM.showToast(`${term.label}の区分はすべて登録済みです`, 'error');
+        if (count >= (Number(template.unitCapacity) || 1) * availableSections.length) {
+          LM.showToast(`${term.label}の実施区分はすべて登録済みです`, 'error');
           return;
         }
       }
@@ -496,6 +554,7 @@
       templateId: template.id,
       date,
       kind: template.kind,
+      ...(isExam ? { isExam: true } : {}),
       name: template.name,
       location: addLocation.value.trim(),
       start: addStartTime.value,
@@ -512,7 +571,7 @@
     addUndoId = record.id;
     addUndo.replaceChildren();
     const message = document.createElement('span');
-    message.textContent = `${template.name}を${formatShortDate(date)}に追加しました。`;
+    message.textContent = `${template.name}${isExam ? 'の試験' : ''}を${formatShortDate(date)}に追加しました。`;
     const undo = document.createElement('button');
     undo.type = 'button';
     undo.className = 'lm-btn secondary';
@@ -547,27 +606,36 @@
   }
 
   function getTemplateKey(item) {
-    return item.templateId || `legacy:${item.name || ''}`;
+    if (item.templateId) return item.templateId;
+    const matchingTemplate = getTemplates().find((template) => template.kind === item.kind && template.name === item.name);
+    return matchingTemplate?.id || `legacy:${item.name || ''}`;
   }
 
   function getClassUnitInfo(item, allShifts = LM.get(LM.KEYS.SHIFTS, [])) {
     if (item.kind !== 'class') return null;
     const term = getSchoolTerm(item.date);
     if (!term) return { term: null, section: null };
+    if (item.isExam) return { term, section: 'exam' };
     const template = getTemplates().find((entry) => entry.id === item.templateId);
     const capacity = Math.max(1, Number(template?.unitCapacity) || 1);
+    const skippedSections = template?.skippedSections || [];
+    const availableSections = Array.from(
+      { length: term.lastSection - term.firstSection + 1 },
+      (_, index) => term.firstSection + index
+    ).filter((section) => !skippedSections.includes(section));
     const key = getTemplateKey(item);
     const ordered = allShifts
       .filter((entry) =>
         entry.kind === 'class' &&
+        !entry.isExam &&
         getTemplateKey(entry) === key &&
         getSchoolTerm(entry.date)?.key === term.key
       )
       .sort((a, b) => (a.date + (a.start || '') + a.id).localeCompare(b.date + (b.start || '') + b.id));
     const index = ordered.findIndex((entry) => entry.id === item.id);
     if (index < 0) return { term, section: null };
-    const section = term.firstSection + Math.floor(index / capacity);
-    return { term, section: section <= term.lastSection ? section : null, capacity };
+    const section = availableSections[Math.floor(index / capacity)] || null;
+    return { term, section, capacity };
   }
 
   function renderClassFilters() {
@@ -581,12 +649,16 @@
     templates.forEach((template) => {
       const option = document.createElement('option');
       option.value = template.id;
-      option.textContent = template.name;
+      const count = LM.get(LM.KEYS.SHIFTS, []).filter((item) =>
+        item.templateId === template.id || (!item.templateId && item.name === template.name && item.kind === 'class')
+      ).length;
+      option.textContent = `${template.name} (${count})`;
       classSubjectFilter.appendChild(option);
     });
     classSubjectFilter.value = activeSubjectFilter;
 
     const term = getSchoolTerm(selectedDate);
+    const selectedTemplate = templates.find((entry) => entry.id === activeSubjectFilter);
     classSectionFilter.replaceChildren();
     const allSections = document.createElement('option');
     allSections.value = '';
@@ -594,10 +666,34 @@
     classSectionFilter.appendChild(allSections);
     if (term) {
       for (let section = term.firstSection; section <= term.lastSection; section += 1) {
+        if ((selectedTemplate?.skippedSections || []).includes(section)) continue;
         const option = document.createElement('option');
         option.value = String(section);
-        option.textContent = `区分${section}`;
+        const sectionCount = activeSubjectFilter
+          ? LM.get(LM.KEYS.SHIFTS, []).filter((item) => {
+            const matchesSubject = item.templateId === activeSubjectFilter ||
+              (!item.templateId && item.name === templates.find((entry) => entry.id === activeSubjectFilter)?.name);
+            return item.kind === 'class' &&
+              !item.isExam &&
+              matchesSubject &&
+                getSchoolTerm(item.date)?.key === term.key &&
+                getClassUnitInfo(item)?.section === section;
+            }).length
+          : 0;
+        option.textContent = `区分${section} (${sectionCount})`;
         classSectionFilter.appendChild(option);
+      }
+      if (activeSubjectFilter && selectedTemplate?.examMode) {
+        const examCount = LM.get(LM.KEYS.SHIFTS, []).filter((item) => {
+          return item.kind === 'class' &&
+            item.isExam &&
+            getSchoolTerm(item.date)?.key === term.key &&
+            (item.templateId === activeSubjectFilter || (!item.templateId && item.name === selectedTemplate.name));
+        }).length;
+        const examOption = document.createElement('option');
+        examOption.value = 'exam';
+        examOption.textContent = `試験 (${examCount})`;
+        classSectionFilter.appendChild(examOption);
       }
     }
     if (!term || !activeSubjectFilter) activeSectionFilter = '';
@@ -616,6 +712,7 @@
         (!item.templateId && item.name === selectedTemplate?.name);
       if (item.kind !== 'class' || !matchesSubject) return false;
       if (!activeSectionFilter) return true;
+      if (activeSectionFilter === 'exam') return item.isExam === true;
       return String(getClassUnitInfo(item)?.section || '') === activeSectionFilter;
     });
   }
@@ -625,13 +722,15 @@
     button.classList.toggle('is-placement-target', active);
     if (active) {
       const template = getTemplates().find((item) => item.id === addTemplate.value);
-      button.setAttribute('aria-label', `${formatShortDate(date)}、${template?.name || '予定'}を登録`);
+      const type = classEntryType.value === 'exam' ? 'の試験' : '';
+      button.setAttribute('aria-label', `${formatShortDate(date)}、${template?.name || '予定'}${type}を登録`);
     } else button.removeAttribute('aria-label');
   }
 
   function addClassUnitLabel(item) {
     const unit = getClassUnitInfo(item);
     if (!unit || !unit.term) return '区分対象期間外';
+    if (unit.section === 'exam') return '試験';
     return unit.section ? `区分${unit.section}` : '区分上限超過';
   }
 
@@ -759,7 +858,7 @@
       button.appendChild(number);
       events.slice(0, 2).forEach((item) => {
         const chip = document.createElement('span');
-        chip.className = `hs-calendar-chip${item.kind === 'class' ? ' is-class' : ''}`;
+        chip.className = `hs-calendar-chip${item.kind === 'class' ? ' is-class' : ''}${item.isExam ? ' is-exam' : ''}`;
         chip.textContent = item.kind === 'class'
           ? `${item.name || '授業'} ${addClassUnitLabel(item)}`
           : item.name || 'シフト';
@@ -797,7 +896,7 @@
     }
     events.forEach((item) => {
       const row = document.createElement('article');
-      row.className = `hs-day-item${item.kind === 'class' ? ' is-class' : ''}`;
+      row.className = `hs-day-item${item.kind === 'class' ? ' is-class' : ''}${item.isExam ? ' is-exam' : ''}`;
       const detail = document.createElement('div');
       detail.className = 'hs-day-detail';
       const title = document.createElement('strong');
@@ -840,7 +939,9 @@
       register.className = `lm-btn secondary hs-register${registered ? ' is-registered' : ''}`;
       register.dataset.toggleSchedule = item.id;
       register.textContent = item.kind === 'class'
-        ? (registered ? '履修登録を解除' : '履修登録する')
+        ? (item.isExam
+          ? (registered ? '試験の登録を解除' : '試験を登録')
+          : (registered ? '履修登録を解除' : '履修登録する'))
         : (registered ? '逆算登録を解除' : '予定逆算に登録');
       register.setAttribute('aria-pressed', String(registered));
       actions.appendChild(register);

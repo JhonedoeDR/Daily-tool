@@ -48,6 +48,13 @@
             <input id="add-template" type="hidden" />
             <div id="add-template-chips" class="hs-template-chips" role="group" aria-label="予定テンプレート"></div>
           </div>
+          <div class="lm-field hs-class-exam-fields" id="class-entry-type-field" hidden>
+            <label for="class-entry-type">登録する内容</label>
+            <select id="class-entry-type">
+              <option value="class">通常授業</option>
+              <option value="exam">試験</option>
+            </select>
+          </div>
           <div class="lm-field">
             <label>時間(任意)</label>
             <div class="hs-time-range">
@@ -95,6 +102,16 @@
           <input id="template-unit-capacity" type="number" inputmode="numeric" min="1" placeholder="例: 3" required />
           <small>前期(4〜8月)は区分1〜8、後期(9〜2月)は区分9〜16に割り当てます。</small>
         </div>
+        <div class="lm-field hs-template-class-only" id="template-exam-mode-field">
+          <label class="hs-inline-check" for="template-exam-mode">
+            <input id="template-exam-mode" type="checkbox" />
+            <span>この科目で試験日を登録する</span>
+          </label>
+        </div>
+        <fieldset class="lm-field hs-template-class-only hs-skipped-sections" id="template-skipped-sections">
+          <legend>実施しない区分をスキップ</legend>
+          <div class="hs-skip-section-list" id="template-skip-section-list"></div>
+        </fieldset>
         <fieldset class="lm-field hs-template-belongings">
           <legend>持ちものセット(任意・複数選択可)</legend>
           <div id="template-belonging-list" class="lm-check-list"></div>
