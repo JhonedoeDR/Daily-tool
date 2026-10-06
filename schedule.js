@@ -785,4 +785,63 @@
     return div.innerHTML;
   }
   
+  /* ---------- 日本の祝日(holidays-jp API・カレンダーに薄紫の印を付ける) ---------- */
+(function () {
+  const API_URL = 'https://holidays-jp.github.io/api/v1/date.json';
+  const CACHE_KEY = 'lm_holidaysJp';
+  const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+  const grid = document.getElementById('schedule-calendar-grid');
+  if (!grid) return;
+  let holidays = {};
+
+  function loadCache() {
+    try {
+      const cache = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+      return cache && cache.data ? cache : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // 去年以降だけ残して保存量を抑える
+  function trim(data) {
+    const minYear = new Date().getFullYear() - 1;
+    const result = {};
+    Object.entries(data || {}).forEach(([date, name]) => {
+      if (Number(date.slice(0, 4)) >= minYear) result[date] = name;
+    });
+    return result;
+  }
+
+  function apply() {
+    grid.querySelectorAll('[data-date]').forEach((button) => {
+      const name = holidays[button.dataset.date];
+      if (!name || button.classList.contains('is-holiday')) return;
+      button.classList.add('is-holiday');
+      button.title = name;
+      button.setAttribute('aria-label', `${button.getAttribute('aria-label') || ''}、祝日(${name})`);
+    });
+  }
+
+  async function refresh() {
+    const cache = loadCache();
+    if (cache) {
+      holidays = cache.data;
+      apply();
+      if (Date.now() - cache.savedAt < CACHE_TTL_MS) return;
+    }
+    try {
+      const res = await fetch(API_URL);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      holidays = trim(await res.json());
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ savedAt: Date.now(), data: holidays }));
+      apply();
+    } catch (e) {
+      console.error('holidays fetch failed', e);
+    }
+  }
+
+  // カレンダーが再描画されるたびに祝日の印を付け直す(子要素の入れ替わりだけを監視するので、ループしない)
+  new MutationObserver(apply).observe(grid, { childList: true });
+  refresh();
 })();
