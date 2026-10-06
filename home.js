@@ -3,11 +3,11 @@
 
   /* ---------- 上部の円形UI ---------- */
   const CIRCLE_MODES = [
-    { key: 'event', title: 'EVENTS', label: 'イベント' },
-    { key: 'task', title: 'TASKS', label: 'タスク' },
-    { key: 'schedule', title: 'SCHEDULE', label: '予定逆算' },
-    { key: 'timecalc', title: 'TIME CALC', label: '時間計算' },
-    { key: 'wish', title: 'WISH', label: 'ウィッシュリスト' },
+   { key: 'event', title: 'Event', label: 'イベント' },
+   { key: 'task', title: 'Task', label: 'タスク' },
+   { key: 'schedule', title: 'Schedule', label: '予定逆算' },
+   { key: 'timecalc', title: 'Time Calc', label: '時間計算' },
+   { key: 'wish', title: 'Wish', label: 'ウィッシュリスト' },
   ];
   const SCHEDULE_PRIORITY_ORDER = ['event', 'schedule', 'timecalc', 'task', 'wish'];
   const DEFAULT_CIRCLE_MODE = 'event';
@@ -16,7 +16,11 @@
   const SIDE_ORDER = ['schedule', 'event', 'belongings', 'shift'];
 
   const SVGNS = 'http://www.w3.org/2000/svg';
-  const RING_R = 76;
+  const BAND_W = 19;     // リングの太さ
+  const RING_R = 87;     // リング中心線の半径
+  const ARC_W = 14;      // 黄色い弧の太さ(リングより細くして縁の青を残す)
+  const KNOB_R = 14.3;   // つまみ(白縁)の半径
+
   const RING_LEN = 2 * Math.PI * RING_R;
   const WISH_CATEGORIES = [
     { name: '本', color: 'var(--accent)' },
