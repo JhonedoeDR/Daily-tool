@@ -307,7 +307,8 @@
     for (let i = 0; i < 12; i++) {
       const [x1, y1] = polar(i % 3 === 0 ? 84 : 88, i * 30);
       const [x2, y2] = polar(93, i * 30);
-      ring.push(svgEl('circle', { cx: mx, cy: my, r: 7.5, 'stroke-width': 2.5 }, { fill: 'var(--accent-soft)', stroke: 'var(--accent)' }));
+      ring.push(svgEl('line', { x1, y1, x2, y2, 'stroke-width': i % 3 === 0 ? 2.5 : 1.5, 'stroke-linecap': 'round' }, { stroke: 'var(--text-soft)' }));
+    }
     const dial = (min) => ((min % 720) / 720) * 360;
 
     const list = LM.get(LM.KEYS.SCHEDULES, [])
