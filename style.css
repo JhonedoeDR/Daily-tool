@@ -2524,3 +2524,12 @@ body {
   border-left: 3px solid #e04b4b;
   padding-left: 8px;
 }
+
+/* ---------- 祝日(日付の数字に薄紫を被せる) ---------- */
+.hs-calendar-day.is-holiday .hs-calendar-number {
+  background: #e3d7f5;
+}
+/* 祝日を選択中は、選択を示す輪郭を足す(薄紫は残す) */
+.hs-calendar-day.is-holiday[aria-pressed='true'] .hs-calendar-number {
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
