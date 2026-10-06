@@ -77,7 +77,7 @@ LM.renderNav = function () {
     </a>
 
     <a class="hm-nav-item" href="./shift.html"${cur('shift.html')}>
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3.5v3M15 3.5v3"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2.5 9 9.5-5 9.5 5-9.5 5-9.5-5Z"/><path d="M6.5 11v5c3.2 2.4 7.8 2.4 11 0v-5M21.5 9v6"/></svg>
       <span>履修・シフト</span>
     </a>
   `;
