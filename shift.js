@@ -1447,7 +1447,7 @@
         actions.appendChild(attendance);
       }
       const registeredCount = entries.filter((entry) => entry.scheduleRegistered === true).length;
-      const registered = registeredCount === entries.length;
+      const registered = registeredCount > 0;
       const register = document.createElement('button');
       register.type = 'button';
       register.className = `lm-btn secondary hs-register${registered ? ' is-registered' : ''}`;
