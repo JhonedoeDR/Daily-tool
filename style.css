@@ -2496,3 +2496,31 @@ body {
 #template-pager {
   margin-top: 4px;
 }
+
+/* ---------- 予定・締切(タブ・締切の赤) ---------- */
+.lm-form-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 4px 0 12px;
+}
+.lm-form-tabs .lm-btn {
+  flex: 1;
+  padding: 10px 6px;
+  font-size: 13px;
+}
+.lm-form-tabs .lm-btn.is-active {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--paper);
+}
+#tab-panel-schedule[hidden],
+#tab-panel-deadline[hidden] {
+  display: none !important;
+}
+.sc-calendar-marker.is-deadline {
+  background: #e04b4b;
+}
+.sc-calendar-agenda-item.is-deadline {
+  border-left: 3px solid #e04b4b;
+  padding-left: 8px;
+}
