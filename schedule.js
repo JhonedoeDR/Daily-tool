@@ -585,11 +585,9 @@
     presetLabel.textContent = '逆算プリセット';
     const preset = document.createElement('select');
     preset.id = presetLabel.htmlFor;
-    [
+     [
       ['', 'プリセットなし'],
-      ['car', '車'],
-      ['itsukaichi', '五日市'],
-      ['nishihiroshima', '西広島'],
+      ...getRoutePresets().map((item) => [`preset:${item.id}`, item.name]),
       ['custom', '個別設定'],
     ].forEach(([value, label]) => {
       const option = document.createElement('option');
@@ -621,16 +619,23 @@
       inputs[key] = input;
     });
 
-    const presetByName = { 車: 'car', 五日市: 'itsukaichi', 西広島: 'nishihiroshima' };
-    preset.value = presetByName[schedule.routePreset] ||
-      (Number(schedule.travelMin) || Number(schedule.prepMin) || Number(schedule.arriveBeforeMin) ? 'custom' : '');
+    const presetByName = {};
     const presetValues = {
-      car: { routePreset: '車', travelMin: 20, prepMin: 40, arriveBeforeMin: 10 },
-      itsukaichi: { routePreset: '五日市', travelMin: 70, prepMin: 30, arriveBeforeMin: 10 },
-      nishihiroshima: { routePreset: '西広島', travelMin: 45, prepMin: 40, arriveBeforeMin: 10 },
       custom: { routePreset: '個別設定' },
       '': { routePreset: '' },
     };
+    getRoutePresets().forEach((item) => {
+      const key = `preset:${item.id}`;
+      presetByName[item.name] = key;
+      presetValues[key] = {
+        routePreset: item.name,
+        travelMin: item.travelMin,
+        prepMin: item.prepMin,
+        arriveBeforeMin: item.arriveBeforeMin,
+      };
+    });
+    preset.value = presetByName[schedule.routePreset] ||
+      (Number(schedule.travelMin) || Number(schedule.prepMin) || Number(schedule.arriveBeforeMin) ? 'custom' : '');
     const applyPreset = () => {
       const values = presetValues[preset.value];
       if (preset.value === 'custom') return;
@@ -788,6 +793,83 @@
   });
   deadlineCancelBtn.addEventListener('click', resetDeadlineForm);
   deadlineFields.date.value = LM.todayStr();
+
+  /* ---------- 逆算プリセット ---------- */
+  function getRoutePresets() {
+    const presets = LM.get(ROUTE_PRESET_KEY, []);
+    return Array.isArray(presets) ? presets : [];
+  }
+
+  function saveRoutePreset() {
+    const name = presetFields.name.value.trim();
+    if (!name) {
+      presetFields.name.reportValidity();
+      return;
+    }
+    const presets = getRoutePresets();
+    if (name === '個別設定' || name === 'プリセットなし' || presets.some((item) => item.name === name)) {
+      LM.showToast('同じ名前のプリセットがあります', 'error');
+      return;
+    }
+    presets.push({
+      id: LM.uid(),
+      name,
+      travelMin: Math.max(0, Number(presetFields.travel.value) || 0),
+      prepMin: Math.max(0, Number(presetFields.prep.value) || 0),
+      arriveBeforeMin: Math.max(0, Number(presetFields.arrive.value) || 0),
+    });
+    if (!LM.set(ROUTE_PRESET_KEY, presets)) return;
+    LM.syncFirebase();
+    presetForm.reset();
+    presetFields.travel.value = 0;
+    presetFields.prep.value = 0;
+    presetFields.arrive.value = 0;
+    renderPresetList();
+    LM.showToast('プリセットを保存しました');
+  }
+
+  function renderPresetList() {
+    const presets = getRoutePresets();
+    presetList.replaceChildren();
+    if (presets.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'lm-empty';
+      empty.textContent = 'プリセットはまだありません';
+      presetList.appendChild(empty);
+      return;
+    }
+    presets.forEach((item) => {
+      const row = document.createElement('div');
+      row.className = 'hs-template-row';
+      const info = document.createElement('div');
+      info.className = 'hs-template-name';
+      const name = document.createElement('strong');
+      name.textContent = item.name;
+      const detail = document.createElement('span');
+      detail.textContent = `移動 ${item.travelMin}分 ・ 準備 ${item.prepMin}分 ・ 到着希望 ${item.arriveBeforeMin}分前`;
+      info.append(name, detail);
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'lm-btn secondary';
+      remove.style.cssText = 'padding:6px 10px; font-size:12px;';
+      remove.textContent = '削除';
+      remove.addEventListener('click', () => {
+        if (!confirm(`「${item.name}」を削除しますか?`)) return;
+        LM.set(ROUTE_PRESET_KEY, getRoutePresets().filter((p) => p.id !== item.id));
+        LM.syncFirebase();
+        renderPresetList();
+      });
+      row.append(info, remove);
+      presetList.appendChild(row);
+    });
+  }
+
+  presetForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    saveRoutePreset();
+  });
+  renderPresetList();
+
 
   function escapeHtml(str) {
     const div = document.createElement('div');
