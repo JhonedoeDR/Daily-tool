@@ -16,6 +16,7 @@ const LM = {};
  * lm_events        : イベント [{id, name, start, end, target, current, unit}]
  * lm_wishlist      : 欲しいものリスト [{id, name, category, price, url, desire, planThisMonth, purchased, memo}]
  * -------------------------------------------- */
+
 LM.KEYS = {
   SCHEDULES: 'lm_schedules',
   BELONGING_SETS: 'lm_belongingSets',
