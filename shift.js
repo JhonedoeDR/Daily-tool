@@ -1343,7 +1343,9 @@
       markers.className = 'hs-calendar-markers';
       events.slice(0, 4).forEach((item) => {
         const marker = document.createElement('span');
-        marker.className = `hs-calendar-marker${item.kind === 'class' ? ' is-class' : ' is-shift'}${item.isExam ? ' is-exam' : ''}`;
+        const registered = item.kind === 'class' &&
+          (item.entries || [item]).some((entry) => entry.scheduleRegistered === true);
+        marker.className = `hs-calendar-marker${item.kind === 'class' ? ' is-class' : ' is-shift'}${item.isExam ? ' is-exam' : ''}${registered ? ' is-registered' : ''}`;
         marker.setAttribute('aria-hidden', 'true');
         markers.appendChild(marker);
       });

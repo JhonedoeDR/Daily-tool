@@ -1708,6 +1708,9 @@ body {
 .hs-calendar-marker.is-exam {
   background: var(--accent);
 }
+.hs-calendar-marker.is-registered {
+  background: var(--accent-soft);
+}
 .hs-calendar-marker.is-shift {
   background: #4f8b68;
 }
