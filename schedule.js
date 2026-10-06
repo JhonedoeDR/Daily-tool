@@ -236,7 +236,9 @@
           <span class="lm-schedule-time">${LM.formatDateHeader(s.date).slice(0, -3)} ${s.start}</span>
           <span>${escapeHtml(s.name)}${linked ? '<small class="lm-schedule-source">履修・シフトから反映</small>' : ''}</span>
         </span>
-        ${linked ? '' : `<span style="display:flex; gap:6px;">
+        ${linked ? `<span style="display:flex; gap:6px;">
+          <button type="button" data-route-settings="${s.id}" class="lm-btn secondary" style="padding:6px 10px; font-size:12px;">逆算設定</button>
+        </span>` : `<span style="display:flex; gap:6px;">
           <button type="button" data-edit="${s.id}" class="lm-btn secondary" style="padding:6px 10px; font-size:12px;">編集</button>
           <button type="button" data-delete="${s.id}" class="lm-btn secondary" style="padding:6px 10px; font-size:12px;">削除</button>
         </span>`}
@@ -337,10 +339,12 @@
       openScheduleListModal();
       return;
     }
-    const editId = e.target.dataset.edit;
-    const deleteId = e.target.dataset.delete;
+    const routeSettingsId = e.target.closest('[data-route-settings]')?.dataset.routeSettings;
+    const editId = e.target.closest('[data-edit]')?.dataset.edit;
+    const deleteId = e.target.closest('[data-delete]')?.dataset.delete;
     const confirmId = e.target.closest('[data-confirm]') ? e.target.closest('[data-confirm]').dataset.confirm : null;
-    if (editId) startEdit(editId);
+    if (routeSettingsId) openLinkedRouteSettings(routeSettingsId);
+    else if (editId) startEdit(editId);
     else if (deleteId) {
       if (!confirm('この予定を削除しますか?')) return;
       const schedules = LM.get(LM.KEYS.SCHEDULES, []).filter((s) => s.id !== deleteId);
@@ -350,6 +354,137 @@
     } else if (confirmId) {
       showConfirm(confirmId);
     }
+  }
+
+  function openLinkedRouteSettings(id) {
+    const schedule = LM.get(LM.KEYS.SCHEDULES, []).find((item) => item.id === id && item.autoSource === 'shift');
+    if (!schedule) {
+      LM.showToast('履修・シフトの連携予定が見つかりません', 'error');
+      return;
+    }
+
+    const form = document.createElement('form');
+    form.className = 'hs-edit-form';
+    const presetField = document.createElement('div');
+    presetField.className = 'lm-field';
+    const presetLabel = document.createElement('label');
+    presetLabel.htmlFor = 'linked-route-preset';
+    presetLabel.textContent = '逆算プリセット';
+    const preset = document.createElement('select');
+    preset.id = presetLabel.htmlFor;
+    [
+      ['', 'プリセットなし'],
+      ['car', '車'],
+      ['itsukaichi', '五日市'],
+      ['nishihiroshima', '西広島'],
+      ['custom', '個別設定'],
+    ].forEach(([value, label]) => {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = label;
+      preset.appendChild(option);
+    });
+    presetField.append(presetLabel, preset);
+    form.appendChild(presetField);
+
+    const inputs = {};
+    [
+      ['移動時間(分)', 'travelMin', schedule.travelMin],
+      ['準備時間(分)', 'prepMin', schedule.prepMin],
+      ['何分前に到着したいか', 'arriveBeforeMin', schedule.arriveBeforeMin],
+    ].forEach(([labelText, key, value]) => {
+      const field = document.createElement('div');
+      field.className = 'lm-field';
+      const label = document.createElement('label');
+      label.textContent = labelText;
+      const input = document.createElement('input');
+      input.type = 'number';
+      input.min = '0';
+      input.inputMode = 'numeric';
+      input.value = String(Number(value) || 0);
+      input.name = key;
+      field.append(label, input);
+      form.appendChild(field);
+      inputs[key] = input;
+    });
+
+    const presetByName = { 車: 'car', 五日市: 'itsukaichi', 西広島: 'nishihiroshima' };
+    preset.value = presetByName[schedule.routePreset] ||
+      (Number(schedule.travelMin) || Number(schedule.prepMin) || Number(schedule.arriveBeforeMin) ? 'custom' : '');
+    const presetValues = {
+      car: { routePreset: '車', travelMin: 20, prepMin: 40, arriveBeforeMin: 10 },
+      itsukaichi: { routePreset: '五日市', travelMin: 70, prepMin: 30, arriveBeforeMin: 10 },
+      nishihiroshima: { routePreset: '西広島', travelMin: 45, prepMin: 40, arriveBeforeMin: 10 },
+      custom: { routePreset: '個別設定' },
+      '': { routePreset: '' },
+    };
+    const applyPreset = () => {
+      const values = presetValues[preset.value];
+      if (preset.value === 'custom') return;
+      inputs.travelMin.value = values.travelMin || 0;
+      inputs.prepMin.value = values.prepMin || 0;
+      inputs.arriveBeforeMin.value = values.arriveBeforeMin || 0;
+    };
+    preset.addEventListener('change', applyPreset);
+    Object.values(inputs).forEach((input) => {
+      input.addEventListener('input', () => {
+        if (preset.value !== 'custom') preset.value = 'custom';
+      });
+    });
+
+    const actions = document.createElement('div');
+    actions.className = 'hs-template-form-actions';
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'lm-btn secondary';
+    cancel.textContent = 'キャンセル';
+    cancel.addEventListener('click', LM.closeModal);
+    const save = document.createElement('button');
+    save.type = 'submit';
+    save.className = 'lm-btn';
+    save.textContent = '保存';
+    actions.append(cancel, save);
+    form.appendChild(actions);
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const shifts = LM.get(LM.KEYS.SHIFTS, []);
+      const source = shifts.find((shift) => shift.id === schedule.sourceShiftId) ||
+        findLinkedShiftSource(shifts, schedule);
+      if (!source) {
+        LM.showToast('元の履修・シフト予定が見つかりません', 'error');
+        return;
+      }
+      const values = presetValues[preset.value];
+      const sourceIndex = shifts.findIndex((shift) => shift.id === source.id);
+      shifts[sourceIndex] = {
+        ...source,
+        routePreset: values.routePreset,
+        travelMin: Math.max(0, Number(inputs.travelMin.value) || 0),
+        prepMin: Math.max(0, Number(inputs.prepMin.value) || 0),
+        arriveBeforeMin: Math.max(0, Number(inputs.arriveBeforeMin.value) || 0),
+      };
+      if (!LM.set(LM.KEYS.SHIFTS, shifts)) return;
+      const syncResult = LM.syncShiftSchedules();
+      if (syncResult === 'failed') {
+        LM.showToast('逆算設定の保存に失敗しました', 'error');
+        return;
+      }
+      if (syncResult === 'updated') LM.syncFirebase();
+      LM.closeModal();
+      renderList();
+      LM.showToast('逆算設定を保存しました');
+    });
+
+    LM.openModal(`${schedule.name}の逆算設定`, form);
+  }
+
+  function findLinkedShiftSource(shifts, schedule) {
+    const kind = schedule.name === '学校' ? 'class' : 'shift';
+    const candidates = shifts
+      .filter((shift) => shift.date === schedule.date && (shift.kind === 'class' ? 'class' : 'shift') === kind)
+      .sort((a, b) => (a.start || '').localeCompare(b.start || ''));
+    return candidates.find((shift) => shift.start === schedule.start) || candidates[0] || null;
   }
 
   function escapeHtml(str) {

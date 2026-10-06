@@ -10,7 +10,7 @@ const LM = {};
  * lm_belongingSets : 持ちものセット [{id, name, items:[{id, name}]}]
  * lm_dailyChecks   : 日付ごとの持ちものチェック { "2026-09-18": { checkedItemIds: [...] } }
  * lm_todoState     : タスク状態 { dailyTasks, weeklyClears, reflected, ... }
- * lm_shifts        : 履修・シフト [{id, date, kind, name, location, start, end, breakMin, seriesId?}]
+ * lm_shifts        : 履修・シフト [{id, date, kind, name, location, start, end, breakMin, seriesId?, travelMin?, prepMin?, arriveBeforeMin?, routePreset?}]
  * lm_shiftTemplates: 履修・シフトの予定テンプレート [{id, kind, name}]
  * lm_wageSettings  : 給与設定 {hourlyWage, transportFee}
  * lm_events        : イベント [{id, name, start, end, target, current, unit}]
@@ -72,6 +72,7 @@ LM.syncShiftSchedules = function () {
       const [date, kind] = key.split(':');
       return {
         id: `shift-projection-${kind}-${date}`,
+        sourceShiftId: shift.id,
         date,
         name: kind === 'class' ? '学校' : 'バイト',
         start: shift.start,

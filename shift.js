@@ -648,13 +648,13 @@
         location.textContent = item.location;
         detail.appendChild(location);
       }
-        if (item.routePreset) {
-          const route = document.createElement('span');
-          route.className = 'hs-day-route';
-          route.textContent = `逆算: ${item.routePreset}`;
-          detail.appendChild(route);
-        }
-        if (item.kind !== 'class') {
+      if (item.routePreset) {
+        const route = document.createElement('span');
+        route.className = 'hs-day-route';
+        route.textContent = `逆算: ${item.routePreset}`;
+        detail.appendChild(route);
+      }
+      if (item.kind !== 'class') {
         const payLabel = document.createElement('span');
         payLabel.className = 'hs-day-pay';
         payLabel.textContent = item.start && item.end
@@ -724,36 +724,6 @@
     addField('終了時刻(任意)', 'end', 'time', item.end);
     addField('場所(任意)', 'location', 'text', item.location, { maxlength: '80' });
 
-    const presetField = document.createElement('div');
-    presetField.className = 'lm-field';
-    const presetLabel = document.createElement('label');
-    presetLabel.htmlFor = 'shift-edit-preset';
-    presetLabel.textContent = '逆算プリセット(日ごとに設定)';
-    const presetSelect = document.createElement('select');
-    presetSelect.id = 'shift-edit-preset';
-    [
-      ['', 'プリセットなし'],
-      ['car', '車'],
-      ['itsukaichi', '五日市'],
-      ['nishihiroshima', '西広島'],
-      ['custom', '個別設定'],
-    ].forEach(([value, label]) => {
-      const option = document.createElement('option');
-      option.value = value;
-      option.textContent = label;
-      presetSelect.appendChild(option);
-    });
-    presetField.append(presetLabel, presetSelect);
-    form.appendChild(presetField);
-
-    const route = item.routePreset || '';
-    const presetKeys = { 車: 'car', 五日市: 'itsukaichi', 西広島: 'nishihiroshima' };
-    const currentPreset = presetKeys[route] || (item.travelMin || item.prepMin || item.arriveBeforeMin ? 'custom' : '');
-    presetSelect.value = currentPreset;
-    addField('移動時間(分)', 'travelMin', 'number', Number(item.travelMin) || 0, { min: '0', inputmode: 'numeric' });
-    addField('準備時間(分)', 'prepMin', 'number', Number(item.prepMin) || 0, { min: '0', inputmode: 'numeric' });
-    addField('到着希望(何分前)', 'arriveBeforeMin', 'number', Number(item.arriveBeforeMin) || 0, { min: '0', inputmode: 'numeric' });
-
     const belongingField = document.createElement('fieldset');
     belongingField.className = 'lm-field hs-edit-belongings';
     const belongingLegend = document.createElement('legend');
@@ -797,19 +767,6 @@
     actions.append(cancel, save);
     form.appendChild(actions);
 
-    presetSelect.addEventListener('change', () => {
-      const values = getSchoolPresetData(presetSelect.value);
-      if (presetSelect.value === 'custom') return;
-      fields.travelMin.value = values.travelMin;
-      fields.prepMin.value = values.prepMin;
-      fields.arriveBeforeMin.value = values.arriveBeforeMin;
-    });
-    ['travelMin', 'prepMin', 'arriveBeforeMin'].forEach((name) => {
-      fields[name].addEventListener('input', () => {
-        if (presetSelect.value !== 'custom') presetSelect.value = 'custom';
-      });
-    });
-
     form.addEventListener('submit', (event) => {
       event.preventDefault();
       if (!fields.name.value.trim()) {
@@ -828,7 +785,6 @@
         LM.closeModal();
         return;
       }
-      const presetData = getSchoolPresetData(presetSelect.value);
       shifts[index] = {
         ...shifts[index],
         name: fields.name.value.trim(),
@@ -836,10 +792,6 @@
         start: fields.start.value,
         end: fields.end.value,
         location: fields.location.value.trim(),
-        routePreset: presetData.routePreset,
-        travelMin: Math.max(0, Number(fields.travelMin.value) || 0),
-        prepMin: Math.max(0, Number(fields.prepMin.value) || 0),
-        arriveBeforeMin: Math.max(0, Number(fields.arriveBeforeMin.value) || 0),
         belongingSetIds: [...belongingList.querySelectorAll('input:checked')].map((input) => input.value),
       };
       if (!LM.set(LM.KEYS.SHIFTS, shifts)) return;
@@ -900,16 +852,6 @@
     const period = addRepeat.value === 'weekly' ? '週あたり' : '1回分';
     const countLabel = addRepeat.value === 'weekly' ? `${shifts.length}曜日分` : '勤務分';
     addPreview.textContent = `見込み給与(${countLabel}): ¥${pay.toLocaleString()} / ${period}`;
-  }
-
-  function getSchoolPresetData(value) {
-    const presets = {
-      car: { routePreset: '車', travelMin: 20, prepMin: 40, arriveBeforeMin: 10 },
-      itsukaichi: { routePreset: '五日市', travelMin: 70, prepMin: 30, arriveBeforeMin: 10 },
-      nishihiroshima: { routePreset: '西広島', travelMin: 45, prepMin: 40, arriveBeforeMin: 10 },
-      custom: { routePreset: '個別設定' },
-    };
-    return presets[value] || { routePreset: '', travelMin: 0, prepMin: 0, arriveBeforeMin: 0 };
   }
 
   function groupByDate(items) {
