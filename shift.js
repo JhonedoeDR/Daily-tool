@@ -1073,6 +1073,7 @@
   function renderCalendar() {
     const year = shownMonth.getFullYear();
     const month = shownMonth.getMonth();
+    calendarTitle.textContent = `${year}年${month + 1}月`;
     const firstWeekday = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const cellCount = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
