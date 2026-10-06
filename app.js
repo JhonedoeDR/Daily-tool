@@ -26,6 +26,7 @@ LM.KEYS = {
   WAGE_SETTINGS: 'lm_wageSettings',
   EVENTS: 'lm_events',
   WISHLIST: 'lm_wishlist',
+  ROUTE_PRESETS: 'lm_routePresets',
 };
 
 /* ---------- 汎用 get/set ---------- */
