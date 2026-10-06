@@ -41,7 +41,7 @@
   const dayList = document.getElementById('day-list');
   const monthLabel = document.getElementById('month-label');
   const monthSummary = document.getElementById('month-summary');
-  const calendarToggle = document.getElementById('calendar-toggle');
+  const classRegistrationFilter = document.getElementById('class-registration-filter');
   const templatePager = document.getElementById('template-pager');
   const templateListAll = document.getElementById('template-list-all');
   const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -53,6 +53,7 @@
   let editingTemplateId = null;
   let activeSubjectFilter = '';
   let activeSectionFilter = '';
+  let activeRegistrationFilter = '';
   let addUndoId = null;
   let addUndoIds = [];
   let placementDate = '';
@@ -118,6 +119,10 @@
   classSubjectFilter.addEventListener('change', () => {
     activeSubjectFilter = classSubjectFilter.value;
     activeSectionFilter = '';
+    renderAll();
+  });
+  classRegistrationFilter.addEventListener('change', () => {
+    activeRegistrationFilter = classRegistrationFilter.value;
     renderAll();
   });
   classSectionFilter.addEventListener('change', () => {
@@ -243,14 +248,6 @@
   document.getElementById('calendar-prev').addEventListener('click', () => moveMonth(-1));
   document.getElementById('calendar-next').addEventListener('click', () => moveMonth(1));
   document.getElementById('today-button').addEventListener('click', goToToday);
-  calendarToggle.addEventListener('click', () => {
-    const showCalendar = calendarGrid.hidden;
-    calendarGrid.hidden = !showCalendar;
-    dateStrip.hidden = showCalendar;
-    calendarToggle.textContent = showCalendar ? '日付スライダー' : 'カレンダー';
-    calendarToggle.setAttribute('aria-pressed', String(showCalendar));
-    if (!showCalendar) centerSelectedDateInStrip();
-  });
   calendarGrid.addEventListener('click', (event) => {
     const button = event.target.closest('[data-date]');
     if (button) handleDateTap(button.dataset.date);
@@ -969,6 +966,7 @@
       classSubjectFilter.appendChild(option);
     });
     classSubjectFilter.value = activeSubjectFilter;
+    classRegistrationFilter.value = activeRegistrationFilter;
 
     const term = getSchoolTerm(selectedDate);
     const selectedTemplate = templates.find((entry) => entry.id === activeSubjectFilter);
@@ -982,48 +980,48 @@
         if (getSkippedSections(selectedTemplate, selectedDate).includes(section)) continue;
         const option = document.createElement('option');
         option.value = String(section);
-        const sectionCount = activeSubjectFilter
-          ? LM.get(LM.KEYS.SHIFTS, []).filter((item) => {
-            const matchesSubject = item.templateId === activeSubjectFilter ||
-              (!item.templateId && item.name === templates.find((entry) => entry.id === activeSubjectFilter)?.name);
-            return item.kind === 'class' &&
-              !item.isExam &&
-              matchesSubject &&
-                getSchoolTerm(item.date)?.key === term.key &&
-                getClassUnitInfo(item)?.section === section;
-            }).length
-          : 0;
+        const sectionCount = LM.get(LM.KEYS.SHIFTS, []).filter((item) => {
+          const matchesSubject = !activeSubjectFilter || item.templateId === activeSubjectFilter ||
+            (!item.templateId && item.name === selectedTemplate?.name);
+          return item.kind === 'class' &&
+            !item.isExam &&
+            matchesSubject &&
+            getSchoolTerm(item.date)?.key === term.key &&
+            getClassUnitInfo(item)?.section === section;
+        }).length;
         option.textContent = `区分${section} (${sectionCount})`;
         classSectionFilter.appendChild(option);
       }
-      if (activeSubjectFilter) {
-        const examCount = LM.get(LM.KEYS.SHIFTS, []).filter((item) => {
-          return item.kind === 'class' &&
-            item.isExam &&
-            getSchoolTerm(item.date)?.key === term.key &&
-            (item.templateId === activeSubjectFilter || (!item.templateId && item.name === selectedTemplate.name));
-        }).length;
-        const examOption = document.createElement('option');
-        examOption.value = 'exam';
-        examOption.textContent = `試験 (${examCount})`;
-        classSectionFilter.appendChild(examOption);
-      }
+      const examCount = LM.get(LM.KEYS.SHIFTS, []).filter((item) => {
+        const matchesSubject = !activeSubjectFilter || item.templateId === activeSubjectFilter ||
+          (!item.templateId && item.name === selectedTemplate?.name);
+        return item.kind === 'class' &&
+          item.isExam &&
+          getSchoolTerm(item.date)?.key === term.key &&
+          matchesSubject;
+      }).length;
+      const examOption = document.createElement('option');
+      examOption.value = 'exam';
+      examOption.textContent = `試験 (${examCount})`;
+      classSectionFilter.appendChild(examOption);
     }
-    if (!term || !activeSubjectFilter) activeSectionFilter = '';
+    if (!term) activeSectionFilter = '';
     if (![...classSectionFilter.options].some((option) => option.value === activeSectionFilter)) {
       activeSectionFilter = '';
     }
     classSectionFilter.value = activeSectionFilter;
-    classSectionFilter.disabled = !activeSubjectFilter || !term;
+    classSectionFilter.disabled = !term;
   }
 
   function filterClassEvents(events) {
-    if (!activeSubjectFilter) return events;
-    const selectedTemplate = getTemplates().find((template) => template.id === activeSubjectFilter);
     return events.filter((item) => {
-      const matchesSubject = item.templateId === activeSubjectFilter ||
+      if (item.kind !== 'class') return false;
+      const selectedTemplate = getTemplates().find((template) => template.id === activeSubjectFilter);
+      const matchesSubject = !activeSubjectFilter || item.templateId === activeSubjectFilter ||
         (!item.templateId && item.name === selectedTemplate?.name);
-      if (item.kind !== 'class' || !matchesSubject) return false;
+      if (!matchesSubject) return false;
+      if (activeRegistrationFilter === 'registered' && item.scheduleRegistered !== true) return false;
+      if (activeRegistrationFilter === 'unregistered' && item.scheduleRegistered === true) return false;
       if (!activeSectionFilter) return true;
       if (activeSectionFilter === 'exam') return item.isExam === true;
       return String(getClassUnitInfo(item)?.section || '') === activeSectionFilter;

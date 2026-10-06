@@ -17,7 +17,6 @@
       <h1 class="lm-date-header">履修・シフト</h1>
       <div class="hs-calendar-controls">
         <button type="button" class="lm-btn secondary" id="today-button">今日</button>
-        <button type="button" class="lm-btn secondary" id="calendar-toggle" aria-pressed="false">カレンダー</button>
       </div>
     </header>
 
@@ -27,16 +26,22 @@
         <strong id="calendar-title"></strong>
         <button type="button" class="lm-btn secondary" id="calendar-next" aria-label="次の月">›</button>
       </div>
-      <div class="hs-date-strip" id="date-strip" aria-label="日付を選択"></div>
-      <div class="hs-calendar-grid" id="calendar-grid" aria-label="月間カレンダー" hidden></div>
+      <div class="hs-date-strip" id="date-strip" aria-label="日付を選択" hidden></div>
+      <div class="hs-calendar-grid" id="calendar-grid" aria-label="月間カレンダー"></div>
       <div class="hs-day-heading" id="selected-date-label"></div>
       <div class="hs-class-filters">
         <label for="class-subject-filter">科目</label>
         <select id="class-subject-filter">
           <option value="">すべて</option>
         </select>
+        <label for="class-registration-filter">登録</label>
+        <select id="class-registration-filter">
+          <option value="">すべて</option>
+          <option value="registered">登録済み</option>
+          <option value="unregistered">未登録</option>
+        </select>
         <label for="class-section-filter">区分</label>
-        <select id="class-section-filter" disabled>
+        <select id="class-section-filter">
           <option value="">すべて</option>
         </select>
       </div>
