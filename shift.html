@@ -11,19 +11,21 @@
   <meta name="theme-color" content="#faf8f3" />
 </head>
 <body>
-  <div class="lm-page">
+  <div class="lm-page hs-page">
     <a class="lm-back-link" href="./index.html">← 今日のページに戻る</a>
-    <h1 class="lm-date-header">履修・シフト</h1>
+    <header class="hs-page-toolbar">
+      <h1 class="lm-date-header">履修・シフト</h1>
+      <div class="hs-calendar-controls">
+        <button type="button" class="lm-btn secondary" id="today-button">今日</button>
+        <button type="button" class="lm-btn secondary" id="calendar-toggle" aria-pressed="false">カレンダー</button>
+      </div>
+    </header>
 
     <section class="lm-section hs-agenda" style="border-top:none;">
       <div class="hs-calendar-nav">
         <button type="button" class="lm-btn secondary" id="calendar-prev" aria-label="前の月">‹</button>
         <strong id="calendar-title"></strong>
-        <div class="hs-calendar-controls">
-          <button type="button" class="lm-btn secondary" id="today-button">今日</button>
-          <button type="button" class="lm-btn secondary" id="calendar-toggle" aria-pressed="false">カレンダー</button>
-          <button type="button" class="lm-btn secondary" id="calendar-next" aria-label="次の月">›</button>
-        </div>
+        <button type="button" class="lm-btn secondary" id="calendar-next" aria-label="次の月">›</button>
       </div>
       <div class="hs-date-strip" id="date-strip" aria-label="日付を選択"></div>
       <div class="hs-calendar-grid" id="calendar-grid" aria-label="月間カレンダー" hidden></div>
@@ -46,10 +48,6 @@
             <label for="add-start-date">開始日</label>
             <input id="add-start-date" type="date" required />
           </div>
-          <div class="lm-field hs-repeat-fields" hidden>
-            <label for="add-until-date">くり返し終了日</label>
-            <input id="add-until-date" type="date" />
-          </div>
           <div class="lm-field hs-once-fields">
             <label>時間(任意)</label>
             <div class="hs-time-range">
@@ -70,6 +68,10 @@
               <label><input type="checkbox" name="add-weekday" value="6" /><span>土</span><input type="time" data-weekday-start="6" aria-label="土曜日の開始時刻" disabled /><span>〜</span><input type="time" data-weekday-end="6" aria-label="土曜日の終了時刻" disabled /></label>
             </div>
           </fieldset>
+          <div class="lm-field hs-repeat-fields" hidden>
+            <label for="add-until-date">くり返し終了日</label>
+            <input id="add-until-date" type="date" />
+          </div>
           <div class="lm-field">
             <label for="add-location">場所(任意)</label>
             <input id="add-location" type="text" maxlength="80" />
@@ -83,26 +85,6 @@
         </form>
       </details>
       <div id="day-list"></div>
-    </section>
-
-    <section class="lm-section">
-      <div class="lm-section-title">
-        今月の給与見込み
-        <span class="lm-count" id="month-label"></span>
-      </div>
-      <div id="month-summary" class="lm-shift-box"></div>
-    </section>
-
-    <section class="lm-section">
-      <div class="lm-section-title">給与設定</div>
-      <div class="lm-field">
-        <label for="f-wage">時給(円)</label>
-        <input id="f-wage" type="number" inputmode="numeric" pattern="[0-9]*" min="0" />
-      </div>
-      <div class="lm-field">
-        <label for="f-transport">交通費(1勤務あたり・円)</label>
-        <input id="f-transport" type="number" inputmode="numeric" pattern="[0-9]*" min="0" />
-      </div>
     </section>
 
     <section class="lm-section">
@@ -125,6 +107,26 @@
         </div>
         <button type="submit" class="lm-btn">テンプレートを保存</button>
       </form>
+    </section>
+
+    <section class="lm-section">
+      <div class="lm-section-title">
+        今月の給与見込み
+        <span class="lm-count" id="month-label"></span>
+      </div>
+      <div id="month-summary" class="lm-shift-box"></div>
+    </section>
+
+    <section class="lm-section">
+      <div class="lm-section-title">給与設定</div>
+      <div class="lm-field">
+        <label for="f-wage">時給(円)</label>
+        <input id="f-wage" type="number" inputmode="numeric" pattern="[0-9]*" min="0" />
+      </div>
+      <div class="lm-field">
+        <label for="f-transport">交通費(1勤務あたり・円)</label>
+        <input id="f-transport" type="number" inputmode="numeric" pattern="[0-9]*" min="0" />
+      </div>
     </section>
 
     <div id="nav-container"></div>

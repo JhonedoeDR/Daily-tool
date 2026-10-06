@@ -1928,3 +1928,103 @@ body {
 .hm-today-shift .lm-shift-pay {
   font-size: 13px;
 }
+
+.hs-page-toolbar {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: -10px -4px 4px;
+  padding: 8px 4px;
+  background: var(--paper);
+}
+.hs-page-toolbar .lm-date-header {
+  min-width: 0;
+  margin: 0;
+  font-size: 22px;
+  white-space: nowrap;
+}
+.hs-page-toolbar .hs-calendar-controls {
+  flex: 0 0 auto;
+}
+.hs-calendar-controls .lm-btn {
+  padding: 7px 9px;
+}
+.hs-calendar-nav {
+  max-width: 260px;
+  margin: 0 auto 6px;
+}
+.hs-calendar-nav .lm-btn {
+  min-width: 36px;
+  padding: 6px 10px;
+}
+.hs-date-strip {
+  gap: 5px;
+  padding-top: 2px;
+  padding-bottom: 6px;
+}
+.hs-date-chip {
+  flex-basis: 48px;
+  min-height: 52px;
+  border-radius: 10px;
+}
+.hs-date-chip strong {
+  font-size: 16px;
+}
+.hs-day-heading {
+  margin: 8px 0 4px;
+}
+.hs-add-details {
+  margin: 4px 0;
+}
+.hs-add-details > summary {
+  padding: 8px 12px;
+}
+.hs-inline-form,
+.hs-template-form {
+  margin-top: 8px;
+  padding: 8px;
+}
+.hs-inline-form .lm-field,
+.hs-template-form .lm-field {
+  gap: 3px;
+  margin-bottom: 8px;
+}
+.hs-inline-form .lm-field input,
+.hs-inline-form .lm-field select,
+.hs-template-form .lm-field input,
+.hs-template-form .lm-field select {
+  padding: 8px 10px;
+}
+.hs-weekday-schedule {
+  gap: 5px;
+}
+.hs-weekday-schedule input[type='time'] {
+  padding-block: 6px;
+}
+.hs-day-item {
+  padding: 7px 0;
+}
+.hs-template-row {
+  padding: 7px 0;
+}
+.lm-page.hs-page > .lm-section {
+  padding-top: 10px;
+  padding-bottom: 12px;
+}
+
+@media (max-width: 360px) {
+  .hs-page-toolbar .lm-date-header {
+    font-size: 19px;
+  }
+  .hs-calendar-controls {
+    gap: 4px;
+  }
+  .hs-page-toolbar .hs-calendar-controls .lm-btn {
+    padding-inline: 7px;
+    font-size: 11px;
+  }
+}

@@ -30,7 +30,6 @@
 
   let selectedDate = LM.todayStr();
   let shownMonth = new Date(`${selectedDate}T00:00:00`);
-  let scrollTimer;
 
   loadWageSettings();
   document.getElementById('add-start-date').value = selectedDate;
@@ -51,6 +50,10 @@
     templateForm.hidden = !templateForm.hidden;
     templateToggle.setAttribute('aria-expanded', String(!templateForm.hidden));
     if (!templateForm.hidden) templateName.focus();
+  });
+  addDetails.addEventListener('toggle', () => {
+    const summary = addDetails.querySelector('summary');
+    summary.textContent = addDetails.open ? '閉じる' : '＋ 予定を追加';
   });
   templateForm.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -119,20 +122,16 @@
     dateStrip.hidden = showCalendar;
     calendarToggle.textContent = showCalendar ? '日付スライダー' : 'カレンダー';
     calendarToggle.setAttribute('aria-pressed', String(showCalendar));
-    if (!showCalendar) updateDateStripSelection(true);
+    if (!showCalendar) centerSelectedDateInStrip();
   });
   calendarGrid.addEventListener('click', (event) => {
     const button = event.target.closest('[data-date]');
-    if (button) selectDate(button.dataset.date, false);
+    if (button) selectDate(button.dataset.date);
   });
   dateStrip.addEventListener('click', (event) => {
     const button = event.target.closest('[data-date]');
-    if (button) selectDate(button.dataset.date, true);
+    if (button) selectDate(button.dataset.date);
   });
-  dateStrip.addEventListener('scroll', () => {
-    clearTimeout(scrollTimer);
-    scrollTimer = setTimeout(selectCenteredDate, 100);
-  }, { passive: true });
 
   dayList.addEventListener('click', (event) => {
     const button = event.target.closest('[data-delete-id], [data-delete-series]');
@@ -342,7 +341,7 @@
     renderAll();
   }
 
-  function selectDate(date, center) {
+  function selectDate(date) {
     selectedDate = date;
     updateAddDateDefaults();
     const selected = new Date(`${date}T00:00:00`);
@@ -353,33 +352,23 @@
     }
     renderDayList();
     renderCalendarSelection();
-    updateDateStripSelection(center);
+    updateDateStripSelection();
   }
 
-  function selectCenteredDate() {
-    const centerX = dateStrip.getBoundingClientRect().left + dateStrip.clientWidth / 2;
-    const buttons = [...dateStrip.querySelectorAll('[data-date]')];
-    if (buttons.length === 0) return;
-    const closest = buttons.reduce((best, button) => {
-      const center = button.getBoundingClientRect().left + button.offsetWidth / 2;
-      const distance = Math.abs(center - centerX);
-      return distance < best.distance ? { button, distance } : best;
-    }, { button: buttons[0], distance: Infinity }).button;
-    if (closest.dataset.date !== selectedDate) selectDate(closest.dataset.date, false);
-  }
-
-  function updateDateStripSelection(center) {
+  function updateDateStripSelection() {
     dateStrip.querySelectorAll('[data-date]').forEach((button) => {
-      const active = button.dataset.date === selectedDate;
-      button.setAttribute('aria-pressed', String(active));
-      if (active && center) {
-        const stripLeft = dateStrip.getBoundingClientRect().left;
-        const buttonLeft = button.getBoundingClientRect().left;
-        const left = dateStrip.scrollLeft + buttonLeft - stripLeft
-          - (dateStrip.clientWidth - button.offsetWidth) / 2;
-        dateStrip.scrollTo({ left, behavior: 'smooth' });
-      }
+      button.setAttribute('aria-pressed', String(button.dataset.date === selectedDate));
     });
+  }
+
+  function centerSelectedDateInStrip() {
+    const active = dateStrip.querySelector(`[data-date="${selectedDate}"]`);
+    if (!active) return;
+    const stripLeft = dateStrip.getBoundingClientRect().left;
+    const buttonLeft = active.getBoundingClientRect().left;
+    const left = dateStrip.scrollLeft + buttonLeft - stripLeft
+      - (dateStrip.clientWidth - active.offsetWidth) / 2;
+    dateStrip.scrollTo({ left, behavior: 'smooth' });
   }
 
   function updateAddDateDefaults() {
@@ -419,7 +408,7 @@
       if (date === LM.todayStr()) button.classList.add('is-today');
       dateStrip.appendChild(button);
     }
-    requestAnimationFrame(() => updateDateStripSelection(true));
+    requestAnimationFrame(centerSelectedDateInStrip);
   }
 
   function renderCalendar() {
