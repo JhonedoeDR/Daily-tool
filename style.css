@@ -1632,8 +1632,8 @@ body {
 .hs-date-strip {
   display: flex;
   overflow-x: auto;
-  gap: 6px;
-  padding: 4px max(12px, calc(50% - 28px)) 10px;
+  gap: 4px;
+  padding: 4px 0 8px;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
@@ -1643,24 +1643,28 @@ body {
 }
 .hs-date-chip {
   display: flex;
-  flex: 0 0 56px;
-  min-height: 62px;
+  flex: 0 0 44px;
+  min-height: 48px;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 1px;
   border: 1px solid var(--paper-line);
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--paper);
   color: var(--text-soft);
   font: inherit;
+  font-size: 10px;
+  line-height: 1;
   scroll-snap-align: center;
   cursor: pointer;
+  transition: all 0.12s ease;
 }
 .hs-date-chip strong {
   color: var(--text);
-  font-size: 17px;
+  font-size: 13px;
   line-height: 1;
+  font-weight: 700;
 }
 .hs-date-chip[aria-pressed='true'] {
   border-color: var(--accent);
@@ -1669,6 +1673,19 @@ body {
 }
 .hs-date-chip.is-today strong {
   color: var(--accent);
+}
+.hs-date-chip .hs-date-indicator {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 8px;
+  line-height: 1;
+  padding: 0 3px;
 }
 .hs-agenda[hidden],
 .hs-calendar-grid[hidden],
@@ -2026,17 +2043,17 @@ body {
   padding: 6px 10px;
 }
 .hs-date-strip {
-  gap: 5px;
+  gap: 4px;
   padding-top: 2px;
   padding-bottom: 6px;
 }
 .hs-date-chip {
-  flex-basis: 48px;
-  min-height: 52px;
-  border-radius: 10px;
+  flex-basis: 42px;
+  min-height: 48px;
+  border-radius: 9px;
 }
 .hs-date-chip strong {
-  font-size: 16px;
+  font-size: 13px;
 }
 .hs-day-heading {
   margin: 8px 0 4px;
@@ -2120,14 +2137,14 @@ body {
   color: var(--text);
 }
 .hs-date-chip {
-  gap: 2px;
-  padding: 4px 2px 3px;
+  gap: 1px;
+  padding: 3px 2px 2px;
 }
 .hs-date-chip strong {
-  font-size: 15px;
+  font-size: 13px;
 }
 .hs-date-chip > span:first-child {
-  font-size: 10px;
+  font-size: 9px;
   line-height: 1;
 }
 .hs-date-indicator {
@@ -2135,8 +2152,8 @@ body {
   height: 5px;
   border-radius: 50%;
   background: var(--accent);
-  color: var(--text-soft);
-  font-size: 8px;
+  color: #fff;
+  font-size: 7px;
   line-height: 1;
   text-align: center;
 }
@@ -2144,8 +2161,9 @@ body {
   width: auto;
   height: auto;
   min-width: 12px;
-  padding: 2px;
-  background: var(--paper-line);
+  padding: 2px 3px;
+  background: var(--accent);
+  color: #fff;
 }
 .hs-template-chips {
   display: flex;
