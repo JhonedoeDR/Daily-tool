@@ -43,6 +43,10 @@
   };
   const presetList = document.getElementById('preset-list');
   const ROUTE_PRESET_KEY = LM.KEYS.ROUTE_PRESETS || 'lm_routePresets';
+  const presetTitle = document.getElementById('preset-form-title');
+  const presetCancelBtn = document.getElementById('preset-cancel-edit');
+  let editingPresetId = null;
+
 
   let editingId = null;
   let currentStep = 1;
@@ -794,7 +798,7 @@
   deadlineCancelBtn.addEventListener('click', resetDeadlineForm);
   deadlineFields.date.value = LM.todayStr();
 
-  /* ---------- 逆算プリセット ---------- */
+    /* ---------- 逆算プリセット ---------- */
   function getRoutePresets() {
     const presets = LM.get(ROUTE_PRESET_KEY, []);
     return Array.isArray(presets) ? presets : [];
@@ -807,25 +811,49 @@
       return;
     }
     const presets = getRoutePresets();
-    if (name === '個別設定' || name === 'プリセットなし' || presets.some((item) => item.name === name)) {
+    if (name === '個別設定' || name === 'プリセットなし' ||
+        presets.some((item) => item.name === name && item.id !== editingPresetId)) {
       LM.showToast('同じ名前のプリセットがあります', 'error');
       return;
     }
-    presets.push({
-      id: LM.uid(),
+    const data = {
+      id: editingPresetId || LM.uid(),
       name,
       travelMin: Math.max(0, Number(presetFields.travel.value) || 0),
       prepMin: Math.max(0, Number(presetFields.prep.value) || 0),
       arriveBeforeMin: Math.max(0, Number(presetFields.arrive.value) || 0),
-    });
+    };
+    const idx = editingPresetId ? presets.findIndex((item) => item.id === editingPresetId) : -1;
+    if (idx !== -1) presets[idx] = data;
+    else presets.push(data);
     if (!LM.set(ROUTE_PRESET_KEY, presets)) return;
     LM.syncFirebase();
+    resetPresetForm();
+    renderPresetList();
+    LM.showToast('プリセットを保存しました');
+  }
+
+  function startPresetEdit(id) {
+    const item = getRoutePresets().find((p) => p.id === id);
+    if (!item) return;
+    editingPresetId = id;
+    presetFields.name.value = item.name;
+    presetFields.travel.value = item.travelMin || 0;
+    presetFields.prep.value = item.prepMin || 0;
+    presetFields.arrive.value = item.arriveBeforeMin || 0;
+    presetTitle.textContent = '逆算プリセットを編集';
+    presetCancelBtn.style.display = 'inline-block';
+    window.scrollTo({ top: presetPanel.offsetTop - 20, behavior: 'smooth' });
+  }
+
+  function resetPresetForm() {
+    editingPresetId = null;
     presetForm.reset();
     presetFields.travel.value = 0;
     presetFields.prep.value = 0;
     presetFields.arrive.value = 0;
-    renderPresetList();
-    LM.showToast('プリセットを保存しました');
+    presetTitle.textContent = '逆算プリセットを作成';
+    presetCancelBtn.style.display = 'none';
   }
 
   function renderPresetList() {
@@ -848,18 +876,27 @@
       const detail = document.createElement('span');
       detail.textContent = `移動 ${item.travelMin}分 ・ 準備 ${item.prepMin}分 ・ 到着希望 ${item.arriveBeforeMin}分前`;
       info.append(name, detail);
+
+      const actions = document.createElement('div');
+      actions.className = 'hs-template-actions';
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.className = 'lm-btn secondary';
+      edit.textContent = '編集';
+      edit.addEventListener('click', () => startPresetEdit(item.id));
       const remove = document.createElement('button');
       remove.type = 'button';
       remove.className = 'lm-btn secondary';
-      remove.style.cssText = 'padding:6px 10px; font-size:12px;';
       remove.textContent = '削除';
       remove.addEventListener('click', () => {
         if (!confirm(`「${item.name}」を削除しますか?`)) return;
         LM.set(ROUTE_PRESET_KEY, getRoutePresets().filter((p) => p.id !== item.id));
         LM.syncFirebase();
+        if (editingPresetId === item.id) resetPresetForm();
         renderPresetList();
       });
-      row.append(info, remove);
+      actions.append(edit, remove);
+      row.append(info, actions);
       presetList.appendChild(row);
     });
   }
@@ -868,8 +905,8 @@
     e.preventDefault();
     saveRoutePreset();
   });
+  presetCancelBtn.addEventListener('click', resetPresetForm);
   renderPresetList();
-
 
   function escapeHtml(str) {
     const div = document.createElement('div');
