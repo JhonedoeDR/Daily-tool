@@ -467,14 +467,19 @@
       name.textContent = ` ${schedule.name}`;
       const category = document.createElement('div');
       category.className = 'lm-schedule-source';
-      category.textContent = schedule.autoSource === 'shift'
+      category.textContent = schedule.kind === 'deadline' ? '締切'
+        : schedule.autoSource === 'shift'
         ? (getScheduleCategory(schedule) === 'school' ? '学校(履修・シフト)' : 'バイト(履修・シフト)')
         : 'その他(手入力)';
       info.append(date, name, category);
       const departure = document.createElement('div');
       departure.className = 'lm-schedule-departure';
-      const result = LM.calcDeparture(schedule);
-      departure.textContent = `準備開始 ${result.prepStart} ・ 出発 ${result.depart} ・ 到着目安 ${result.arrive}`;
+      if (schedule.kind === 'deadline') {
+        departure.textContent = `締切 ${schedule.start}`;
+      } else {
+        const result = LM.calcDeparture(schedule);
+        departure.textContent = `準備開始 ${result.prepStart} ・ 出発 ${result.depart} ・ 到着目安 ${result.arrive}`;
+      }
       row.append(info, departure);
       wrap.appendChild(row);
     });
