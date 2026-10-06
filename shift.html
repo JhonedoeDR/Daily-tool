@@ -55,7 +55,12 @@
               <option value="exam">試験</option>
             </select>
           </div>
-          <div class="lm-field">
+          <div class="lm-field hs-class-period-field" id="class-period-field" hidden>
+            <label>授業時限（複数選択可）</label>
+            <div id="class-period-options" class="hs-period-options"></div>
+            <small id="class-period-help">日付を選択すると、その曜日の時限が表示されます。</small>
+          </div>
+          <div class="lm-field hs-manual-time-field" id="manual-time-field">
             <label>時間(任意)</label>
             <div class="hs-time-range">
               <input id="add-start-time" type="time" aria-label="開始時刻" />
@@ -73,6 +78,7 @@
           </div>
           <div id="add-preview" class="lm-empty"></div>
           <p class="hs-add-instruction" id="add-instruction">テンプレートを選んだあと、登録したい日付をタップしてください。</p>
+          <button type="button" class="lm-btn" id="place-selected-date" disabled>この日付に登録</button>
           <button type="button" class="lm-btn secondary" id="cancel-add-mode">登録モードを終了</button>
         </form>
       </details>
@@ -101,6 +107,11 @@
           <label for="template-unit-capacity">区分ごとの最大授業数</label>
           <input id="template-unit-capacity" type="number" inputmode="numeric" min="1" placeholder="例: 3" required />
           <small>前期(4〜8月)は区分1〜8、後期(9〜2月)は区分9〜16に割り当てます。</small>
+        </div>
+        <div class="lm-field hs-template-class-only" id="template-attendance-fields">
+          <label for="template-attendance-required">必要出席日数（限数）</label>
+          <input id="template-attendance-required" type="number" inputmode="numeric" min="1" placeholder="例: 12" required />
+          <small>同じ日に複数限ある場合も、1限ごとに出席を記録します。</small>
         </div>
         <fieldset class="lm-field hs-template-class-only hs-skipped-sections" id="template-skipped-sections">
           <legend id="template-skip-section-legend"></legend>

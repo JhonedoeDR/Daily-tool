@@ -1861,6 +1861,11 @@ body {
   border-color: var(--accent);
   background: var(--accent-soft);
 }
+.hs-attendance.is-attended {
+  border-color: #4f8b68;
+  background: #e8f3eb;
+  color: #28573a;
+}
 .hs-edit {
   padding: 6px;
   font-size: 11px;
@@ -2274,6 +2279,31 @@ body {
 }
 .hs-edit-form .lm-field {
   margin-bottom: 10px;
+}
+.hs-period-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 6px;
+}
+.hs-period-option {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 5px 8px;
+  border: 1px solid var(--paper-line);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 12px;
+}
+.hs-period-option:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.hs-class-period-field small {
+  display: block;
+  margin-top: 5px;
+  color: var(--text-soft);
 }
 .hs-edit-belongings {
   display: block;

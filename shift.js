@@ -13,6 +13,11 @@
   const addDetails = document.getElementById('add-plan-details');
   const addTemplate = document.getElementById('add-template');
   const addTemplateChips = document.getElementById('add-template-chips');
+  const classPeriodField = document.getElementById('class-period-field');
+  const classPeriodOptions = document.getElementById('class-period-options');
+  const classPeriodHelp = document.getElementById('class-period-help');
+  const manualTimeField = document.getElementById('manual-time-field');
+  const placeSelectedDate = document.getElementById('place-selected-date');
   const addStartTime = document.getElementById('add-start-time');
   const addEndTime = document.getElementById('add-end-time');
   const addLocation = document.getElementById('add-location');
@@ -23,6 +28,7 @@
   const classSubjectFilter = document.getElementById('class-subject-filter');
   const classSectionFilter = document.getElementById('class-section-filter');
   const templateUnitCapacity = document.getElementById('template-unit-capacity');
+  const templateAttendanceRequired = document.getElementById('template-attendance-required');
   const templateClassFields = document.getElementById('template-class-fields');
   const templateSkipSectionList = document.getElementById('template-skip-section-list');
   const templateSkipSectionLegend = document.getElementById('template-skip-section-legend');
@@ -48,6 +54,9 @@
   let activeSubjectFilter = '';
   let activeSectionFilter = '';
   let addUndoId = null;
+  let addUndoIds = [];
+  let placementDate = '';
+  let renderedAddTemplateId = '';
 
   migrateLegacySkippedSections();
   loadWageSettings();
@@ -85,18 +94,22 @@
   document.getElementById('cancel-add-mode').addEventListener('click', () => {
     addDetails.open = false;
   });
+  placeSelectedDate.addEventListener('click', addPlanToSelectedDate);
   addUndo.addEventListener('click', (event) => {
     if (!event.target.closest('[data-undo-add]') || !addUndoId) return;
     const shifts = LM.get(LM.KEYS.SHIFTS, []);
-    const remaining = shifts.filter((item) => item.id !== addUndoId);
-    if (remaining.length === shifts.length) {
+    const removeIds = new Set(addUndoIds);
+    const updatedShifts = shifts.filter((item) => !removeIds.has(item.id));
+    if (updatedShifts.length === shifts.length) {
       LM.showToast('取り消す予定が見つかりません', 'error');
       addUndo.hidden = true;
       addUndoId = null;
+      addUndoIds = [];
       return;
     }
-    if (!LM.set(LM.KEYS.SHIFTS, remaining)) return;
+    if (!LM.set(LM.KEYS.SHIFTS, updatedShifts)) return;
     addUndoId = null;
+    addUndoIds = [];
     addUndo.hidden = true;
     syncLinkedSchedules();
     renderAll();
@@ -129,11 +142,22 @@
       templateUnitCapacity.focus();
       return;
     }
+    if (templateKind.value === 'class' &&
+        (!Number.isInteger(Number(templateAttendanceRequired.value)) ||
+         Number(templateAttendanceRequired.value) < 1 ||
+         Number(templateAttendanceRequired.value) > 1000)) {
+      LM.showToast('必要出席日数は1〜1000で入力してください', 'error');
+      templateAttendanceRequired.focus();
+      return;
+    }
     const templates = getTemplates();
     const data = {
       kind: templateKind.value,
       name,
       ...(templateKind.value === 'class' ? { unitCapacity: Number(templateUnitCapacity.value) || 1 } : {}),
+      ...(templateKind.value === 'class' ? {
+        attendanceRequired: Number(templateAttendanceRequired.value),
+      } : {}),
       ...(templateKind.value === 'class' ? {
         skippedSectionsByYear: {
           ...(templates.find((item) => item.id === editingTemplateId)?.skippedSectionsByYear || {}),
@@ -179,13 +203,26 @@
     updateAddForm();
   });
 
-  addTemplate.addEventListener('change', updateAddForm);
+  addTemplate.addEventListener('change', () => {
+    classEntryType.value = 'class';
+    updateAddForm();
+  });
   addTemplateChips.addEventListener('click', (event) => {
     const chip = event.target.closest('[data-template-chip]');
     if (!chip) return;
-    if (addTemplate.value !== chip.dataset.templateChip) classEntryType.value = 'class';
+    if (addTemplate.value !== chip.dataset.templateChip) {
+      classEntryType.value = 'class';
+      classPeriodOptions.replaceChildren();
+    }
     addTemplate.value = chip.dataset.templateChip;
     updateAddForm();
+  });
+  classEntryType.addEventListener('change', () => {
+    renderPlacementPeriods();
+    updatePlacementButton();
+    [dateStrip, calendarGrid].forEach((container) => {
+      container.querySelectorAll('[data-date]').forEach((button) => setPlacementDateStyle(button, button.dataset.date));
+    });
   });
   templatePager.addEventListener('click', (event) => {
     const button = event.target.closest('[data-template-page]');
@@ -197,7 +234,10 @@
     openTemplateListModal();
   });
   templateKind.addEventListener('change', updateTemplateKindFields);
-  addForm.addEventListener('input', updatePreview);
+  addForm.addEventListener('input', () => {
+    updatePreview();
+    updatePlacementButton();
+  });
   addForm.addEventListener('submit', (event) => event.preventDefault());
 
   document.getElementById('calendar-prev').addEventListener('click', () => moveMonth(-1));
@@ -221,8 +261,12 @@
   });
 
   dayList.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-toggle-schedule], [data-edit-id], [data-delete-id], [data-delete-series]');
+    const button = event.target.closest('[data-toggle-attendance], [data-toggle-schedule], [data-edit-id], [data-delete-id], [data-delete-series]');
     if (!button) return;
+    if (button.dataset.toggleAttendance) {
+      toggleAttendance(button.dataset.toggleAttendance);
+      return;
+    }
     if (button.dataset.toggleSchedule) {
       toggleScheduleRegistration(button.dataset.toggleSchedule);
       return;
@@ -262,6 +306,31 @@
     renderAll();
     const kind = shifts[index].kind === 'class' ? '履修' : '予定逆算';
     LM.showToast(registered ? `${kind}登録を解除しました` : `${kind}に登録しました`);
+  }
+
+  function toggleAttendance(id) {
+    const shifts = LM.get(LM.KEYS.SHIFTS, []);
+    const index = shifts.findIndex((item) => item.id === id && item.kind === 'class' && !item.isExam);
+    if (index === -1) {
+      LM.showToast('出席を記録する授業が見つかりません', 'error');
+      return;
+    }
+    shifts[index] = { ...shifts[index], attended: shifts[index].attended !== true };
+    if (!LM.set(LM.KEYS.SHIFTS, shifts)) return;
+    LM.syncFirebase();
+    renderTemplates();
+    renderAll();
+  }
+
+  function getAttendanceProgress(template) {
+    const entries = LM.get(LM.KEYS.SHIFTS, []).filter((item) =>
+      item.kind === 'class' &&
+      !item.isExam &&
+      getTemplateKey(item) === template.id
+    );
+    const attended = entries.filter((item) => item.attended === true).length;
+    const required = Math.max(0, Number(template.attendanceRequired) || 0);
+    return { attended, required, remaining: Math.max(0, required - attended) };
   }
 
   function getTemplates() {
@@ -347,6 +416,7 @@
     templateKind.value = template.kind;
     templateName.value = template.name;
     templateUnitCapacity.value = String(template.unitCapacity || 1);
+    templateAttendanceRequired.value = String(template.attendanceRequired || '');
     populateSkippedSections(getSkippedSections(template, selectedDate));
     updateTemplateKindFields();
     populateTemplateBelongings(template.belongingSetIds || []);
@@ -365,6 +435,7 @@
     templateSave.textContent = 'テンプレートを保存';
     templateCancel.hidden = true;
     templateUnitCapacity.value = '';
+    templateAttendanceRequired.value = '';
     populateSkippedSections([]);
     updateTemplateKindFields();
     populateTemplateBelongings([]);
@@ -383,7 +454,8 @@
       if (template.kind === 'class') {
         const capacity = document.createElement('small');
         const skippedSections = getSkippedSections(template, selectedDate);
-        capacity.textContent = `区分ごと${template.unitCapacity || 1}回${skippedSections.length ? `・今年度スキップ${skippedSections.join('・')}` : ''}`;
+        const attendance = getAttendanceProgress(template);
+        capacity.textContent = `区分ごと${template.unitCapacity || 1}回 ・ 出席${attendance.attended}/${attendance.required}（残り${attendance.remaining}）${skippedSections.length ? `・今年度スキップ${skippedSections.join('・')}` : ''}`;
         row.appendChild(capacity);
       }
       const belongings = (template.belongingSetIds || [])
@@ -414,9 +486,12 @@
       const title = document.createElement('strong');
       title.textContent = template.name;
       const kind = document.createElement('span');
-      kind.textContent = template.kind === 'class'
-        ? `授業・履修 ・ 区分ごと${template.unitCapacity || 1}回${getSkippedSections(template, selectedDate).length ? ` ・ 今年度スキップ${getSkippedSections(template, selectedDate).join('・')}` : ''}`
-        : 'アルバイトのシフト';
+      if (template.kind === 'class') {
+        const attendance = getAttendanceProgress(template);
+        kind.textContent = `授業・履修 ・ 区分ごと${template.unitCapacity || 1}回 ・ 出席${attendance.attended}/${attendance.required}（残り${attendance.remaining}）`;
+      } else {
+        kind.textContent = 'アルバイトのシフト';
+      }
       name.append(title, kind);
 
       const actions = document.createElement('div');
@@ -467,6 +542,11 @@
   function updateAddForm() {
     const templates = getTemplates();
     if (!templates.some((template) => template.id === addTemplate.value)) addTemplate.value = '';
+    if (renderedAddTemplateId !== addTemplate.value) {
+      renderedAddTemplateId = addTemplate.value;
+      placementDate = '';
+      classPeriodOptions.replaceChildren();
+    }
     addTemplateChips.replaceChildren();
     if (templates.length === 0) {
       const empty = document.createElement('span');
@@ -488,12 +568,14 @@
     });
     const template = templates.find((item) => item.id === addTemplate.value);
     document.querySelector('.hs-add-shift-only').hidden = !template || template.kind === 'class';
+    classPeriodField.hidden = !template || template.kind !== 'class';
+    manualTimeField.hidden = Boolean(template && template.kind === 'class');
     classEntryTypeField.hidden = !template || template.kind !== 'class';
     if (!classEntryTypeField.hidden && !['class', 'exam'].includes(classEntryType.value)) {
       classEntryType.value = 'class';
     }
     addInstruction.textContent = template
-      ? `選択中: ${template.name}。登録したい日付をタップすると、その日に追加します。`
+      ? `選択中: ${template.name}。日付を選び、時限を確認して登録してください。`
       : 'テンプレートを選んだあと、登録したい日付をタップしてください。';
     [dateStrip, calendarGrid].forEach((container) => {
       container.querySelectorAll('[data-date]').forEach((button) => {
@@ -501,7 +583,9 @@
       });
     });
     renderDayList();
+    renderPlacementPeriods();
     updatePreview();
+    updatePlacementButton();
     document.querySelector('.hs-page').classList.toggle('is-adding-plan', addDetails.open);
   }
 
@@ -509,6 +593,7 @@
     const isClass = templateKind.value === 'class';
     templateClassFields.hidden = !isClass;
     templateUnitCapacity.required = isClass;
+    templateAttendanceRequired.required = isClass;
   }
 
   function resetAddMode() {
@@ -518,7 +603,15 @@
     addEndTime.value = '';
     addLocation.value = '';
     addBreak.value = '0';
+    placementDate = '';
+    addUndoId = null;
+    addUndoIds = [];
+    addUndo.hidden = true;
+    placeSelectedDate.disabled = true;
+    placeSelectedDate.textContent = '日付を選択してください';
+    classPeriodOptions.replaceChildren();
     updateAddForm();
+    renderPlacementPeriods();
   }
 
   function isPlacementModeReady() {
@@ -527,20 +620,94 @@
 
   function handleDateTap(date) {
     if (isPlacementModeReady()) {
-      addPlanToDate(date);
+      placementDate = date;
+      selectDate(date);
+      renderPlacementPeriods();
+      updatePlacementButton();
       return;
     }
     selectDate(date);
   }
 
-  function addPlanToDate(date) {
+  function renderPlacementPeriods(container = classPeriodOptions, date = placementDate, selectedPeriods = []) {
+    container.replaceChildren();
+    if (!date) {
+      classPeriodHelp.textContent = '日付を選択すると、その曜日の時限が表示されます。';
+      updatePlacementButton();
+      return;
+    }
+    const periods = getPeriodsForDate(date);
+    if (periods.length === 0) {
+      classPeriodHelp.textContent = 'この曜日に選択できる授業時限はありません。';
+      updatePlacementButton();
+      return;
+    }
+    classPeriodHelp.textContent = `${formatShortDate(date)}の時限を選択してください。`;
+    periods.forEach((period) => {
+      const label = document.createElement('label');
+      label.className = 'hs-period-option';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.value = String(period.number);
+      checkbox.checked = selectedPeriods.includes(period.number);
+      checkbox.dataset.periodStart = period.start;
+      checkbox.dataset.periodEnd = period.end;
+      checkbox.addEventListener('change', updatePlacementButton);
+      const text = document.createElement('span');
+      text.textContent = `${period.number}限目 ${period.start}〜${period.end}`;
+      label.append(checkbox, text);
+      container.appendChild(label);
+    });
+    updatePlacementButton();
+  }
+
+  function updatePlacementButton() {
+    const template = getTemplates().find((item) => item.id === addTemplate.value);
+    const isClass = template?.kind === 'class';
+    const selectedPeriods = [...classPeriodOptions.querySelectorAll('input:checked')];
+    const hasDate = Boolean(placementDate);
+    const manualTimeValid = isClass || Boolean(addStartTime.value) === Boolean(addEndTime.value);
+    placeSelectedDate.disabled = !isPlacementModeReady() || !hasDate ||
+      (isClass && selectedPeriods.length === 0) || !manualTimeValid;
+    placeSelectedDate.textContent = hasDate
+      ? `${formatShortDate(placementDate)}に${isClass ? `${selectedPeriods.length}限を` : ''}登録`
+      : '日付を選択してください';
+  }
+
+  function getPeriodsForDate(dateKey) {
+    const date = new Date(`${dateKey}T00:00:00`);
+    const day = date.getDay();
+    const times = day === 4
+      ? [['17:20', '18:10'], ['18:20', '19:10'], ['19:20', '20:10'], ['20:20', '21:10']]
+      : day >= 0 && day <= 3
+        ? [['08:50', '09:40'], ['09:50', '10:40'], ['10:50', '11:40'], ['11:50', '12:40'], ['13:40', '14:30'], ['14:40', '15:30'], ['15:40', '16:30']]
+        : [];
+    return times.map(([start, end], index) => ({ number: index + 1, start, end }));
+  }
+
+  function addPlanToSelectedDate() {
+    const date = placementDate;
     const template = getTemplates().find((item) => item.id === addTemplate.value);
     if (!template) {
       LM.showToast('先に予定テンプレートを選択してください', 'error');
       return;
     }
+    if (!date) {
+      LM.showToast('カレンダーから日付を選択してください', 'error');
+      return;
+    }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       LM.showToast('登録する日付を確認できませんでした', 'error');
+      return;
+    }
+    const isClass = template.kind === 'class';
+    const selectedPeriods = [...classPeriodOptions.querySelectorAll('input:checked')].map((input) => ({
+      number: Number(input.value),
+      start: input.dataset.periodStart,
+      end: input.dataset.periodEnd,
+    }));
+    if (isClass && selectedPeriods.length === 0) {
+      LM.showToast('登録する時限を1つ以上選択してください', 'error');
       return;
     }
     if (Boolean(addStartTime.value) !== Boolean(addEndTime.value)) {
@@ -551,13 +718,15 @@
     const shifts = LM.get(LM.KEYS.SHIFTS, []);
     const isExam = template.kind === 'class' && classEntryType.value === 'exam';
     if (template.kind === 'class') {
-      if (shifts.some((item) =>
+      const conflict = selectedPeriods.some((period) => shifts.some((item) =>
         item.kind === 'class' &&
         getTemplateKey(item) === template.id &&
         item.date === date &&
-        Boolean(item.isExam) === isExam
-      )) {
-        LM.showToast(isExam ? 'この科目の試験はすでに同じ日に登録されています' : 'この科目はすでに同じ日に登録されています', 'error');
+        Boolean(item.isExam) === isExam &&
+        Number(item.periodNumber) === period.number
+      ));
+      if (conflict) {
+        LM.showToast(isExam ? '選択した時限に、この科目の試験がすでに登録されています' : '選択した時限に、この科目はすでに登録されています', 'error');
         return;
       }
       const term = getSchoolTerm(date);
@@ -573,36 +742,46 @@
           getTemplateKey(item) === template.id &&
           getSchoolTerm(item.date)?.key === term.key
         ).length;
-        if (count >= (Number(template.unitCapacity) || 1) * availableSections.length) {
+        if (count + selectedPeriods.filter((period) => !shifts.some((item) =>
+          item.kind === 'class' && !item.isExam && getTemplateKey(item) === template.id &&
+          item.date === date && Number(item.periodNumber) === period.number
+        )).length > (Number(template.unitCapacity) || 1) * availableSections.length) {
           LM.showToast(`${term.label}の実施区分はすべて登録済みです`, 'error');
           return;
         }
       }
     }
 
-    const record = {
+    const entries = isClass ? selectedPeriods : [{
+      number: null,
+      start: addStartTime.value,
+      end: addEndTime.value,
+    }];
+    const records = entries.map((entry) => ({
       id: LM.uid(),
       templateId: template.id,
       date,
       kind: template.kind,
       ...(isExam ? { isExam: true } : {}),
+      ...(entry.number ? { periodNumber: entry.number } : {}),
       name: template.name,
       location: addLocation.value.trim(),
-      start: addStartTime.value,
-      end: addEndTime.value,
+      start: entry.start,
+      end: entry.end,
       breakMin: template.kind === 'class' ? 0 : Math.max(0, Number(addBreak.value) || 0),
       belongingSetIds: template.belongingSetIds || [],
-    };
-    if (!LM.set(LM.KEYS.SHIFTS, shifts.concat(record))) return;
+    }));
+    if (!LM.set(LM.KEYS.SHIFTS, shifts.concat(records))) return;
     const schedulesSynced = syncLinkedSchedules();
     activeSubjectFilter = template.kind === 'class' ? template.id : '';
     activeSectionFilter = '';
     selectedDate = date;
     shownMonth = new Date(`${date}T00:00:00`);
-    addUndoId = record.id;
+    addUndoIds = records.map((item) => item.id);
+    addUndoId = addUndoIds[0];
     addUndo.replaceChildren();
     const message = document.createElement('span');
-    message.textContent = `${template.name}${isExam ? 'の試験' : ''}を${formatShortDate(date)}に追加しました。`;
+    message.textContent = `${template.name}${isExam ? 'の試験' : ''}を${formatShortDate(date)}に${records.length}件追加しました。`;
     const undo = document.createElement('button');
     undo.type = 'button';
     undo.className = 'lm-btn secondary';
@@ -933,7 +1112,9 @@
       const title = document.createElement('strong');
       title.textContent = item.name || (item.kind === 'class' ? '授業' : 'シフト');
       const time = document.createElement('span');
-      time.textContent = item.start && item.end ? `${item.start}〜${item.end}` : '時間未設定';
+      time.textContent = item.start && item.end
+        ? `${item.periodNumber ? `${item.periodNumber}限目 ` : ''}${item.start}〜${item.end}`
+        : '時間未設定';
       detail.append(title, time);
       if (item.kind === 'class') {
         const section = document.createElement('span');
@@ -964,6 +1145,15 @@
       row.appendChild(detail);
       const actions = document.createElement('div');
       actions.className = 'hs-day-actions';
+      if (item.kind === 'class' && !item.isExam) {
+        const attendance = document.createElement('button');
+        attendance.type = 'button';
+        attendance.className = `lm-btn secondary hs-attendance${item.attended ? ' is-attended' : ''}`;
+        attendance.dataset.toggleAttendance = item.id;
+        attendance.setAttribute('aria-pressed', String(item.attended === true));
+        attendance.textContent = item.attended ? '出席済み' : '出席を記録';
+        actions.appendChild(attendance);
+      }
       const registered = item.scheduleRegistered === true;
       const register = document.createElement('button');
       register.type = 'button';
@@ -1030,9 +1220,44 @@
     };
 
     addField('予定の名前', 'name', 'text', item.name, { maxlength: '60', required: '' });
-    addField('日付', 'date', 'date', item.date, { required: '' });
-    addField('開始時刻(任意)', 'start', 'time', item.start);
-    addField('終了時刻(任意)', 'end', 'time', item.end);
+    const dateInput = addField('日付', 'date', 'date', item.date, { required: '' });
+    let periodInput = null;
+    if (item.kind === 'class') {
+      const field = document.createElement('div');
+      field.className = 'lm-field';
+      const label = document.createElement('label');
+      label.textContent = '授業時限';
+      const select = document.createElement('select');
+      select.name = 'period';
+      select.required = true;
+      label.htmlFor = 'shift-edit-period';
+      select.id = label.htmlFor;
+      field.append(label, select);
+      form.appendChild(field);
+      periodInput = select;
+      const updatePeriods = (preferred = '') => {
+        const periods = getPeriodsForDate(dateInput.value);
+        select.replaceChildren();
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = periods.length ? '時限を選択してください' : 'この曜日は時限を選べません';
+        select.appendChild(placeholder);
+        periods.forEach((period) => {
+          const option = document.createElement('option');
+          option.value = String(period.number);
+          option.textContent = `${period.number}限目 ${period.start}〜${period.end}`;
+          select.appendChild(option);
+        });
+        select.value = preferred && periods.some((period) => String(period.number) === String(preferred))
+          ? String(preferred)
+          : '';
+      };
+      updatePeriods(item.periodNumber || '');
+      dateInput.addEventListener('change', () => updatePeriods());
+    } else {
+      addField('開始時刻(任意)', 'start', 'time', item.start);
+      addField('終了時刻(任意)', 'end', 'time', item.end);
+    }
     addField('場所(任意)', 'location', 'text', item.location, { maxlength: '80' });
 
     const belongingField = document.createElement('fieldset');
@@ -1085,8 +1310,16 @@
         fields.name.focus();
         return;
       }
-      if (Boolean(fields.start.value) !== Boolean(fields.end.value)) {
+      if (item.kind !== 'class' && Boolean(fields.start.value) !== Boolean(fields.end.value)) {
         LM.showToast('開始時刻と終了時刻は両方入力するか、両方空欄にしてください', 'error');
+        return;
+      }
+      const selectedPeriod = item.kind === 'class'
+        ? getPeriodsForDate(fields.date.value).find((period) => String(period.number) === periodInput.value)
+        : null;
+      if (item.kind === 'class' && !selectedPeriod) {
+        LM.showToast('日付と時限を確認してください', 'error');
+        periodInput.focus();
         return;
       }
       const shifts = LM.get(LM.KEYS.SHIFTS, []);
@@ -1096,12 +1329,29 @@
         LM.closeModal();
         return;
       }
+      if (item.kind === 'class' && shifts.some((shift) =>
+        shift.id !== id &&
+        shift.kind === 'class' &&
+        getTemplateKey(shift) === getTemplateKey(item) &&
+        shift.date === fields.date.value &&
+        Boolean(shift.isExam) === Boolean(item.isExam) &&
+        Number(shift.periodNumber) === selectedPeriod.number
+      )) {
+        LM.showToast('この科目の予定は、選択した時限にすでに登録されています', 'error');
+        return;
+      }
       shifts[index] = {
         ...shifts[index],
         name: fields.name.value.trim(),
         date: fields.date.value,
-        start: fields.start.value,
-        end: fields.end.value,
+        ...(selectedPeriod ? {
+          periodNumber: selectedPeriod.number,
+          start: selectedPeriod.start,
+          end: selectedPeriod.end,
+        } : {
+          start: fields.start.value,
+          end: fields.end.value,
+        }),
         location: fields.location.value.trim(),
         belongingSetIds: [...belongingList.querySelectorAll('input:checked')].map((input) => input.value),
       };
@@ -1109,7 +1359,8 @@
       selectedDate = fields.date.value;
       shownMonth = new Date(`${selectedDate}T00:00:00`);
       LM.closeModal();
-      syncLinkedSchedules();
+      if (!syncLinkedSchedules()) return;
+      LM.syncFirebase();
       renderAll();
     });
     LM.openModal('予定を編集', form);
