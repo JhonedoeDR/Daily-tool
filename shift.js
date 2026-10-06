@@ -620,6 +620,7 @@
 
   function handleDateTap(date) {
     if (isPlacementModeReady()) {
+      if (placementDate !== date) classPeriodOptions.replaceChildren();
       placementDate = date;
       selectDate(date);
       renderPlacementPeriods();
@@ -630,6 +631,9 @@
   }
 
   function renderPlacementPeriods(container = classPeriodOptions, date = placementDate, selectedPeriods = []) {
+    const retainedPeriods = container === classPeriodOptions
+      ? [...container.querySelectorAll('input:checked')].map((input) => Number(input.value))
+      : [];
     container.replaceChildren();
     if (!date) {
       classPeriodHelp.textContent = '日付を選択すると、その曜日の時限が表示されます。';
@@ -649,7 +653,7 @@
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
       checkbox.value = String(period.number);
-      checkbox.checked = selectedPeriods.includes(period.number);
+      checkbox.checked = selectedPeriods.includes(period.number) || retainedPeriods.includes(period.number);
       checkbox.dataset.periodStart = period.start;
       checkbox.dataset.periodEnd = period.end;
       checkbox.addEventListener('change', updatePlacementButton);
@@ -1172,8 +1176,9 @@
       edit.dataset.editId = item.id;
       edit.textContent = '編集';
       actions.appendChild(edit);
-      actions.appendChild(createDeleteButton(item.id, item.seriesId ? 'この日だけ削除' : '削除'));
-      if (item.seriesId) {
+      const isShiftSeries = item.kind !== 'class' && item.seriesId;
+      actions.appendChild(createDeleteButton(item.id, isShiftSeries ? 'この日だけ削除' : '削除'));
+      if (isShiftSeries) {
         const removeSeries = createDeleteButton('', '全期間を削除');
         removeSeries.dataset.deleteSeries = item.seriesId;
         actions.appendChild(removeSeries);

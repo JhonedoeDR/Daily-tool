@@ -1866,6 +1866,9 @@ body {
   background: #e8f3eb;
   color: #28573a;
 }
+.hs-day-actions .hs-attendance {
+  font-size: 11px;
+}
 .hs-edit {
   padding: 6px;
   font-size: 11px;
@@ -2295,6 +2298,14 @@ body {
   border-radius: 8px;
   background: #fff;
   font-size: 12px;
+}
+.hs-period-option input[type='checkbox'] {
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
 }
 .hs-period-option:has(input:checked) {
   border-color: var(--accent);
