@@ -445,6 +445,7 @@
   }
 
   function getScheduleCategory(schedule) {
+    if (schedule.kind === 'deadline') return 'deadline';
     if (schedule.autoSource !== 'shift') return 'other';
     return schedule.name === '学校' ? 'school' : 'work';
   }
