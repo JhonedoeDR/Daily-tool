@@ -2533,3 +2533,9 @@ body {
 .hs-calendar-day.is-holiday[aria-pressed='true'] .hs-calendar-number {
   box-shadow: 0 0 0 2px var(--accent-soft);
 }
+
+.lm-form-tabs .lm-btn {
+  padding: 10px 4px;
+  font-size: 12px;
+  line-height: 1.3;
+}
