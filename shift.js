@@ -60,6 +60,8 @@
   let renderedAddTemplateId = '';
   let activeAgendaList = null;
   let activeAgendaDate = '';
+  let lastCalendarTapDate = '';
+  let lastCalendarTapAt = 0;
 
   migrateLegacySkippedSections();
   loadWageSettings();
@@ -720,7 +722,15 @@
       return;
     }
     selectDate(date);
-    openAgendaPopover(date);
+    const now = Date.now();
+    if (lastCalendarTapDate === date && now - lastCalendarTapAt <= 350) {
+      lastCalendarTapDate = '';
+      lastCalendarTapAt = 0;
+      openAgendaPopover(date);
+      return;
+    }
+    lastCalendarTapDate = date;
+    lastCalendarTapAt = now;
   }
 
   function renderPlacementPeriods(container = classPeriodOptions, date = placementDate, selectedPeriods = []) {
