@@ -38,6 +38,7 @@
   const calendarTitle = document.getElementById('calendar-title');
   const selectedDateLabel = document.getElementById('selected-date-label');
   const dayList = document.getElementById('day-list');
+  const timetableRegister = document.getElementById('timetable-register');
   const monthLabel = document.getElementById('month-label');
   const monthSummary = document.getElementById('month-summary');
   const classRegistrationFilter = document.getElementById('class-registration-filter');
@@ -57,6 +58,8 @@
   let addUndoIds = [];
   let placementDate = '';
   let renderedAddTemplateId = '';
+  let activeAgendaList = null;
+  let activeAgendaDate = '';
 
   migrateLegacySkippedSections();
   loadWageSettings();
@@ -95,6 +98,7 @@
     addDetails.open = false;
   });
   placeSelectedDate.addEventListener('click', addPlanToSelectedDate);
+  timetableRegister.addEventListener('click', openTimetableRegistration);
   addUndo.addEventListener('click', (event) => {
     if (!event.target.closest('[data-undo-add]') || !addUndoId) return;
     const shifts = LM.get(LM.KEYS.SHIFTS, []);
@@ -250,7 +254,8 @@
     if (button) handleDateTap(button.dataset.date);
   });
 
-  dayList.addEventListener('click', (event) => {
+  document.addEventListener('click', (event) => {
+    if (!event.target.closest('#day-list, .hs-agenda-popover-list')) return;
     const button = event.target.closest('[data-toggle-attendance-group], [data-toggle-attendance], [data-toggle-schedule-group], [data-toggle-schedule], [data-edit-group], [data-edit-id], [data-delete-group], [data-delete-id], [data-delete-series]');
     if (!button) return;
     if (button.dataset.toggleAttendanceGroup) {
@@ -715,6 +720,7 @@
       return;
     }
     selectDate(date);
+    openAgendaPopover(date);
   }
 
   function renderPlacementPeriods(container = classPeriodOptions, date = placementDate, selectedPeriods = []) {
@@ -1004,9 +1010,9 @@
     classSectionFilter.disabled = !term;
   }
 
-  function filterClassEvents(events) {
+  function filterAgendaEvents(events) {
     return events.filter((item) => {
-      if (item.kind !== 'class') return false;
+      if (item.kind !== 'class') return true;
       const selectedTemplate = getTemplates().find((template) => template.id === activeSubjectFilter);
       const matchesSubject = !activeSubjectFilter || item.templateId === activeSubjectFilter ||
         (!item.templateId && item.name === selectedTemplate?.name);
@@ -1063,10 +1069,237 @@
     renderCalendarSelection();
   }
 
+  function openAgendaPopover(dateKey) {
+    const content = document.createElement('div');
+    const navigation = document.createElement('div');
+    navigation.className = 'hs-agenda-popover-nav';
+    const previous = document.createElement('button');
+    previous.type = 'button';
+    previous.className = 'lm-btn secondary';
+    previous.textContent = '‹';
+    previous.setAttribute('aria-label', '前の日');
+    const dateLabel = document.createElement('strong');
+    dateLabel.className = 'hs-agenda-popover-date';
+    const next = document.createElement('button');
+    next.type = 'button';
+    next.className = 'lm-btn secondary';
+    next.textContent = '›';
+    next.setAttribute('aria-label', '次の日');
+    navigation.append(previous, dateLabel, next);
+    const list = document.createElement('div');
+    list.className = 'hs-agenda-popover-list';
+    content.append(navigation, list);
+
+    const openDate = (targetDate) => {
+      selectedDate = targetDate;
+      const selected = new Date(`${targetDate}T00:00:00`);
+      shownMonth = new Date(selected.getFullYear(), selected.getMonth(), 1);
+      renderAll();
+      openAgendaPopover(targetDate);
+    };
+    previous.addEventListener('click', () => openDate(shiftDateKey(dateKey, -1)));
+    next.addEventListener('click', () => openDate(shiftDateKey(dateKey, 1)));
+
+    LM.openModal('予定', content);
+    const overlay = document.querySelector('.lm-modal-overlay');
+    const panel = overlay?.querySelector('.lm-modal');
+    overlay?.classList.add('hs-agenda-overlay');
+    activeAgendaDate = dateKey;
+    activeAgendaList = list;
+    const renderDateLabel = () => {
+      const selected = new Date(`${activeAgendaDate}T00:00:00`);
+      dateLabel.textContent = `${selected.getMonth() + 1}月${selected.getDate()}日(${WEEKDAYS[selected.getDay()]})`;
+    };
+    renderDateLabel();
+    renderDayList(list, dateKey);
+    let touchStart = null;
+    panel?.addEventListener('touchstart', (event) => {
+      const touch = event.changedTouches[0];
+      touchStart = { x: touch.clientX, y: touch.clientY };
+    }, { passive: true });
+    panel?.addEventListener('touchend', (event) => {
+      if (!touchStart) return;
+      const touch = event.changedTouches[0];
+      const deltaX = touch.clientX - touchStart.x;
+      const deltaY = touch.clientY - touchStart.y;
+      touchStart = null;
+      if (Math.abs(deltaX) < 55 || Math.abs(deltaX) < Math.abs(deltaY) * 1.25) return;
+      openDate(shiftDateKey(activeAgendaDate, deltaX < 0 ? 1 : -1));
+    }, { passive: true });
+  }
+
+  function shiftDateKey(dateKey, delta) {
+    const date = new Date(`${dateKey}T00:00:00`);
+    date.setDate(date.getDate() + delta);
+    return LM.scheduleDateKey(date);
+  }
+
+  function openTimetableRegistration() {
+    const periods = getPeriodsForDate(selectedDate);
+    if (periods.length === 0) {
+      LM.showToast('選択した日は授業時限を登録できません', 'error');
+      return;
+    }
+    const templates = getTemplates().filter((template) => template.kind === 'class');
+    if (templates.length === 0) {
+      LM.showToast('先に授業テンプレートを登録してください', 'error');
+      return;
+    }
+    const form = document.createElement('form');
+    form.className = 'hs-timetable-form';
+    const intro = document.createElement('p');
+    intro.className = 'lm-empty';
+    intro.textContent = `${formatShortDate(selectedDate)}の各時限に授業テンプレートを割り当てます。空欄の時限は登録されません。`;
+    form.appendChild(intro);
+    const existingShifts = LM.get(LM.KEYS.SHIFTS, []);
+    periods.forEach((period) => {
+      const row = document.createElement('div');
+      row.className = 'hs-timetable-row';
+      const periodLabel = document.createElement('div');
+      periodLabel.className = 'hs-timetable-period';
+      const label = document.createElement('strong');
+      const select = document.createElement('select');
+      select.dataset.periodNumber = String(period.number);
+      const empty = document.createElement('option');
+      empty.value = '';
+      empty.textContent = '登録しない';
+      select.appendChild(empty);
+      const existing = existingShifts.find((item) =>
+        item.kind === 'class' &&
+        item.date === selectedDate &&
+        Number(item.periodNumber) === period.number
+      );
+      templates.forEach((template) => {
+        const option = document.createElement('option');
+        option.value = template.id;
+        option.textContent = template.name;
+        select.appendChild(option);
+      });
+      if (existing && !existing.isExam) {
+        const currentTemplate = templates.find((template) => getTemplateKey(existing) === template.id);
+        if (currentTemplate) select.value = currentTemplate.id;
+      }
+      label.textContent = `${period.number}限目`;
+      const time = document.createElement('small');
+      time.textContent = `${period.start}〜${period.end}`;
+      periodLabel.append(label, time);
+      row.append(periodLabel, select);
+      form.appendChild(row);
+    });
+    const actions = document.createElement('div');
+    actions.className = 'hs-template-form-actions';
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'lm-btn secondary';
+    cancel.textContent = 'キャンセル';
+    cancel.addEventListener('click', LM.closeModal);
+    const save = document.createElement('button');
+    save.type = 'submit';
+    save.className = 'lm-btn';
+    save.textContent = 'この日の時間割を登録';
+    actions.append(cancel, save);
+    form.appendChild(actions);
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const assignments = [...form.querySelectorAll('select[data-period-number]')]
+        .filter((select) => select.value)
+        .map((select) => ({
+          period: periods.find((period) => period.number === Number(select.dataset.periodNumber)),
+          template: templates.find((template) => template.id === select.value),
+        }))
+        .filter((assignment) => assignment.period && assignment.template);
+      if (assignments.length === 0) {
+        LM.showToast('登録する時限を選択してください', 'error');
+        return;
+      }
+
+      const shifts = LM.get(LM.KEYS.SHIFTS, []);
+      const additions = [];
+      for (const { period, template } of assignments) {
+        const occupied = shifts.find((item) =>
+          item.kind === 'class' &&
+          item.date === selectedDate &&
+          Number(item.periodNumber) === period.number
+        );
+        if (occupied) {
+          if (getTemplateKey(occupied) === template.id && !occupied.isExam) continue;
+          LM.showToast(`${period.number}限目にはすでに別の授業または試験が登録されています`, 'error');
+          return;
+        }
+        additions.push({
+          id: LM.uid(),
+          templateId: template.id,
+          date: selectedDate,
+          kind: 'class',
+          periodNumber: period.number,
+          name: template.name,
+          location: '',
+          start: period.start,
+          end: period.end,
+          breakMin: 0,
+          belongingSetIds: template.belongingSetIds || [],
+        });
+      }
+      const term = getSchoolTerm(selectedDate);
+      if (term) {
+        const additionsByTemplate = new Map();
+        additions.forEach((item) => additionsByTemplate.set(
+          item.templateId,
+          (additionsByTemplate.get(item.templateId) || 0) + 1
+        ));
+        for (const [templateId, count] of additionsByTemplate) {
+          const template = templates.find((item) => item.id === templateId);
+          const skippedSections = getSkippedSections(template, selectedDate);
+          const sectionCount = Array.from(
+            { length: term.lastSection - term.firstSection + 1 },
+            (_, index) => term.firstSection + index
+          ).filter((section) => !skippedSections.includes(section)).length;
+          const existingCount = shifts.filter((item) =>
+            item.kind === 'class' &&
+            !item.isExam &&
+            getTemplateKey(item) === templateId &&
+            getSchoolTerm(item.date)?.key === term.key
+          ).length;
+          if (existingCount + count > (Number(template.unitCapacity) || 1) * sectionCount) {
+            LM.showToast(`${template.name}は${term.label}の実施区分上限に達しています`, 'error');
+            return;
+          }
+        }
+      }
+      if (additions.length === 0) {
+        LM.showToast('選択した時間割はすでに登録されています');
+        LM.closeModal();
+        return;
+      }
+      if (!LM.set(LM.KEYS.SHIFTS, shifts.concat(additions))) return;
+      const schedulesSynced = syncLinkedSchedules();
+      addUndoIds = additions.map((item) => item.id);
+      addUndoId = addUndoIds[0];
+      addUndo.replaceChildren();
+      const message = document.createElement('span');
+      message.textContent = `${formatShortDate(selectedDate)}の時間割を${additions.length}件登録しました。`;
+      const undo = document.createElement('button');
+      undo.type = 'button';
+      undo.className = 'lm-btn secondary';
+      undo.dataset.undoAdd = 'true';
+      undo.textContent = '取り消す';
+      addUndo.append(message, undo);
+      addUndo.hidden = false;
+      LM.closeModal();
+      activeSubjectFilter = '';
+      activeSectionFilter = '';
+      renderAll();
+      if (schedulesSynced) LM.showToast('この日の時間割を登録しました。履修登録は各予定のボタンから行えます');
+    });
+    LM.openModal('時間割を登録する', form);
+  }
+
   function renderAll() {
     renderClassFilters();
     renderCalendar();
     renderDayList();
+    if (activeAgendaList?.isConnected) renderDayList(activeAgendaList, activeAgendaDate);
     renderMonthSummary();
   }
 
@@ -1077,7 +1310,7 @@
     const firstWeekday = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const cellCount = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
-    const byDate = groupByDate(groupClassEvents(filterClassEvents(LM.get(LM.KEYS.SHIFTS, []))));
+    const byDate = groupByDate(groupClassEvents(filterAgendaEvents(LM.get(LM.KEYS.SHIFTS, []))));
     calendarGrid.replaceChildren();
     WEEKDAYS.forEach((weekday) => {
       const heading = document.createElement('span');
@@ -1106,20 +1339,17 @@
       number.className = 'hs-calendar-number';
       number.textContent = String(day);
       button.appendChild(number);
-      events.slice(0, 2).forEach((item) => {
-        const chip = document.createElement('span');
-        chip.className = `hs-calendar-chip${item.kind === 'class' ? ' is-class' : ''}${item.isExam ? ' is-exam' : ''}`;
-        chip.textContent = item.kind === 'class'
-          ? `${item.name || '授業'} ${addClassUnitLabel(item)}${item.entries.length > 1 ? `・${item.entries.length}限` : ''}`
-          : item.name || 'シフト';
-        button.appendChild(chip);
+      const markers = document.createElement('span');
+      markers.className = 'hs-calendar-markers';
+      events.slice(0, 4).forEach((item) => {
+        const marker = document.createElement('span');
+        marker.className = `hs-calendar-marker${item.kind === 'class' ? ' is-class' : ' is-shift'}${item.isExam ? ' is-exam' : ''}`;
+        marker.setAttribute('aria-hidden', 'true');
+        markers.appendChild(marker);
       });
-      if (events.length > 2) {
-        const more = document.createElement('span');
-        more.className = 'hs-calendar-more';
-        more.textContent = `+${events.length - 2}件`;
-        button.appendChild(more);
-      }
+      button.appendChild(markers);
+      const descriptions = events.map((item) => item.name || (item.kind === 'class' ? '授業' : 'シフト'));
+      button.setAttribute('aria-label', `${formatShortDate(key)}${events.length ? `、${descriptions.join('、')}` : '、予定なし'}`);
       calendarGrid.appendChild(button);
     }
     renderCalendarSelection();
@@ -1131,17 +1361,17 @@
     });
   }
 
-  function renderDayList() {
+  function renderDayList(container = dayList, dateKey = selectedDate) {
     const allEvents = LM.get(LM.KEYS.SHIFTS, []);
-    const events = groupClassEvents(filterClassEvents(groupByDate(allEvents).get(selectedDate) || []))
+    const events = groupClassEvents(filterAgendaEvents(groupByDate(allEvents).get(dateKey) || []))
       .sort((a, b) => (a.start || '').localeCompare(b.start || ''));
-    const date = new Date(`${selectedDate}T00:00:00`);
+    const date = new Date(`${dateKey}T00:00:00`);
     const placementHint = isPlacementModeReady() ? ' ・ 日付をタップして予定を追加' : '';
     selectedDateLabel.textContent = `${date.getMonth() + 1}月${date.getDate()}日(${WEEKDAYS[date.getDay()]})${placementHint}`;
-    dayList.replaceChildren();
+    container.replaceChildren();
     if (events.length === 0) {
-      const hasEvents = (groupByDate(allEvents).get(selectedDate) || []).length > 0;
-      dayList.innerHTML = `<p class="lm-empty">${hasEvents ? 'フィルターに一致する予定はありません' : 'この日の予定はありません'}</p>`;
+      const hasEvents = (groupByDate(allEvents).get(dateKey) || []).length > 0;
+      container.innerHTML = `<p class="lm-empty">${hasEvents ? 'フィルターに一致する予定はありません' : 'この日の予定はありません'}</p>`;
       return;
     }
     events.forEach((item) => {
@@ -1238,7 +1468,7 @@
         actions.appendChild(removeSeries);
       }
       row.appendChild(actions);
-      dayList.appendChild(row);
+      container.appendChild(row);
     });
   }
 

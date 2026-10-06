@@ -1640,24 +1640,28 @@ body {
 .hs-calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 4px;
+  gap: 1px;
 }
 .hs-calendar-weekday {
-  padding: 4px 0;
+  padding: 3px 0;
   color: var(--text-soft);
   font-size: 12px;
   text-align: center;
 }
 .hs-calendar-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
   min-width: 0;
-  min-height: 66px;
-  padding: 4px;
-  border: 1px solid var(--paper-line);
-  border-radius: 8px;
-  background: var(--paper);
+  min-height: 42px;
+  padding: 3px 1px;
+  border: 1px solid transparent;
+  border-radius: 0;
+  background: transparent;
   color: var(--text);
   font: inherit;
-  text-align: left;
+  text-align: center;
   cursor: pointer;
 }
 .hs-calendar-day:disabled {
@@ -1666,41 +1670,46 @@ body {
   cursor: default;
 }
 .hs-calendar-day[aria-pressed='true'] {
-  border-color: var(--accent);
-  box-shadow: inset 0 0 0 1px var(--accent);
+  box-shadow: none;
 }
 .hs-calendar-day.is-today .hs-calendar-number {
   color: var(--accent);
   font-weight: 700;
 }
 .hs-calendar-number {
-  display: block;
-  margin-bottom: 2px;
+  display: grid;
+  width: 25px;
+  height: 25px;
+  place-items: center;
+  border-radius: 50%;
   font-size: 12px;
 }
-.hs-calendar-chip,
-.hs-calendar-more {
-  display: block;
-  overflow: hidden;
-  margin-top: 2px;
-  padding: 1px 3px;
-  border-radius: 3px;
+.hs-calendar-day[aria-pressed='true'] .hs-calendar-number {
   background: var(--accent-soft);
-  font-size: 9px;
-  line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  color: var(--text);
+  font-weight: 700;
 }
-.hs-calendar-chip.is-class {
-  background: var(--paper-line);
+.hs-calendar-markers {
+  display: flex;
+  min-height: 5px;
+  justify-content: center;
+  gap: 2px;
+  margin-top: 2px;
 }
-.hs-calendar-chip.is-exam {
+.hs-calendar-marker {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
   background: var(--accent);
-  color: #fff;
 }
-.hs-calendar-more {
-  background: transparent;
-  color: var(--text-soft);
+.hs-calendar-marker.is-class {
+  background: var(--text-soft);
+}
+.hs-calendar-marker.is-exam {
+  background: var(--accent);
+}
+.hs-calendar-marker.is-shift {
+  background: #4f8b68;
 }
 .hs-day-heading {
   margin: 16px 0 6px;
@@ -1708,6 +1717,37 @@ body {
 }
 .hs-add-details {
   margin: 8px 0;
+}
+.hs-agenda-actions {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 8px 0;
+}
+.hs-agenda-actions .hs-add-details {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+}
+.hs-agenda-actions > #timetable-register {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 8px 8px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.hs-agenda-actions .hs-add-details > summary {
+  box-sizing: border-box;
+  width: 100%;
+}
+.hs-agenda-actions .hs-add-details[open] {
+  flex-basis: 100%;
+}
+.hs-agenda-actions:has(.hs-add-details[open]) {
+  flex-wrap: wrap;
+}
+.hs-agenda-actions .hs-add-details[open] + #timetable-register {
+  flex: 1 1 100%;
 }
 .hs-add-details > summary {
   display: block;
@@ -2208,13 +2248,11 @@ body {
   font-size: 11px;
 }
 .hs-page.is-adding-plan .hs-calendar-day.is-placement-target {
-  border-color: var(--accent);
-  outline: 2px solid var(--accent-soft);
-  outline-offset: 1px;
+  color: var(--accent);
   cursor: crosshair;
 }
 .hs-page.is-adding-plan .hs-calendar-day.is-placement-target:hover {
-  background: var(--accent-soft);
+  background: transparent;
 }
 .hs-edit-form .lm-field {
   margin-bottom: 10px;
@@ -2246,6 +2284,67 @@ body {
 .hs-period-option:has(input:checked) {
   border-color: var(--accent);
   background: var(--accent-soft);
+}
+.hs-timetable-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hs-timetable-row {
+  display: grid;
+  grid-template-columns: minmax(76px, 0.7fr) minmax(0, 1.3fr);
+  align-items: center;
+  gap: 8px;
+}
+.hs-timetable-row select {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--paper-line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+}
+.hs-timetable-period {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.hs-timetable-period strong {
+  font-size: 13px;
+}
+.hs-timetable-period small {
+  color: var(--text-soft);
+  font-size: 11px;
+}
+.hs-agenda-overlay {
+  align-items: center;
+  padding: 16px;
+}
+.hs-agenda-overlay .lm-modal {
+  width: 100%;
+  max-height: 80vh;
+  border-radius: 16px;
+  padding: 14px 16px 20px;
+  touch-action: pan-y;
+}
+.hs-agenda-popover-nav {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 38px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  text-align: center;
+}
+.hs-agenda-popover-nav .lm-btn {
+  min-width: 0;
+  padding: 6px 8px;
+}
+.hs-agenda-popover-date {
+  font-weight: 700;
+}
+.hs-agenda-popover-list .hs-day-item:first-child {
+  border-top: 1px solid var(--paper-line);
 }
 .hs-class-period-field small {
   display: block;

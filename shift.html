@@ -44,50 +44,54 @@
           <option value="">すべて</option>
         </select>
       </div>
-      <details class="hs-add-details" id="add-plan-details">
-        <summary class="lm-btn">＋ 予定を追加</summary>
-        <form id="add-plan-form" class="hs-inline-form">
-          <div class="lm-field">
-            <span class="hs-field-label">予定テンプレート</span>
-            <input id="add-template" type="hidden" />
-            <div id="add-template-chips" class="hs-template-chips" role="group" aria-label="予定テンプレート"></div>
-          </div>
-          <div class="lm-field hs-class-exam-fields" id="class-entry-type-field" hidden>
-            <label for="class-entry-type">登録する内容</label>
-            <select id="class-entry-type">
-              <option value="class">通常授業</option>
-              <option value="exam">試験</option>
-            </select>
-          </div>
-          <div class="lm-field hs-class-period-field" id="class-period-field" hidden>
-            <label>授業時限（複数選択可）</label>
-            <div id="class-period-options" class="hs-period-options"></div>
-            <small id="class-period-help">日付を選択すると、その曜日の時限が表示されます。</small>
-          </div>
-          <div class="lm-field hs-manual-time-field" id="manual-time-field">
-            <label>時間(任意)</label>
-            <div class="hs-time-range">
-              <input id="add-start-time" type="time" aria-label="開始時刻" />
-              <span>〜</span>
-              <input id="add-end-time" type="time" aria-label="終了時刻" />
+      <div class="hs-agenda-actions">
+        <details class="hs-add-details" id="add-plan-details">
+          <summary class="lm-btn">＋ 予定を追加</summary>
+          <form id="add-plan-form" class="hs-inline-form">
+            <div class="lm-field">
+              <span class="hs-field-label">予定テンプレート</span>
+              <input id="add-template" type="hidden" />
+              <div id="add-template-chips" class="hs-template-chips" role="group" aria-label="予定テンプレート"></div>
             </div>
-          </div>
-          <div class="lm-field">
-            <label for="add-location">場所(任意)</label>
-            <input id="add-location" type="text" maxlength="80" />
-          </div>
-          <div class="lm-field hs-add-shift-only" hidden>
-            <label for="add-break">休憩時間(分)</label>
-            <input id="add-break" type="number" inputmode="numeric" min="0" value="0" />
-          </div>
-          <div id="add-preview" class="lm-empty"></div>
-          <p class="hs-add-instruction" id="add-instruction">テンプレートを選んだあと、登録したい日付をタップしてください。</p>
-          <button type="button" class="lm-btn" id="place-selected-date" disabled>この日付に登録</button>
-          <button type="button" class="lm-btn secondary" id="cancel-add-mode">登録モードを終了</button>
-        </form>
-      </details>
+            <div class="lm-field hs-class-exam-fields" id="class-entry-type-field" hidden>
+              <label for="class-entry-type">登録する内容</label>
+              <select id="class-entry-type">
+                <option value="class">通常授業</option>
+                <option value="exam">試験</option>
+              </select>
+            </div>
+            <div class="lm-field hs-class-period-field" id="class-period-field" hidden>
+              <label>授業時限（複数選択可）</label>
+              <div id="class-period-options" class="hs-period-options"></div>
+              <small id="class-period-help">日付を選択すると、その曜日の時限が表示されます。</small>
+            </div>
+            <div class="lm-field hs-manual-time-field" id="manual-time-field">
+              <label>時間(任意)</label>
+              <div class="hs-time-range">
+                <input id="add-start-time" type="time" aria-label="開始時刻" />
+                <span>〜</span>
+                <input id="add-end-time" type="time" aria-label="終了時刻" />
+              </div>
+            </div>
+            <div class="lm-field">
+              <label for="add-location">場所(任意)</label>
+              <input id="add-location" type="text" maxlength="80" />
+            </div>
+            <div class="lm-field hs-add-shift-only" hidden>
+              <label for="add-break">休憩時間(分)</label>
+              <input id="add-break" type="number" inputmode="numeric" min="0" value="0" />
+            </div>
+            <div id="add-preview" class="lm-empty"></div>
+            <p class="hs-add-instruction" id="add-instruction">テンプレートを選んだあと、登録したい日付をタップしてください。</p>
+            <button type="button" class="lm-btn" id="place-selected-date" disabled>この日付に登録</button>
+            <button type="button" class="lm-btn secondary" id="cancel-add-mode">登録モードを終了</button>
+          </form>
+        </details>
+        <button type="button" class="lm-btn secondary" id="timetable-register">時間割を登録する</button>
+      </div>
       <div class="hs-add-undo" id="add-undo" hidden></div>
-      <div id="day-list"></div>
+      <div class="hs-day-heading" id="selected-date-label" hidden></div>
+      <div id="day-list" hidden></div>
     </section>
 
     <section class="lm-section">
