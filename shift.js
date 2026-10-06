@@ -10,6 +10,7 @@
   const addDetails = document.getElementById('add-plan-details');
   const addTemplate = document.getElementById('add-template');
   const addRepeat = document.getElementById('add-repeat');
+  const addTemplateChips = document.getElementById('add-template-chips');
   const addStartDate = document.getElementById('add-start-date');
   const addUntilDate = document.getElementById('add-until-date');
   const addStartTime = document.getElementById('add-start-time');
@@ -26,10 +27,15 @@
   const monthLabel = document.getElementById('month-label');
   const monthSummary = document.getElementById('month-summary');
   const calendarToggle = document.getElementById('calendar-toggle');
+  const templatePager = document.getElementById('template-pager');
+  const templateListAll = document.getElementById('template-list-all');
   const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+  const TEMPLATES_PER_PAGE = 5;
 
   let selectedDate = LM.todayStr();
   let shownMonth = new Date(`${selectedDate}T00:00:00`);
+  let templatePage = 0;
+  let showAllTemplates = false;
 
   loadWageSettings();
   document.getElementById('add-start-date').value = selectedDate;
@@ -97,6 +103,23 @@
   });
 
   addTemplate.addEventListener('change', updateAddForm);
+  addTemplateChips.addEventListener('click', (event) => {
+    const chip = event.target.closest('[data-template-chip]');
+    if (!chip) return;
+    addTemplate.value = chip.dataset.templateChip;
+    updateAddForm();
+  });
+  templatePager.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-template-page]');
+    if (!button) return;
+    templatePage += Number(button.dataset.templatePage);
+    renderTemplates();
+  });
+  templateListAll.addEventListener('click', () => {
+    showAllTemplates = !showAllTemplates;
+    templatePage = 0;
+    renderTemplates();
+  });
   addRepeat.addEventListener('change', updateAddForm);
   addForm.addEventListener('input', updatePreview);
   weekdayRows.forEach((row) => {
@@ -158,7 +181,12 @@
     if (templates.length === 0) {
       templateList.innerHTML = '<p class="lm-empty">テンプレートはありません。「予定を登録」から作成してください。</p>';
     }
-    templates.forEach((template) => {
+    const pageCount = Math.max(1, Math.ceil(templates.length / TEMPLATES_PER_PAGE));
+    templatePage = Math.min(templatePage, pageCount - 1);
+    const visibleTemplates = showAllTemplates
+      ? templates
+      : templates.slice(templatePage * TEMPLATES_PER_PAGE, (templatePage + 1) * TEMPLATES_PER_PAGE);
+    visibleTemplates.forEach((template) => {
       const row = document.createElement('div');
       row.className = 'hs-template-row';
       const name = document.createElement('div');
@@ -185,24 +213,49 @@
       row.append(name, actions);
       templateList.appendChild(row);
     });
+    templatePager.replaceChildren();
+    templatePager.hidden = templates.length <= TEMPLATES_PER_PAGE || showAllTemplates;
+    if (!templatePager.hidden) {
+      const previous = document.createElement('button');
+      previous.type = 'button';
+      previous.className = 'lm-btn secondary';
+      previous.dataset.templatePage = '-1';
+      previous.textContent = '‹';
+      previous.disabled = templatePage === 0;
+      const position = document.createElement('span');
+      position.textContent = `${templatePage + 1} / ${pageCount}`;
+      const next = document.createElement('button');
+      next.type = 'button';
+      next.className = 'lm-btn secondary';
+      next.dataset.templatePage = '1';
+      next.textContent = '›';
+      next.disabled = templatePage >= pageCount - 1;
+      templatePager.append(previous, position, next);
+    }
+    templateListAll.hidden = templates.length <= TEMPLATES_PER_PAGE;
+    templateListAll.textContent = showAllTemplates ? 'ページ表示に戻る' : '一覧表示';
     updateAddForm();
   }
 
   function updateAddForm() {
     const templates = getTemplates();
-    const currentId = addTemplate.value;
-    addTemplate.replaceChildren();
-    const placeholder = document.createElement('option');
-    placeholder.value = '';
-    placeholder.textContent = templates.length ? '選択してください' : '先にテンプレートを登録してください';
-    addTemplate.appendChild(placeholder);
+    if (!templates.some((template) => template.id === addTemplate.value)) addTemplate.value = '';
+    addTemplateChips.replaceChildren();
+    if (templates.length === 0) {
+      const empty = document.createElement('span');
+      empty.className = 'lm-empty';
+      empty.textContent = '先に予定テンプレートを登録してください';
+      addTemplateChips.appendChild(empty);
+    }
     templates.forEach((template) => {
-      const option = document.createElement('option');
-      option.value = template.id;
-      option.textContent = `${template.name} (${template.kind === 'class' ? '授業' : 'シフト'})`;
-      addTemplate.appendChild(option);
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'hs-template-chip';
+      chip.dataset.templateChip = template.id;
+      chip.setAttribute('aria-pressed', String(template.id === addTemplate.value));
+      chip.textContent = template.name;
+      addTemplateChips.appendChild(chip);
     });
-    if (templates.some((template) => template.id === currentId)) addTemplate.value = currentId;
     const weekly = addRepeat.value === 'weekly';
     document.querySelectorAll('.hs-repeat-fields').forEach((field) => { field.hidden = !weekly; });
     document.querySelectorAll('.hs-once-fields').forEach((field) => { field.hidden = weekly; });
@@ -390,6 +443,7 @@
     const year = shownMonth.getFullYear();
     const month = shownMonth.getMonth();
     const days = new Date(year, month + 1, 0).getDate();
+    const eventsByDate = groupByDate(LM.get(LM.KEYS.SHIFTS, []));
     calendarTitle.textContent = `${year}年${month + 1}月`;
     dateStrip.replaceChildren();
     for (let day = 1; day <= days; day += 1) {
@@ -405,6 +459,14 @@
       const dayNumber = document.createElement('strong');
       dayNumber.textContent = String(day);
       button.append(weekday, dayNumber);
+      const eventCount = (eventsByDate.get(date) || []).length;
+      if (eventCount > 0) {
+        const indicator = document.createElement('span');
+        indicator.className = 'hs-date-indicator';
+        indicator.textContent = eventCount > 1 ? String(eventCount) : '';
+        indicator.setAttribute('aria-label', `予定${eventCount}件`);
+        button.appendChild(indicator);
+      }
       if (date === LM.todayStr()) button.classList.add('is-today');
       dateStrip.appendChild(button);
     }

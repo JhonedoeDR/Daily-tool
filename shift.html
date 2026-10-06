@@ -34,8 +34,9 @@
         <summary class="lm-btn">＋ 予定を追加</summary>
         <form id="add-plan-form" class="hs-inline-form">
           <div class="lm-field">
-            <label for="add-template">予定テンプレート</label>
-            <select id="add-template" required></select>
+            <span class="hs-field-label">予定テンプレート</span>
+            <input id="add-template" type="hidden" />
+            <div id="add-template-chips" class="hs-template-chips" role="group" aria-label="予定テンプレート"></div>
           </div>
           <div class="lm-field">
             <label for="add-repeat">追加方法</label>
@@ -93,6 +94,8 @@
         <button type="button" class="lm-btn secondary" id="template-toggle" aria-expanded="false">予定を登録</button>
       </div>
       <div id="template-list"></div>
+      <div id="template-pager" class="lm-pager" hidden></div>
+      <button type="button" class="lm-btn secondary hs-template-list-all" id="template-list-all" hidden>一覧表示</button>
       <form id="template-form" class="hs-template-form" hidden>
         <div class="lm-field">
           <label for="template-kind">種類</label>
