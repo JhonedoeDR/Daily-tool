@@ -33,7 +33,7 @@
 
   populateBelongingOptions();
   fields.date.value = LM.todayStr();
-  goToStep(1);
+  goToStep(1, false);
   renderList();
   renderCalendar();
   scheduleList.addEventListener('click', onListClick);
@@ -130,14 +130,14 @@
     return true;
   }
 
-  function goToStep(step) {
+  function goToStep(step, shouldScroll = true) {
     currentStep = step;
     steps.forEach((el) => {
       el.style.display = Number(el.dataset.step) === step ? '' : 'none';
     });
     stepIndicator.textContent = String(step);
     if (step === 2) updatePreview();
-    window.scrollTo({ top: form.offsetTop - 20, behavior: 'smooth' });
+    if (shouldScroll) window.scrollTo({ top: form.offsetTop - 20, behavior: 'smooth' });
   }
 
   function getSelectedBelongingIds() {
