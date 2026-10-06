@@ -175,8 +175,12 @@
   });
 
   dayList.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-edit-id], [data-delete-id], [data-delete-series]');
+    const button = event.target.closest('[data-toggle-schedule], [data-edit-id], [data-delete-id], [data-delete-series]');
     if (!button) return;
+    if (button.dataset.toggleSchedule) {
+      toggleScheduleRegistration(button.dataset.toggleSchedule);
+      return;
+    }
     if (button.dataset.editId) {
       startShiftEdit(button.dataset.editId);
       return;
@@ -193,6 +197,26 @@
     syncLinkedSchedules();
     renderAll();
   });
+
+  function toggleScheduleRegistration(id) {
+    const shifts = LM.get(LM.KEYS.SHIFTS, []);
+    const index = shifts.findIndex((item) => item.id === id);
+    if (index === -1) {
+      LM.showToast('登録する予定が見つかりません', 'error');
+      return;
+    }
+    const registered = shifts[index].scheduleRegistered === true;
+    if (!registered && !/^\d{2}:\d{2}$/.test(shifts[index].start || '')) {
+      LM.showToast('予定逆算に反映するには、開始時刻を設定してください', 'error');
+      return;
+    }
+    shifts[index] = { ...shifts[index], scheduleRegistered: !registered };
+    if (!LM.set(LM.KEYS.SHIFTS, shifts)) return;
+    if (!syncLinkedSchedules()) return;
+    renderAll();
+    const kind = shifts[index].kind === 'class' ? '履修' : '予定逆算';
+    LM.showToast(registered ? `${kind}登録を解除しました` : `${kind}に登録しました`);
+  }
 
   function getTemplates() {
     return LM.get(LM.KEYS.SHIFT_TEMPLATES, []);
@@ -665,6 +689,16 @@
       row.appendChild(detail);
       const actions = document.createElement('div');
       actions.className = 'hs-day-actions';
+      const registered = item.scheduleRegistered === true;
+      const register = document.createElement('button');
+      register.type = 'button';
+      register.className = `lm-btn secondary hs-register${registered ? ' is-registered' : ''}`;
+      register.dataset.toggleSchedule = item.id;
+      register.textContent = item.kind === 'class'
+        ? (registered ? '履修登録を解除' : '履修登録する')
+        : (registered ? '逆算登録を解除' : '予定逆算に登録');
+      register.setAttribute('aria-pressed', String(registered));
+      actions.appendChild(register);
       const edit = document.createElement('button');
       edit.type = 'button';
       edit.className = 'lm-btn secondary hs-edit';

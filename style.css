@@ -1844,6 +1844,14 @@ body {
   padding: 6px;
   font-size: 11px;
 }
+.hs-register {
+  padding: 6px;
+  font-size: 10px;
+}
+.hs-register.is-registered {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
 .hs-edit {
   padding: 6px;
   font-size: 11px;

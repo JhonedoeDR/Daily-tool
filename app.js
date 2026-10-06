@@ -10,7 +10,7 @@ const LM = {};
  * lm_belongingSets : 持ちものセット [{id, name, items:[{id, name}]}]
  * lm_dailyChecks   : 日付ごとの持ちものチェック { "2026-09-18": { checkedItemIds: [...] } }
  * lm_todoState     : タスク状態 { dailyTasks, weeklyClears, reflected, ... }
- * lm_shifts        : 履修・シフト [{id, date, kind, name, location, start, end, breakMin, seriesId?, travelMin?, prepMin?, arriveBeforeMin?, routePreset?}]
+ * lm_shifts        : 履修・シフト [{id, date, kind, name, location, start, end, breakMin, seriesId?, scheduleRegistered?, travelMin?, prepMin?, arriveBeforeMin?, routePreset?}]
  * lm_shiftTemplates: 履修・シフトの予定テンプレート [{id, kind, name}]
  * lm_wageSettings  : 給与設定 {hourlyWage, transportFee}
  * lm_events        : イベント [{id, name, start, end, target, current, unit}]
@@ -58,6 +58,7 @@ LM.uid = function () {
 LM.syncShiftSchedules = function () {
   const earliestByDateAndKind = new Map();
   LM.get(LM.KEYS.SHIFTS, []).forEach((shift) => {
+    if (shift.scheduleRegistered !== true) return;
     const kind = shift.kind === 'class' ? 'class' : 'shift';
     if (!/^\d{4}-\d{2}-\d{2}$/.test(shift.date || '') ||
         shift.date < LM.todayStr() ||
