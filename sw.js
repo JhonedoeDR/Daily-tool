@@ -51,7 +51,7 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 // --- オフライン用キャッシュ ---
-const CACHE_NAME = 'lm-cache-v11';
+const CACHE_NAME = 'lm-cache-v12';
 const ASSETS = [
   './',
   './index.html',
@@ -65,6 +65,7 @@ const ASSETS = [
   './style.css',
   './app.js',
   './renderNav-menu.js',
+  './firebase-sync.js',
   './home.js',
   './schedule.js',
   './belongings.js',

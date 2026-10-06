@@ -1575,6 +1575,18 @@ body {
 }
 .hm-inner .hm-date.is-s  { font-size: clamp(17px, 5.6vw, 22px); }
 .hm-inner .hm-date.is-xs { font-size: clamp(14px, 4.4vw, 17px); }
+.hm-circle[data-mode='event'] .hm-inner .hm-date {
+  font-size: clamp(19px, 6vw, 24px);
+}
+.hm-circle[data-mode='event'] .hm-inner .hm-date.is-s {
+  font-size: clamp(16px, 5vw, 20px);
+}
+.hm-circle[data-mode='event'] .hm-inner .hm-date.is-xs {
+  font-size: clamp(14px, 4.2vw, 17px);
+}
+.hm-circle[data-mode='event'] .hm-inner {
+  gap: 4px;
+}
 .hm-pct {
   font-weight: 700;
   font-size: clamp(13px, 4.2vw, 16px);
@@ -2082,9 +2094,20 @@ body {
   cursor: pointer;
 }
 .hs-template-chip[aria-pressed='true'] {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  box-shadow: inset 0 0 0 1px var(--accent);
+  border-color: var(--text);
+  background: var(--text);
+  color: #fff;
+  box-shadow: none;
+}
+.hs-template-chip[aria-pressed='true']:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.lm-schedule-source {
+  display: inline-block;
+  margin-left: 6px;
+  color: var(--text-soft);
+  font-size: 11px;
 }
 .hs-template-row {
   padding: 5px 0;

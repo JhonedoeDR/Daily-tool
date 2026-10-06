@@ -32,9 +32,11 @@ window.LMFirebase = {
         taskEnteredAt: Number(todoRaw.taskEnteredAt) || 0,
       } : null;
       await setDoc(doc(db, ...STATE_REF_PATH), { schedules, events, todo, updatedAt: Date.now() }, { merge: true });
+      return true;
     } catch (e) {
       console.error('Firestore sync failed', e);
       window.dispatchEvent(new CustomEvent('lm-firebase-error', { detail: { action: '予定の同期', message: (e && e.message) || String(e) } }));
+      return false;
     }
   },
 
@@ -65,5 +67,4 @@ window.LMFirebase = {
 
 // 準備ができたことを他のスクリプト(app.js等)に伝える
 window.dispatchEvent(new Event('lm-firebase-ready'));
-// 準備ができたことを他のスクリプト(app.js等)に伝える
-window.dispatchEvent(new Event('lm-firebase-ready'));
+if (window.LM.get('lm_shiftScheduleSyncPending', false)) window.LM.syncFirebase();

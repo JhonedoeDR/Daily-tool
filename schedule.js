@@ -128,6 +128,10 @@
   function startEdit(id) {
     const schedule = LM.get(LM.KEYS.SCHEDULES, []).find((s) => s.id === id);
     if (!schedule) return;
+    if (schedule.autoSource === 'shift') {
+      LM.showToast('この予定は履修・シフト側で編集してください', 'error');
+      return;
+    }
     editingId = id;
     fields.name.value = schedule.name;
     fields.date.value = schedule.date;
@@ -205,15 +209,16 @@
       row.style.cursor = 'pointer';
       row.style.justifyContent = 'space-between';
       row.style.alignItems = 'center';
+      const linked = s.autoSource === 'shift';
       row.innerHTML = `
         <span data-confirm="${s.id}" style="flex:1;">
           <span class="lm-schedule-time">${LM.formatDateHeader(s.date).slice(0, -3)} ${s.start}</span>
-          <span>${escapeHtml(s.name)}</span>
+          <span>${escapeHtml(s.name)}${linked ? '<small class="lm-schedule-source">履修・シフトから反映</small>' : ''}</span>
         </span>
-        <span style="display:flex; gap:6px;">
+        ${linked ? '' : `<span style="display:flex; gap:6px;">
           <button type="button" data-edit="${s.id}" class="lm-btn secondary" style="padding:6px 10px; font-size:12px;">編集</button>
           <button type="button" data-delete="${s.id}" class="lm-btn secondary" style="padding:6px 10px; font-size:12px;">削除</button>
-        </span>
+        </span>`}
       `;
       el.appendChild(row);
     });

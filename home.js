@@ -505,7 +505,9 @@
     schedules.forEach((s) => {
       const row = document.createElement('a');
       row.className = 'lm-schedule-item';
-      row.href = `./schedule.html?id=${encodeURIComponent(s.id)}`;
+      row.href = s.autoSource === 'shift'
+        ? './shift.html'
+        : `./schedule.html?id=${encodeURIComponent(s.id)}`;
       const departureHtml = renderDepartureLine(s);
       row.innerHTML = `
         <span class="lm-schedule-time">${s.start}</span>

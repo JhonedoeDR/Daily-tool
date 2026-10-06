@@ -168,6 +168,7 @@
       if (!confirm('この予定を削除しますか?')) return;
       if (!LM.set(LM.KEYS.SHIFTS, LM.get(LM.KEYS.SHIFTS, []).filter((item) => item.id !== id))) return;
     }
+    syncLinkedSchedules();
     renderAll();
   });
 
@@ -355,6 +356,7 @@
       breakMin,
     }));
     if (!LM.set(LM.KEYS.SHIFTS, LM.get(LM.KEYS.SHIFTS, []).concat(records))) return;
+    const schedulesSynced = syncLinkedSchedules();
     selectedDate = records[0].date;
     shownMonth = new Date(`${selectedDate}T00:00:00`);
     addStartDate.value = selectedDate;
@@ -374,7 +376,7 @@
       });
     });
     updateAddForm();
-    LM.showToast(`${records.length}件カレンダーに追加しました`);
+    if (schedulesSynced) LM.showToast(`${records.length}件カレンダーに追加しました`);
   }
 
   function moveMonth(delta) {
@@ -669,5 +671,15 @@
   function calculatePay(item, wageSettings) {
     if (!item.start || !item.end) return 0;
     return LM.calcShiftPay(item, wageSettings || getWageSettings()).pay;
+  }
+
+  function syncLinkedSchedules() {
+    const result = LM.syncShiftSchedules();
+    if (result === 'updated') LM.syncFirebase();
+    if (result === 'failed') {
+      LM.showToast('予定逆算への反映に失敗しました', 'error');
+      return false;
+    }
+    return true;
   }
 })();

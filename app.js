@@ -6,7 +6,7 @@
 const LM = {};
 
 /* ---------- localStorage キー一覧 ----------
- * lm_schedules     : 予定 [{id, name, date, start, end, place, travelMin, prepMin, arriveBeforeMin, belongingSetId, memo}]
+ * lm_schedules     : 予定 [{id, name, date, start, end, place, travelMin, prepMin, arriveBeforeMin, belongingSetId, memo, autoSource?}]
  * lm_belongingSets : 持ちものセット [{id, name, items:[{id, name}]}]
  * lm_dailyChecks   : 日付ごとの持ちものチェック { "2026-09-18": { checkedItemIds: [...] } }
  * lm_todoState     : タスク状態 { dailyTasks, weeklyClears, reflected, ... }
@@ -53,6 +53,48 @@ LM.set = function (key, value) {
 
 LM.uid = function () {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+};
+
+LM.syncShiftSchedules = function () {
+  const earliestByDateAndKind = new Map();
+  LM.get(LM.KEYS.SHIFTS, []).forEach((shift) => {
+    const kind = shift.kind === 'class' ? 'class' : 'shift';
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(shift.date || '') ||
+        shift.date < LM.todayStr() ||
+        !/^\d{2}:\d{2}$/.test(shift.start || '')) return;
+    const key = `${shift.date}:${kind}`;
+    const current = earliestByDateAndKind.get(key);
+    if (!current || shift.start < current.start) earliestByDateAndKind.set(key, shift);
+  });
+
+  const projected = [...earliestByDateAndKind.entries()]
+    .map(([key, shift]) => {
+      const [date, kind] = key.split(':');
+      return {
+        id: `shift-projection-${kind}-${date}`,
+        date,
+        name: kind === 'class' ? '学校' : 'バイト',
+        start: shift.start,
+        end: shift.end || '',
+        place: shift.location || '',
+        travelMin: 0,
+        prepMin: 0,
+        arriveBeforeMin: 0,
+        belongingSetIds: [],
+        memo: '',
+        autoSource: 'shift',
+      };
+    })
+    .sort((a, b) => (a.date + a.start + a.name).localeCompare(b.date + b.start + b.name));
+
+  const schedules = LM.get(LM.KEYS.SCHEDULES, []);
+  const existingProjections = schedules.filter((schedule) => schedule.autoSource === 'shift');
+  if (JSON.stringify(existingProjections) === JSON.stringify(projected)) return 'unchanged';
+
+  const manualSchedules = schedules.filter((schedule) => schedule.autoSource !== 'shift');
+  if (!LM.set(LM.KEYS.SCHEDULES, manualSchedules.concat(projected))) return 'failed';
+  if (!LM.set('lm_shiftScheduleSyncPending', true)) return 'failed';
+  return 'updated';
 };
 
 /* ---------- 日付ユーティリティ ---------- */
@@ -529,8 +571,13 @@ LM.syncFirebase = async function () {
   if (!window.LMFirebase) {
     await new Promise((resolve) => window.addEventListener('lm-firebase-ready', resolve, { once: true }));
   }
-  if (window.LMFirebase) window.LMFirebase.syncData();
+  if (!window.LMFirebase) return false;
+  const synced = await window.LMFirebase.syncData();
+  if (synced) localStorage.removeItem('lm_shiftScheduleSyncPending');
+  return synced;
 };
+
+LM.syncShiftSchedules();
 
 // 連続した変更(文字入力など)をまとめて、最後の変更から少し後に1回だけ同期する
 LM._syncTimer = null;
