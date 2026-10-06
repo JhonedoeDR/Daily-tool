@@ -3,6 +3,8 @@
   const form = document.getElementById('schedule-form');
   const scheduleList = document.getElementById('schedule-list');
   const scheduleFilters = [...document.querySelectorAll('[data-schedule-filter]')];
+  const calendarGrid = document.getElementById('schedule-calendar-grid');
+  const calendarTitle = document.getElementById('schedule-calendar-title');
   const fields = {
     name: document.getElementById('f-name'),
     date: document.getElementById('f-date'),
@@ -24,12 +26,40 @@
   let currentStep = 1;
   let activeFilter = 'all';
   let listPage = 0;
+  let selectedCalendarDate = LM.todayStr();
+  let shownCalendarMonth = new Date(`${selectedCalendarDate}T00:00:00`);
+  let lastCalendarTapDate = '';
+  let lastCalendarTapAt = 0;
 
   populateBelongingOptions();
   fields.date.value = LM.todayStr();
   goToStep(1);
   renderList();
+  renderCalendar();
   scheduleList.addEventListener('click', onListClick);
+  calendarGrid.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-date]');
+    if (!button) return;
+    const date = button.dataset.date;
+    selectedCalendarDate = date;
+    renderCalendar();
+    const now = Date.now();
+    if (lastCalendarTapDate === date && now - lastCalendarTapAt <= 350) {
+      lastCalendarTapDate = '';
+      lastCalendarTapAt = 0;
+      openCalendarAgenda(date);
+      return;
+    }
+    lastCalendarTapDate = date;
+    lastCalendarTapAt = now;
+  });
+  document.getElementById('schedule-calendar-prev').addEventListener('click', () => moveCalendarMonth(-1));
+  document.getElementById('schedule-calendar-next').addEventListener('click', () => moveCalendarMonth(1));
+  document.getElementById('schedule-calendar-today').addEventListener('click', () => {
+    selectedCalendarDate = LM.todayStr();
+    shownCalendarMonth = new Date(`${selectedCalendarDate}T00:00:00`);
+    renderCalendar();
+  });
   scheduleFilters.forEach((button) => {
     button.addEventListener('click', () => {
       activeFilter = button.dataset.scheduleFilter;
@@ -40,6 +70,7 @@
         filter.setAttribute('aria-pressed', String(active));
       });
       renderList();
+      renderCalendar();
     });
   });
   LM.renderNav(document.getElementById('nav-container'));
@@ -140,6 +171,7 @@
     LM.syncFirebase();
     resetForm();
     renderList();
+    renderCalendar();
   }
 
   function startEdit(id) {
@@ -263,6 +295,155 @@
     }
   }
 
+  function renderCalendar() {
+    const year = shownCalendarMonth.getFullYear();
+    const month = shownCalendarMonth.getMonth();
+    calendarTitle.textContent = `${year}年${month + 1}月`;
+    const firstWeekday = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const cellCount = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
+    const byDate = new Map();
+    LM.get(LM.KEYS.SCHEDULES, [])
+      .filter((schedule) => activeFilter === 'all' || getScheduleCategory(schedule) === activeFilter)
+      .forEach((schedule) => {
+        if (!byDate.has(schedule.date)) byDate.set(schedule.date, []);
+        byDate.get(schedule.date).push(schedule);
+      });
+
+    calendarGrid.replaceChildren();
+    ['日', '月', '火', '水', '木', '金', '土'].forEach((weekday) => {
+      const heading = document.createElement('span');
+      heading.className = 'hs-calendar-weekday';
+      heading.textContent = weekday;
+      calendarGrid.appendChild(heading);
+    });
+    for (let cell = 0; cell < cellCount; cell += 1) {
+      const day = cell - firstWeekday + 1;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'hs-calendar-day';
+      if (day < 1 || day > daysInMonth) {
+        button.disabled = true;
+        button.setAttribute('aria-hidden', 'true');
+        calendarGrid.appendChild(button);
+        continue;
+      }
+      const date = LM.scheduleDateKey(new Date(year, month, day));
+      const schedules = byDate.get(date) || [];
+      button.dataset.date = date;
+      button.setAttribute('aria-pressed', String(date === selectedCalendarDate));
+      if (date === LM.todayStr()) button.classList.add('is-today');
+      const number = document.createElement('span');
+      number.className = 'hs-calendar-number';
+      number.textContent = String(day);
+      button.appendChild(number);
+      const markers = document.createElement('span');
+      markers.className = 'hs-calendar-markers';
+      schedules.slice(0, 4).forEach((schedule) => {
+        const marker = document.createElement('span');
+        marker.className = `sc-calendar-marker is-${getScheduleCategory(schedule)}`;
+        marker.setAttribute('aria-hidden', 'true');
+        markers.appendChild(marker);
+      });
+      button.appendChild(markers);
+      const labels = schedules.map((schedule) => schedule.name || '予定');
+      button.setAttribute('aria-label', `${date}${labels.length ? `、${labels.join('、')}` : '、予定なし'}`);
+      calendarGrid.appendChild(button);
+    }
+  }
+
+  function moveCalendarMonth(delta) {
+    shownCalendarMonth = new Date(
+      shownCalendarMonth.getFullYear(),
+      shownCalendarMonth.getMonth() + delta,
+      1
+    );
+    selectedCalendarDate = LM.scheduleDateKey(shownCalendarMonth);
+    renderCalendar();
+  }
+
+  function openCalendarAgenda(date) {
+    const content = document.createElement('div');
+    const navigation = document.createElement('div');
+    navigation.className = 'hs-agenda-popover-nav';
+    const previous = document.createElement('button');
+    previous.type = 'button';
+    previous.className = 'lm-btn secondary';
+    previous.textContent = '‹';
+    previous.setAttribute('aria-label', '前の日');
+    const title = document.createElement('strong');
+    title.className = 'hs-agenda-popover-date';
+    const next = document.createElement('button');
+    next.type = 'button';
+    next.className = 'lm-btn secondary';
+    next.textContent = '›';
+    next.setAttribute('aria-label', '次の日');
+    navigation.append(previous, title, next);
+    const list = document.createElement('div');
+    list.className = 'sc-calendar-agenda-list';
+    content.append(navigation, list);
+
+    const showDate = (dateKey) => {
+      selectedCalendarDate = dateKey;
+      const selected = new Date(`${dateKey}T00:00:00`);
+      shownCalendarMonth = new Date(selected.getFullYear(), selected.getMonth(), 1);
+      renderCalendar();
+      openCalendarAgenda(dateKey);
+    };
+    previous.addEventListener('click', () => showDate(shiftCalendarDate(date, -1)));
+    next.addEventListener('click', () => showDate(shiftCalendarDate(date, 1)));
+
+    LM.openModal('予定', content);
+    const overlay = document.querySelector('.lm-modal-overlay');
+    const panel = overlay?.querySelector('.lm-modal');
+    overlay?.classList.add('hs-agenda-overlay');
+    const selected = new Date(`${date}T00:00:00`);
+    title.textContent = `${selected.getMonth() + 1}月${selected.getDate()}日(${['日', '月', '火', '水', '木', '金', '土'][selected.getDay()]})`;
+    const schedules = LM.get(LM.KEYS.SCHEDULES, [])
+      .filter((schedule) => schedule.date === date &&
+        (activeFilter === 'all' || getScheduleCategory(schedule) === activeFilter))
+      .sort((a, b) => (a.start || '').localeCompare(b.start || ''));
+    if (schedules.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'lm-empty';
+      empty.textContent = 'この日の予定はありません';
+      list.appendChild(empty);
+    }
+    schedules.forEach((schedule) => {
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.className = `sc-calendar-agenda-item is-${getScheduleCategory(schedule)}`;
+      const time = document.createElement('span');
+      time.className = 'lm-schedule-time';
+      time.textContent = schedule.start || '時刻未設定';
+      const name = document.createElement('strong');
+      name.textContent = schedule.name || '予定';
+      row.append(time, name);
+      row.addEventListener('click', () => showConfirm(schedule.id));
+      list.appendChild(row);
+    });
+    let touchStart = null;
+    panel?.addEventListener('touchstart', (event) => {
+      const touch = event.changedTouches[0];
+      touchStart = { x: touch.clientX, y: touch.clientY };
+    }, { passive: true });
+    panel?.addEventListener('touchend', (event) => {
+      if (!touchStart) return;
+      const touch = event.changedTouches[0];
+      const deltaX = touch.clientX - touchStart.x;
+      const deltaY = touch.clientY - touchStart.y;
+      touchStart = null;
+      if (Math.abs(deltaX) < 55 || Math.abs(deltaX) < Math.abs(deltaY) * 1.25) return;
+      showDate(shiftCalendarDate(date, deltaX < 0 ? 1 : -1));
+    }, { passive: true });
+  }
+
+  function shiftCalendarDate(dateKey, delta) {
+    const date = new Date(`${dateKey}T00:00:00`);
+    date.setDate(date.getDate() + delta);
+    return LM.scheduleDateKey(date);
+  }
+
   function getScheduleCategory(schedule) {
     if (schedule.autoSource !== 'shift') return 'other';
     return schedule.name === '学校' ? 'school' : 'work';
@@ -351,6 +532,7 @@
       LM.set(LM.KEYS.SCHEDULES, schedules);
       LM.syncFirebase();
       renderList();
+      renderCalendar();
     } else if (confirmId) {
       showConfirm(confirmId);
     }

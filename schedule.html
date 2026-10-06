@@ -84,6 +84,15 @@
 
     <section class="lm-section">
       <div class="lm-section-title">登録済みの予定</div>
+      <div class="hs-calendar-nav">
+        <button type="button" class="lm-btn secondary" id="schedule-calendar-prev" aria-label="前の月">‹</button>
+        <strong id="schedule-calendar-title"></strong>
+        <button type="button" class="lm-btn secondary" id="schedule-calendar-next" aria-label="次の月">›</button>
+      </div>
+      <div class="hs-calendar-grid" id="schedule-calendar-grid" aria-label="月間カレンダー"></div>
+      <div class="hs-calendar-controls sc-calendar-controls">
+        <button type="button" class="lm-btn secondary" id="schedule-calendar-today">今日</button>
+      </div>
       <div class="lm-schedule-filters" role="group" aria-label="予定の分類">
         <button type="button" class="lm-btn secondary is-active" data-schedule-filter="all" aria-pressed="true">すべて</button>
         <button type="button" class="lm-btn secondary" data-schedule-filter="school" aria-pressed="false">学校</button>

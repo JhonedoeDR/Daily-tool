@@ -2355,6 +2355,65 @@ body {
 .hs-agenda-popover-list .hs-day-item:first-child {
   border-top: 1px solid var(--paper-line);
 }
+.sc-calendar-controls {
+  justify-content: flex-end;
+  margin: 2px 0 8px;
+}
+.sc-calendar-marker {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+}
+.sc-calendar-marker.is-school {
+  background: var(--text-soft);
+}
+.sc-calendar-marker.is-work {
+  background: var(--accent);
+}
+.sc-calendar-marker.is-other {
+  background: var(--accent-soft);
+}
+.sc-calendar-agenda-list {
+  display: flex;
+  flex-direction: column;
+}
+.sc-calendar-agenda-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 4px;
+  border: 0;
+  border-top: 1px solid var(--paper-line);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.sc-calendar-agenda-item:last-child {
+  border-bottom: 1px solid var(--paper-line);
+}
+.sc-calendar-agenda-item.is-school {
+  border-left: 3px solid var(--text-soft);
+  padding-left: 8px;
+}
+.sc-calendar-agenda-item.is-work {
+  border-left: 3px solid var(--accent);
+  padding-left: 8px;
+}
+.sc-calendar-agenda-item.is-other {
+  border-left: 3px solid var(--accent-soft);
+  padding-left: 8px;
+}
+.sc-calendar-agenda-item .lm-schedule-time {
+  flex: 0 0 52px;
+  margin: 0;
+}
+.sc-calendar-agenda-item strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .hs-class-period-field small {
   display: block;
   margin-top: 5px;
