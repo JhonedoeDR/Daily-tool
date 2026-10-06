@@ -307,8 +307,7 @@
     for (let i = 0; i < 12; i++) {
       const [x1, y1] = polar(i % 3 === 0 ? 84 : 88, i * 30);
       const [x2, y2] = polar(93, i * 30);
-      ring.push(svgEl('line', { x1, y1, x2, y2, 'stroke-width': i % 3 === 0 ? 2.5 : 1.5, 'stroke-linecap': 'round' }, { stroke: 'var(--text-soft)' }));
-    }
+      ring.push(svgEl('circle', { cx: mx, cy: my, r: 7.5, 'stroke-width': 2.5 }, { fill: 'var(--accent-soft)', stroke: 'var(--accent)' }));
     const dial = (min) => ((min % 720) / 720) * 360;
 
     const list = LM.get(LM.KEYS.SCHEDULES, [])
@@ -320,9 +319,10 @@
       const [mx, my] = polar(RING_R, dial(LM.clockToMinutes(next.start)));
       ring.push(svgEl('circle', { cx: mx, cy: my, r: 9, 'stroke-width': 2.5 }, { fill: 'var(--accent-soft)', stroke: 'var(--accent)' }));
     }
-    const [hx1, hy1] = polar(60, dial(nowMin));
-    const [hx2, hy2] = polar(82, dial(nowMin));
-    ring.push(svgEl('line', { x1: hx1, y1: hy1, x2: hx2, y2: hy2, 'stroke-width': 5, 'stroke-linecap': 'round' }, { stroke: 'var(--accent)' }));
+
+     const [hx1, hy1] = polar(79, dial(nowMin));
+     const [hx2, hy2] = polar(94, dial(nowMin));
+    ring.push(svgEl('line', { x1: hx1, y1: hy1, x2: hx2, y2: hy2, 'stroke-width': 4, 'stroke-linecap': 'round' }, { stroke: 'var(--accent)' }));
 
     if (list.length === 0) return { ring, inner: innerHtml('今日の予定', '—', 'なし') };
     if (!next) return { ring, inner: innerHtml('今日の予定', '終了', '') };
