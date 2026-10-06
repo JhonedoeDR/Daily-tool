@@ -30,6 +30,7 @@
     <div class="lm-form-tabs" role="tablist">
      <button type="button" class="lm-btn secondary is-active" data-form-tab="schedule" aria-pressed="true">予定を登録</button>
      <button type="button" class="lm-btn secondary" data-form-tab="deadline" aria-pressed="false">期限・締切を登録</button>
+     <button type="button" class="lm-btn secondary" data-form-tab="preset" aria-pressed="false">逆算プリセットを作成</button>
     </div>
     <div id="tab-panel-schedule">
 
@@ -122,8 +123,7 @@
             <div class="lm-field">
               <label for="d-name">名前</label>
               <input id="d-name" required />
-     </div>
-    
+            </div>
       <div class="lm-field">
         <label for="d-date">締切日</label>
         <input id="d-date" type="date" required />
@@ -136,6 +136,36 @@
     </form>
   </section>
 </div>
+
+<div id="tab-panel-preset" hidden>
+  <p class="lm-sub-header">逆算プリセットを作成</p>
+  <section class="lm-section">
+    <form id="preset-form">
+      <div class="lm-field">
+        <label for="p-name">名前</label>
+        <input id="p-name" required />
+      </div>
+      <div class="lm-field">
+        <label for="p-travel">移動時間(分)</label>
+        <input id="p-travel" type="number" inputmode="numeric" pattern="[0-9]*" min="0" value="0" />
+      </div>
+      <div class="lm-field">
+        <label for="p-prep">準備時間(分)</label>
+        <input id="p-prep" type="number" inputmode="numeric" pattern="[0-9]*" min="0" value="0" />
+      </div>
+      <div class="lm-field">
+        <label for="p-arrive">到着希望時間(分前)</label>
+        <input id="p-arrive" type="number" inputmode="numeric" pattern="[0-9]*" min="0" value="0" />
+      </div>
+      <button type="submit" class="lm-btn">保存</button>
+    </form>
+  </section>
+  <section class="lm-section">
+    <div class="lm-section-title">作成済みのプリセット</div>
+    <div id="preset-list"></div>
+  </section>
+</div>
+
 
 
     <div id="nav-container"></div>
