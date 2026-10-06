@@ -261,8 +261,12 @@
   });
 
   dayList.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-toggle-attendance], [data-toggle-schedule-group], [data-toggle-schedule], [data-edit-group], [data-edit-id], [data-delete-group], [data-delete-id], [data-delete-series]');
+    const button = event.target.closest('[data-toggle-attendance-group], [data-toggle-attendance], [data-toggle-schedule-group], [data-toggle-schedule], [data-edit-group], [data-edit-id], [data-delete-group], [data-delete-id], [data-delete-series]');
     if (!button) return;
+    if (button.dataset.toggleAttendanceGroup) {
+      toggleAttendanceGroup(JSON.parse(button.dataset.toggleAttendanceGroup));
+      return;
+    }
     if (button.dataset.toggleAttendance) {
       toggleAttendance(button.dataset.toggleAttendance);
       return;
@@ -392,6 +396,26 @@
     }
     shifts[index] = { ...shifts[index], attended: shifts[index].attended !== true };
     if (!LM.set(LM.KEYS.SHIFTS, shifts)) return;
+    LM.syncFirebase();
+    renderTemplates();
+    renderAll();
+  }
+
+  function toggleAttendanceGroup(ids) {
+    const idSet = new Set(ids);
+    const shifts = LM.get(LM.KEYS.SHIFTS, []);
+    const entries = shifts.filter((item) =>
+      idSet.has(item.id) && item.kind === 'class' && !item.isExam
+    );
+    if (entries.length === 0) {
+      LM.showToast('出席を記録する授業が見つかりません', 'error');
+      return;
+    }
+    const markAttended = entries.some((item) => item.attended !== true);
+    const updated = shifts.map((item) => idSet.has(item.id) && item.kind === 'class' && !item.isExam
+      ? { ...item, attended: markAttended }
+      : item);
+    if (!LM.set(LM.KEYS.SHIFTS, updated)) return;
     LM.syncFirebase();
     renderTemplates();
     renderAll();
@@ -1197,23 +1221,11 @@
         const periods = document.createElement('div');
         periods.className = 'hs-day-period-list';
         entries.forEach((entry) => {
-          const period = document.createElement('div');
-          period.className = 'hs-day-period';
           const periodInfo = document.createElement('span');
-          periodInfo.className = 'hs-day-period-label';
+          periodInfo.className = 'hs-day-period';
           const section = addClassUnitLabel(entry);
           periodInfo.textContent = `${entry.periodNumber ? `${entry.periodNumber}限目 ` : ''}${entry.start && entry.end ? `${entry.start}〜${entry.end}` : '時間未設定'}${entry.isExam ? '' : ` ・ ${section}`}`;
-          period.appendChild(periodInfo);
-          if (!entry.isExam) {
-            const attendance = document.createElement('button');
-            attendance.type = 'button';
-            attendance.className = `lm-btn secondary hs-attendance${entry.attended ? ' is-attended' : ''}`;
-            attendance.dataset.toggleAttendance = entry.id;
-            attendance.setAttribute('aria-pressed', String(entry.attended === true));
-            attendance.textContent = entry.attended ? '出席済み' : '出席を記録';
-            period.appendChild(attendance);
-          }
-          periods.appendChild(period);
+          periods.appendChild(periodInfo);
         });
         detail.appendChild(periods);
       } else {
@@ -1244,6 +1256,16 @@
       row.appendChild(detail);
       const actions = document.createElement('div');
       actions.className = 'hs-day-actions';
+      if (isClass && !item.isExam) {
+        const attended = entries.every((entry) => entry.attended === true);
+        const attendance = document.createElement('button');
+        attendance.type = 'button';
+        attendance.className = `lm-btn secondary hs-attendance${attended ? ' is-attended' : ''}`;
+        attendance.dataset.toggleAttendanceGroup = JSON.stringify(entries.map((entry) => entry.id));
+        attendance.setAttribute('aria-pressed', String(attended));
+        attendance.textContent = attended ? '出席済み' : '出席を記録';
+        actions.appendChild(attendance);
+      }
       const registeredCount = entries.filter((entry) => entry.scheduleRegistered === true).length;
       const registered = registeredCount === entries.length;
       const register = document.createElement('button');

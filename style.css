@@ -1836,24 +1836,12 @@ body {
 .hs-day-period-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   margin-top: 2px;
 }
 .hs-day-period {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  min-width: 0;
-}
-.hs-day-period-label {
   min-width: 0;
   font-size: 12px;
-}
-.hs-day-period .hs-attendance {
-  flex: 0 0 auto;
-  padding: 4px 6px;
-  font-size: 10px;
 }
 .hs-schedule-period-picker {
   display: flex;
