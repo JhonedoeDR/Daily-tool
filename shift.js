@@ -1402,7 +1402,7 @@
         periods.className = 'hs-day-period-list';
         entries.forEach((entry) => {
           const periodInfo = document.createElement('span');
-          periodInfo.className = 'hs-day-period';
+          periodInfo.className = `hs-day-period${entry.scheduleRegistered === true ? ' is-registered' : ''}`;
           const section = addClassUnitLabel(entry);
           periodInfo.textContent = `${entry.periodNumber ? `${entry.periodNumber}限目 ` : ''}${entry.start && entry.end ? `${entry.start}〜${entry.end}` : '時間未設定'}${entry.isExam ? '' : ` ・ ${section}`}`;
           periods.appendChild(periodInfo);

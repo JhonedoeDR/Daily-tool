@@ -1845,6 +1845,12 @@ body {
   min-width: 0;
   font-size: 12px;
 }
+.hs-day-item.has-multiple-periods .hs-day-period.is-registered {
+  text-decoration: underline;
+  text-decoration-color: var(--accent-soft);
+  text-decoration-thickness: 3px;
+  text-underline-offset: 2px;
+}
 .hs-schedule-period-picker {
   display: flex;
   flex-direction: column;
