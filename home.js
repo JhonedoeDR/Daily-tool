@@ -233,7 +233,7 @@
   }
   const [kx, ky] = polar(RING_R, f * 360);
   const top = [
-    svgEl('circle', { cx: kx, cy: ky, r: KNOB_R }, { fill: 'var(--paper)' }),
+    svgEl('circle', { cx: kx, cy: ky, r: KNOB_R, class: 'hm-progress-knob' }, { fill: 'var(--paper)' }),
     svgEl('circle', { cx: kx, cy: ky, r: KNOB_R - 3.4 }, { fill: 'var(--accent)' }),
   ];
   return { ring, top };

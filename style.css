@@ -1511,14 +1511,39 @@ body {
   --ring-dark: #4a9db9;
 }
 
-/* 影はリング全体(SVGの外側)に付ける */
+/* SVG全体へのfilterは矩形の領域で影が切れるため、円形の影は円形要素に付ける */
+.hm-circle::before,
+.hm-circle::after {
+  content: '';
+  position: absolute;
+  inset: 1.5%;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.hm-circle::before {
+  z-index: 0;
+  box-shadow: 0 8px 14px rgba(48, 67, 74, 0.22);
+}
+.hm-circle::after {
+  z-index: 2;
+  box-shadow: inset 0 0 8px rgba(48, 67, 74, 0.12);
+}
 .hm-ring {
   overflow: visible;
-  filter: drop-shadow(0 12px 14px rgba(48, 67, 74, 0.28));
+  z-index: 1;
+  filter: none;
 }
 .hm-ring .band { stroke-width: 19; }
 .hm-ring .outer { stroke-width: 1.5; }
-.hm-ring .disc { stroke-width: 1.2; filter: none; }
+.hm-ring .disc {
+  stroke-width: 1.2;
+  filter: drop-shadow(0 2px 4px rgba(48, 67, 74, 0.16));
+}
+#hm-ring-top { overflow: visible; }
+.hm-progress-knob {
+  filter: drop-shadow(0 2px 3px rgba(48, 67, 74, 0.2));
+}
+.hm-inner { z-index: 3; }
 
 /* 進行を見せるモードは、リングを濃い青にして黄色の弧を重ねる */
 .hm-circle[data-mode='event'] .band,
