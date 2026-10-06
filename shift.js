@@ -24,8 +24,8 @@
   const classSectionFilter = document.getElementById('class-section-filter');
   const templateUnitCapacity = document.getElementById('template-unit-capacity');
   const templateClassFields = document.getElementById('template-class-fields');
-  const templateExamMode = document.getElementById('template-exam-mode');
   const templateSkipSectionList = document.getElementById('template-skip-section-list');
+  const templateSkipSectionLegend = document.getElementById('template-skip-section-legend');
   const classEntryTypeField = document.getElementById('class-entry-type-field');
   const classEntryType = document.getElementById('class-entry-type');
   const calendarGrid = document.getElementById('calendar-grid');
@@ -49,6 +49,7 @@
   let activeSectionFilter = '';
   let addUndoId = null;
 
+  migrateLegacySkippedSections();
   loadWageSettings();
   renderTemplates();
   renderAll();
@@ -134,8 +135,10 @@
       name,
       ...(templateKind.value === 'class' ? { unitCapacity: Number(templateUnitCapacity.value) || 1 } : {}),
       ...(templateKind.value === 'class' ? {
-        examMode: templateExamMode.checked,
-        skippedSections: getSelectedSkippedSections(),
+        skippedSectionsByYear: {
+          ...(templates.find((item) => item.id === editingTemplateId)?.skippedSectionsByYear || {}),
+          [getAcademicYearKey(selectedDate)]: getSelectedSkippedSections(),
+        },
       } : {}),
       belongingSetIds: [...templateBelongingList.querySelectorAll('input:checked')].map((input) => input.value),
     };
@@ -194,7 +197,6 @@
     openTemplateListModal();
   });
   templateKind.addEventListener('change', updateTemplateKindFields);
-  templateExamMode.addEventListener('change', updateAddForm);
   addForm.addEventListener('input', updatePreview);
   addForm.addEventListener('submit', (event) => event.preventDefault());
 
@@ -288,6 +290,8 @@
   }
 
   function populateSkippedSections(selectedSections) {
+    const academicYear = getAcademicYearKey(selectedDate);
+    templateSkipSectionLegend.textContent = `実施しない区分をスキップ（${academicYear}年度）`;
     templateSkipSectionList.replaceChildren();
     for (let section = 1; section <= 16; section += 1) {
       const label = document.createElement('label');
@@ -308,6 +312,34 @@
       .map((input) => Number(input.value));
   }
 
+  function getAcademicYearKey(dateKey) {
+    const [year, month] = dateKey.split('-').map(Number);
+    return String(month >= 4 ? year : year - 1);
+  }
+
+  function getSkippedSections(template, dateKey) {
+    return template?.skippedSectionsByYear?.[getAcademicYearKey(dateKey)] || [];
+  }
+
+  function migrateLegacySkippedSections() {
+    const templates = getTemplates();
+    let changed = false;
+    const currentYear = getAcademicYearKey(LM.todayStr());
+    const migrated = templates.map((template) => {
+      const { skippedSections, examMode, ...current } = template;
+      if (Array.isArray(skippedSections)) {
+        current.skippedSectionsByYear = {
+          ...(current.skippedSectionsByYear || {}),
+          [currentYear]: current.skippedSectionsByYear?.[currentYear] || skippedSections,
+        };
+        changed = true;
+      }
+      if (Object.prototype.hasOwnProperty.call(template, 'examMode')) changed = true;
+      return current;
+    });
+    if (changed) LM.set(LM.KEYS.SHIFT_TEMPLATES, migrated);
+  }
+
   function startTemplateEdit(id) {
     const template = getTemplates().find((item) => item.id === id);
     if (!template) return;
@@ -315,8 +347,7 @@
     templateKind.value = template.kind;
     templateName.value = template.name;
     templateUnitCapacity.value = String(template.unitCapacity || 1);
-    templateExamMode.checked = template.examMode === true;
-    populateSkippedSections(template.skippedSections || []);
+    populateSkippedSections(getSkippedSections(template, selectedDate));
     updateTemplateKindFields();
     populateTemplateBelongings(template.belongingSetIds || []);
     templateSave.textContent = '変更を保存';
@@ -334,7 +365,6 @@
     templateSave.textContent = 'テンプレートを保存';
     templateCancel.hidden = true;
     templateUnitCapacity.value = '';
-    templateExamMode.checked = false;
     populateSkippedSections([]);
     updateTemplateKindFields();
     populateTemplateBelongings([]);
@@ -352,7 +382,8 @@
       row.append(title, type);
       if (template.kind === 'class') {
         const capacity = document.createElement('small');
-        capacity.textContent = `区分ごと${template.unitCapacity || 1}回${template.examMode ? '・試験あり' : ''}${(template.skippedSections || []).length ? `・スキップ区分${template.skippedSections.join('・')}` : ''}`;
+        const skippedSections = getSkippedSections(template, selectedDate);
+        capacity.textContent = `区分ごと${template.unitCapacity || 1}回${skippedSections.length ? `・今年度スキップ${skippedSections.join('・')}` : ''}`;
         row.appendChild(capacity);
       }
       const belongings = (template.belongingSetIds || [])
@@ -384,7 +415,7 @@
       title.textContent = template.name;
       const kind = document.createElement('span');
       kind.textContent = template.kind === 'class'
-        ? `授業・履修 ・ 区分ごと${template.unitCapacity || 1}回${template.examMode ? ' ・ 試験あり' : ''}${(template.skippedSections || []).length ? ` ・ スキップ区分${template.skippedSections.join('・')}` : ''}`
+        ? `授業・履修 ・ 区分ごと${template.unitCapacity || 1}回${getSkippedSections(template, selectedDate).length ? ` ・ 今年度スキップ${getSkippedSections(template, selectedDate).join('・')}` : ''}`
         : 'アルバイトのシフト';
       name.append(title, kind);
 
@@ -457,7 +488,7 @@
     });
     const template = templates.find((item) => item.id === addTemplate.value);
     document.querySelector('.hs-add-shift-only').hidden = !template || template.kind === 'class';
-    classEntryTypeField.hidden = !template || template.kind !== 'class' || template.examMode !== true;
+    classEntryTypeField.hidden = !template || template.kind !== 'class';
     if (!classEntryTypeField.hidden && !['class', 'exam'].includes(classEntryType.value)) {
       classEntryType.value = 'class';
     }
@@ -518,7 +549,7 @@
     }
 
     const shifts = LM.get(LM.KEYS.SHIFTS, []);
-    const isExam = template.kind === 'class' && classEntryType.value === 'exam' && template.examMode === true;
+    const isExam = template.kind === 'class' && classEntryType.value === 'exam';
     if (template.kind === 'class') {
       if (shifts.some((item) =>
         item.kind === 'class' &&
@@ -531,7 +562,7 @@
       }
       const term = getSchoolTerm(date);
       if (term && !isExam) {
-        const skippedSections = template.skippedSections || [];
+        const skippedSections = getSkippedSections(template, date);
         const availableSections = Array.from(
           { length: term.lastSection - term.firstSection + 1 },
           (_, index) => term.firstSection + index
@@ -618,7 +649,7 @@
     if (item.isExam) return { term, section: 'exam' };
     const template = getTemplates().find((entry) => entry.id === item.templateId);
     const capacity = Math.max(1, Number(template?.unitCapacity) || 1);
-    const skippedSections = template?.skippedSections || [];
+    const skippedSections = getSkippedSections(template, item.date);
     const availableSections = Array.from(
       { length: term.lastSection - term.firstSection + 1 },
       (_, index) => term.firstSection + index
@@ -666,7 +697,7 @@
     classSectionFilter.appendChild(allSections);
     if (term) {
       for (let section = term.firstSection; section <= term.lastSection; section += 1) {
-        if ((selectedTemplate?.skippedSections || []).includes(section)) continue;
+        if (getSkippedSections(selectedTemplate, selectedDate).includes(section)) continue;
         const option = document.createElement('option');
         option.value = String(section);
         const sectionCount = activeSubjectFilter
@@ -683,7 +714,7 @@
         option.textContent = `区分${section} (${sectionCount})`;
         classSectionFilter.appendChild(option);
       }
-      if (activeSubjectFilter && selectedTemplate?.examMode) {
+      if (activeSubjectFilter) {
         const examCount = LM.get(LM.KEYS.SHIFTS, []).filter((item) => {
           return item.kind === 'class' &&
             item.isExam &&
