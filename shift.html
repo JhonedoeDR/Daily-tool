@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <title>給与・シフト</title>
+  <title>履修・シフト</title>
   <link rel="stylesheet" href="./style.css" />
   <link rel="manifest" href="./manifest.json" />
   <link rel="apple-touch-icon" href="./icons/icon-192.png" />
@@ -13,23 +13,30 @@
 <body>
   <div class="lm-page">
     <a class="lm-back-link" href="./index.html">← 今日のページに戻る</a>
-    <h1 class="lm-date-header">給与・シフト</h1>
+    <h1 class="lm-date-header">履修・シフト</h1>
 
     <section class="lm-section" style="border-top:none;">
       <div class="lm-section-title">
-        今月の集計
+        今月の給与見込み
         <span class="lm-count" id="month-label"></span>
       </div>
       <div id="month-summary" class="lm-shift-box"></div>
     </section>
 
     <section class="lm-section">
-      <div class="lm-section-title">シフト一覧</div>
-      <div id="shift-list"></div>
+      <div class="lm-section-title">カレンダー</div>
+      <div class="hs-calendar-nav">
+        <button type="button" class="lm-btn secondary" id="calendar-prev" aria-label="前の月">‹</button>
+        <strong id="calendar-title"></strong>
+        <button type="button" class="lm-btn secondary" id="calendar-next" aria-label="次の月">›</button>
+      </div>
+      <div class="hs-calendar-grid" id="calendar-grid" aria-label="月間カレンダー"></div>
+      <div class="hs-day-heading" id="selected-date-label"></div>
+      <div id="day-list"></div>
     </section>
 
     <section class="lm-section">
-      <div class="lm-section-title">基本設定</div>
+      <div class="lm-section-title">給与設定</div>
       <div class="lm-field">
         <label for="f-wage">時給(円)</label>
         <input id="f-wage" type="number" inputmode="numeric" pattern="[0-9]*" min="0" />
@@ -41,12 +48,50 @@
     </section>
 
     <section class="lm-section">
-      <div class="lm-section-title">シフトを登録</div>
+      <div class="lm-section-title">予定を登録</div>
       <form id="shift-form">
         <div class="lm-field">
-          <label for="f-date">日付</label>
+          <label for="f-kind">種類</label>
+          <select id="f-kind">
+            <option value="class">授業・履修</option>
+            <option value="shift">アルバイトのシフト</option>
+          </select>
+        </div>
+        <div class="lm-field">
+          <label for="f-name">授業名・勤務先</label>
+          <input id="f-name" type="text" maxlength="60" required placeholder="例: 情報処理 / カフェ" />
+        </div>
+        <div class="lm-field">
+          <label for="f-location">教室・場所(任意)</label>
+          <input id="f-location" type="text" maxlength="80" />
+        </div>
+        <div class="lm-field">
+          <label for="f-repeat">登録方法</label>
+          <select id="f-repeat">
+            <option value="once">1日のみ</option>
+            <option value="weekly">毎週くり返す</option>
+          </select>
+        </div>
+        <div class="lm-field">
+          <label for="f-date">開始日</label>
           <input id="f-date" type="date" required />
         </div>
+        <div class="lm-field hs-weekly-only" hidden>
+          <label for="f-repeat-until">くり返し終了日</label>
+          <input id="f-repeat-until" type="date" />
+        </div>
+        <fieldset class="lm-field hs-weekly-only" id="weekday-fields" hidden>
+          <legend>曜日(複数選択できます)</legend>
+          <div class="hs-weekdays">
+            <label><input type="checkbox" name="weekday" value="0" />日</label>
+            <label><input type="checkbox" name="weekday" value="1" />月</label>
+            <label><input type="checkbox" name="weekday" value="2" />火</label>
+            <label><input type="checkbox" name="weekday" value="3" />水</label>
+            <label><input type="checkbox" name="weekday" value="4" />木</label>
+            <label><input type="checkbox" name="weekday" value="5" />金</label>
+            <label><input type="checkbox" name="weekday" value="6" />土</label>
+          </div>
+        </fieldset>
         <div class="lm-field">
           <label for="f-start">開始時刻</label>
           <input id="f-start" type="time" required />
@@ -55,12 +100,12 @@
           <label for="f-end">終了時刻</label>
           <input id="f-end" type="time" required />
         </div>
-        <div class="lm-field">
+        <div class="lm-field hs-shift-only">
           <label for="f-break">休憩時間(分)</label>
           <input id="f-break" type="number" inputmode="numeric" pattern="[0-9]*" min="0" value="0" />
         </div>
         <div id="calc-preview" class="lm-empty"></div>
-        <button type="submit" class="lm-btn" style="margin-top:8px;">保存</button>
+        <button type="submit" class="lm-btn" style="margin-top:8px;">登録</button>
       </form>
     </section>
 

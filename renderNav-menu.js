@@ -17,7 +17,7 @@ LM.NAV_ITEMS = [
   { href: './wishlist.html', label: 'WISHリスト' },
   { href: './time-calc.html', label: '時間計算' },
   { href: './event.html', label: 'イベント' },
-  { href: './shift.html', label: '給与・シフト' },
+  { href: './shift.html', label: '履修・シフト' },
   { href: 'https://jhonedoedr.github.io/MyBookLog/', label: 'よみもの記録', external: true },
 ];
 
@@ -98,9 +98,9 @@ LM.renderNav = function () {
           <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 11a6 6 0 0112 0"/><rect x="11" y="11" width="26" height="30" rx="8"/><rect x="17" y="24" width="14" height="11" rx="3"/><path d="M11 22c-3 1-4 4-4 8M37 22c3 1 4 4 4 8"/></svg>
           <span>BELONGING</span>
         </a>
-        <a class="hm-more-item" role="menuitem" href="./shift.html" title="給与・シフト">
+        <a class="hm-more-item" role="menuitem" href="./shift.html" title="履修・シフト">
           <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="13" width="38" height="22" rx="3"/><circle cx="24" cy="24" r="6"/><path d="M11 19v2M37 27v2"/></svg>
-          <span>SHIFT</span>
+          <span>CLASS / SHIFT</span>
         </a>
         <a class="hm-more-item" role="menuitem" href="https://jhonedoedr.github.io/MyBookLog/" target="_blank" rel="noopener" title="よみもの記録">
           <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M24 12c-4-3-10-4-17-3v27c7-1 13 0 17 3 4-3 10-4 17-3V9c-7-1-13 0-17 3z"/><path d="M24 12v27M11 16h8M11 22h8M29 16h8M29 22h8"/></svg>

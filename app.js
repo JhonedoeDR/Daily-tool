@@ -10,7 +10,7 @@ const LM = {};
  * lm_belongingSets : 持ちものセット [{id, name, items:[{id, name}]}]
  * lm_dailyChecks   : 日付ごとの持ちものチェック { "2026-09-18": { checkedItemIds: [...] } }
  * lm_todoState     : タスク状態 { dailyTasks, weeklyClears, reflected, ... }
- * lm_shifts        : シフト [{id, date, start, end, breakMin}]
+ * lm_shifts        : 履修・シフト [{id, date, kind, name, location, start, end, breakMin, seriesId?}]
  * lm_wageSettings  : 給与設定 {hourlyWage, transportFee}
  * lm_events        : イベント [{id, name, start, end, target, current, unit}]
  * lm_wishlist      : 欲しいものリスト [{id, name, category, price, url, desire, planThisMonth, purchased, memo}]
@@ -649,7 +649,7 @@ LM.renderNav = function (container) {
     { href: './wishlist.html', label: 'WISHリスト' },
     { href: './time-calc.html', label: '時間計算' },
     { href: './event.html', label: 'イベント' },
-    { href: './shift.html', label: '給与・シフト' },
+    { href: './shift.html', label: '履修・シフト' },
     { href: 'https://jhonedoedr.github.io/MyBookLog/', label: 'よみもの記録', external: true },
   ];
   items.forEach((it) => {

@@ -665,28 +665,40 @@
     });
   }
 
-  /* ---------- 今日の勤務 ---------- */
+  /* ---------- 今日の履修・シフト ---------- */
   function renderShift() {
     const el = document.getElementById('shift-box');
-    const shift = LM.get(LM.KEYS.SHIFTS, []).find((s) => s.date === today);
+    const shifts = LM.get(LM.KEYS.SHIFTS, [])
+      .filter((s) => s.date === today)
+      .sort((a, b) => a.start.localeCompare(b.start));
 
-    if (!shift) {
-      el.innerHTML = '<p class="lm-empty">今日の勤務はありません</p>';
+    if (shifts.length === 0) {
+      el.innerHTML = '<p class="lm-empty">今日の履修・シフトはありません</p>';
       return false;
     }
 
     const wageSettings = LM.get(LM.KEYS.WAGE_SETTINGS, { hourlyWage: 0, transportFee: 0 });
-    const { workMin, pay } = LM.calcShiftPay(shift, wageSettings);
-    const h = Math.floor(workMin / 60);
-    const m = workMin % 60;
-
-    el.innerHTML = `
-      <div class="lm-shift-box">
-        <span>勤務時間 ${shift.start}〜${shift.end}(休憩${shift.breakMin || 0}分)</span>
-        <span>実働 ${h}時間${m}分</span>
-        <span class="lm-shift-pay">見込み給与 ¥${pay.toLocaleString()}</span>
-      </div>
-    `;
+    el.innerHTML = '<div class="lm-shift-box"></div>';
+    const box = el.firstElementChild;
+    shifts.forEach((shift) => {
+      const item = document.createElement('div');
+      item.className = `hm-today-shift${shift.kind === 'class' ? ' is-class' : ''}`;
+      const label = document.createElement('strong');
+      label.textContent = `${shift.kind === 'class' ? '授業' : 'シフト'}${shift.name ? `・${shift.name}` : ''}`;
+      const details = document.createElement('span');
+      details.textContent = `${shift.start}〜${shift.end}${shift.location ? ` ・ ${shift.location}` : ''}`;
+      item.append(label, details);
+      if (shift.kind !== 'class') {
+        const { workMin, pay } = LM.calcShiftPay(shift, wageSettings);
+        const h = Math.floor(workMin / 60);
+        const m = workMin % 60;
+        const wage = document.createElement('span');
+        wage.className = 'lm-shift-pay';
+        wage.textContent = `実働${h}時間${m}分 ・ 見込み ¥${pay.toLocaleString()}`;
+        item.appendChild(wage);
+      }
+      box.appendChild(item);
+    });
     return true;
   }
 

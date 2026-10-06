@@ -1588,3 +1588,158 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ---------- 履修・シフト ---------- */
+.hs-calendar-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.hs-calendar-nav .lm-btn {
+  min-width: 42px;
+  padding: 8px 12px;
+  font-size: 20px;
+  line-height: 1;
+}
+.hs-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+.hs-calendar-weekday {
+  padding: 4px 0;
+  color: var(--text-soft);
+  font-size: 12px;
+  text-align: center;
+}
+.hs-calendar-day {
+  min-width: 0;
+  min-height: 66px;
+  padding: 4px;
+  border: 1px solid var(--paper-line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.hs-calendar-day:disabled {
+  border-color: transparent;
+  background: transparent;
+  cursor: default;
+}
+.hs-calendar-day[aria-pressed='true'] {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.hs-calendar-day.is-today .hs-calendar-number {
+  color: var(--accent);
+  font-weight: 700;
+}
+.hs-calendar-number {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 12px;
+}
+.hs-calendar-chip,
+.hs-calendar-more {
+  display: block;
+  overflow: hidden;
+  margin-top: 2px;
+  padding: 1px 3px;
+  border-radius: 3px;
+  background: var(--accent-soft);
+  font-size: 9px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hs-calendar-chip.is-class {
+  background: var(--paper-line);
+}
+.hs-calendar-more {
+  background: transparent;
+  color: var(--text-soft);
+}
+.hs-day-heading {
+  margin: 16px 0 6px;
+  font-weight: 700;
+}
+.hs-day-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--paper-line);
+}
+.hs-day-item:last-child {
+  border-bottom: 0;
+}
+.hs-day-detail {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 13px;
+}
+.hs-day-item.is-class .hs-day-detail > strong::before {
+  content: '授業・';
+  color: var(--text-soft);
+  font-weight: 400;
+}
+.hs-day-location,
+.hs-day-pay {
+  color: var(--text-soft);
+  font-size: 12px;
+}
+.hs-delete {
+  padding: 6px;
+  font-size: 11px;
+}
+.hs-day-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 4px;
+}
+.hs-weekdays {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+.hs-weekdays label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+}
+.hs-weekdays input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+.hs-weekly-only[hidden],
+.hs-shift-only[hidden] {
+  display: none;
+}
+.hm-today-shift {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0;
+}
+.hm-today-shift + .hm-today-shift {
+  border-top: 1px solid var(--paper-line);
+}
+.hm-today-shift.is-class > strong::before {
+  content: '授業・';
+  color: var(--text-soft);
+  font-weight: 400;
+}
+.hm-today-shift .lm-shift-pay {
+  font-size: 13px;
+}
