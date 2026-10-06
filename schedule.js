@@ -1,5 +1,8 @@
 (function () {
+  const PAGE_SIZE = 5;
   const form = document.getElementById('schedule-form');
+  const scheduleList = document.getElementById('schedule-list');
+  const scheduleFilters = [...document.querySelectorAll('[data-schedule-filter]')];
   const fields = {
     name: document.getElementById('f-name'),
     date: document.getElementById('f-date'),
@@ -19,12 +22,26 @@
 
   let editingId = null;
   let currentStep = 1;
+  let activeFilter = 'all';
+  let listPage = 0;
 
   populateBelongingOptions();
   fields.date.value = LM.todayStr();
   goToStep(1);
   renderList();
-  document.getElementById('schedule-list').addEventListener('click', onListClick);
+  scheduleList.addEventListener('click', onListClick);
+  scheduleFilters.forEach((button) => {
+    button.addEventListener('click', () => {
+      activeFilter = button.dataset.scheduleFilter;
+      listPage = 0;
+      scheduleFilters.forEach((filter) => {
+        const active = filter === button;
+        filter.classList.toggle('is-active', active);
+        filter.setAttribute('aria-pressed', String(active));
+      });
+      renderList();
+    });
+  });
   LM.renderNav(document.getElementById('nav-container'));
 
   // URLの ?id= があれば編集モードで開く
@@ -194,16 +211,20 @@
   }
 
   function renderList() {
-    const el = document.getElementById('schedule-list');
-    const schedules = LM.get(LM.KEYS.SCHEDULES, []).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
+    const allSchedules = LM.get(LM.KEYS.SCHEDULES, [])
+      .sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
+    const schedules = allSchedules.filter((schedule) => activeFilter === 'all' || getScheduleCategory(schedule) === activeFilter);
 
     if (schedules.length === 0) {
-      el.innerHTML = '<p class="lm-empty">登録されている予定はありません</p>';
+      scheduleList.innerHTML = `<p class="lm-empty">${allSchedules.length ? 'この分類の予定はありません' : '登録されている予定はありません'}</p>`;
       return;
     }
 
-    el.innerHTML = '';
-    schedules.forEach((s) => {
+    const totalPages = Math.max(1, Math.ceil(schedules.length / PAGE_SIZE));
+    listPage = Math.min(listPage, totalPages - 1);
+    const pageItems = schedules.slice(listPage * PAGE_SIZE, listPage * PAGE_SIZE + PAGE_SIZE);
+    scheduleList.replaceChildren();
+    pageItems.forEach((s) => {
       const row = document.createElement('div');
       row.className = 'lm-schedule-item';
       row.style.cursor = 'pointer';
@@ -220,8 +241,59 @@
           <button type="button" data-delete="${s.id}" class="lm-btn secondary" style="padding:6px 10px; font-size:12px;">削除</button>
         </span>`}
       `;
-      el.appendChild(row);
+      scheduleList.appendChild(row);
     });
+
+    if (schedules.length > PAGE_SIZE) {
+      const pager = document.createElement('div');
+      pager.className = 'lm-pager';
+      pager.innerHTML = `
+        <button type="button" data-page="-1" ${listPage === 0 ? 'disabled' : ''}>◀</button>
+        <span>${listPage + 1}/${totalPages}</span>
+        <button type="button" data-page="1" ${listPage >= totalPages - 1 ? 'disabled' : ''}>▶</button>
+      `;
+      const listAll = document.createElement('button');
+      listAll.type = 'button';
+      listAll.className = 'lm-btn secondary lm-list-all-btn';
+      listAll.dataset.listAll = '1';
+      listAll.textContent = '一覧表示';
+      scheduleList.append(pager, listAll);
+    }
+  }
+
+  function getScheduleCategory(schedule) {
+    if (schedule.autoSource !== 'shift') return 'other';
+    return schedule.name === '学校' ? 'school' : 'work';
+  }
+
+  function openScheduleListModal() {
+    const schedules = LM.get(LM.KEYS.SCHEDULES, [])
+      .filter((schedule) => activeFilter === 'all' || getScheduleCategory(schedule) === activeFilter)
+      .sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
+    const wrap = document.createElement('div');
+    schedules.forEach((schedule) => {
+      const row = document.createElement('article');
+      row.className = 'lm-schedule-item';
+      const info = document.createElement('div');
+      const date = document.createElement('span');
+      date.className = 'lm-schedule-time';
+      date.textContent = `${LM.formatDateHeader(schedule.date)} ${schedule.start}`;
+      const name = document.createElement('strong');
+      name.textContent = ` ${schedule.name}`;
+      const category = document.createElement('div');
+      category.className = 'lm-schedule-source';
+      category.textContent = schedule.autoSource === 'shift'
+        ? (getScheduleCategory(schedule) === 'school' ? '学校(履修・シフト)' : 'バイト(履修・シフト)')
+        : 'その他(手入力)';
+      info.append(date, name, category);
+      const departure = document.createElement('div');
+      departure.className = 'lm-schedule-departure';
+      const result = LM.calcDeparture(schedule);
+      departure.textContent = `準備開始 ${result.prepStart} ・ 出発 ${result.depart} ・ 到着目安 ${result.arrive}`;
+      row.append(info, departure);
+      wrap.appendChild(row);
+    });
+    LM.openModal('登録済みの予定一覧', wrap);
   }
 
   function showConfirm(id) {
@@ -244,6 +316,7 @@
       <div><span style="color:var(--text-soft);">移動時間</span> ${schedule.travelMin || 0}分</div>
       <div><span style="color:var(--text-soft);">準備時間</span> ${schedule.prepMin || 0}分</div>
       <div><span style="color:var(--text-soft);">到着希望</span> ${schedule.arriveBeforeMin || 0}分前</div>
+      ${schedule.routePreset ? `<div><span style="color:var(--text-soft);">逆算プリセット</span> ${escapeHtml(schedule.routePreset)}</div>` : ''}
       <div style="margin:6px 0; padding:8px 10px; background:var(--accent-soft); border-radius:8px;">
         準備開始 <strong>${r.prepStart}</strong> ・ 出発 <strong>${r.depart}</strong> ・ 到着目安 <strong>${r.arrive}</strong>
       </div>
@@ -254,6 +327,16 @@
   }
 
   function onListClick(e) {
+    const pageButton = e.target.closest('[data-page]');
+    if (pageButton) {
+      listPage = Math.max(0, listPage + Number(pageButton.dataset.page));
+      renderList();
+      return;
+    }
+    if (e.target.closest('[data-list-all]')) {
+      openScheduleListModal();
+      return;
+    }
     const editId = e.target.dataset.edit;
     const deleteId = e.target.dataset.delete;
     const confirmId = e.target.closest('[data-confirm]') ? e.target.closest('[data-confirm]').dataset.confirm : null;

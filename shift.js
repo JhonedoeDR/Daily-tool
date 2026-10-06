@@ -6,6 +6,9 @@
   const templateToggle = document.getElementById('template-toggle');
   const templateKind = document.getElementById('template-kind');
   const templateName = document.getElementById('template-name');
+  const templateBelongingList = document.getElementById('template-belonging-list');
+  const templateSave = document.getElementById('template-save');
+  const templateCancel = document.getElementById('template-cancel');
   const addForm = document.getElementById('add-plan-form');
   const addDetails = document.getElementById('add-plan-details');
   const addTemplate = document.getElementById('add-template');
@@ -17,6 +20,7 @@
   const addEndTime = document.getElementById('add-end-time');
   const addLocation = document.getElementById('add-location');
   const addBreak = document.getElementById('add-break');
+  const schoolPreset = document.getElementById('add-school-preset');
   const addPreview = document.getElementById('add-preview');
   const weekdayRows = [...document.querySelectorAll('.hs-weekday-schedule > label')];
   const calendarGrid = document.getElementById('calendar-grid');
@@ -35,7 +39,7 @@
   let selectedDate = LM.todayStr();
   let shownMonth = new Date(`${selectedDate}T00:00:00`);
   let templatePage = 0;
-  let showAllTemplates = false;
+  let editingTemplateId = null;
 
   loadWageSettings();
   document.getElementById('add-start-date').value = selectedDate;
@@ -55,8 +59,16 @@
   templateToggle.addEventListener('click', () => {
     templateForm.hidden = !templateForm.hidden;
     templateToggle.setAttribute('aria-expanded', String(!templateForm.hidden));
-    if (!templateForm.hidden) templateName.focus();
+    if (!templateForm.hidden) {
+      editingTemplateId = null;
+      templateForm.reset();
+      templateSave.textContent = 'テンプレートを保存';
+      templateCancel.hidden = true;
+      populateTemplateBelongings([]);
+      templateName.focus();
+    }
   });
+  templateCancel.addEventListener('click', closeTemplateForm);
   addDetails.addEventListener('toggle', () => {
     const summary = addDetails.querySelector('summary');
     summary.textContent = addDetails.open ? '閉じる' : '＋ 予定を追加';
@@ -69,23 +81,28 @@
       return;
     }
     const templates = getTemplates();
-    const template = {
-      id: LM.uid(),
+    const data = {
       kind: templateKind.value,
       name,
+      belongingSetIds: [...templateBelongingList.querySelectorAll('input:checked')].map((input) => input.value),
     };
-    if (!LM.set(LM.KEYS.SHIFT_TEMPLATES, templates.concat(template))) return;
-    templateForm.reset();
-    templateForm.hidden = true;
-    templateToggle.setAttribute('aria-expanded', 'false');
+    const wasEditing = Boolean(editingTemplateId);
+    const updated = wasEditing
+      ? templates.map((template) => template.id === editingTemplateId ? { ...template, ...data } : template)
+      : templates.concat({ id: LM.uid(), ...data });
+    if (!LM.set(LM.KEYS.SHIFT_TEMPLATES, updated)) return;
+    closeTemplateForm();
     renderTemplates();
-    addTemplate.value = template.id;
-    updateAddForm();
-    addDetails.open = true;
-    LM.showToast('予定テンプレートを登録しました');
+    if (!wasEditing) {
+      const template = updated[updated.length - 1];
+      addTemplate.value = template.id;
+      updateAddForm();
+      addDetails.open = true;
+    }
+    LM.showToast(wasEditing ? '予定テンプレートを更新しました' : '予定テンプレートを登録しました');
   });
   templateList.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-add-template], [data-delete-template]');
+    const button = event.target.closest('[data-add-template], [data-edit-template], [data-delete-template]');
     if (!button) return;
     if (button.dataset.addTemplate) {
       addTemplate.value = button.dataset.addTemplate;
@@ -93,6 +110,10 @@
       addDetails.open = true;
       addStartDate.value = selectedDate;
       addStartDate.focus();
+      return;
+    }
+    if (button.dataset.editTemplate) {
+      startTemplateEdit(button.dataset.editTemplate);
       return;
     }
     const id = button.dataset.deleteTemplate;
@@ -103,6 +124,7 @@
   });
 
   addTemplate.addEventListener('change', updateAddForm);
+  schoolPreset.addEventListener('change', updatePreview);
   addTemplateChips.addEventListener('click', (event) => {
     const chip = event.target.closest('[data-template-chip]');
     if (!chip) return;
@@ -116,9 +138,7 @@
     renderTemplates();
   });
   templateListAll.addEventListener('click', () => {
-    showAllTemplates = !showAllTemplates;
-    templatePage = 0;
-    renderTemplates();
+    openTemplateListModal();
   });
   addRepeat.addEventListener('change', updateAddForm);
   addForm.addEventListener('input', updatePreview);
@@ -176,6 +196,71 @@
     return LM.get(LM.KEYS.SHIFT_TEMPLATES, []);
   }
 
+  function populateTemplateBelongings(selectedIds) {
+    const sets = LM.get(LM.KEYS.BELONGING_SETS, []);
+    templateBelongingList.replaceChildren();
+    if (sets.length === 0) {
+      templateBelongingList.innerHTML = '<p class="lm-empty">持ちものセットはまだ登録されていません</p>';
+      return;
+    }
+    sets.forEach((set) => {
+      const label = document.createElement('label');
+      label.className = 'lm-check-item';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.value = set.id;
+      checkbox.checked = selectedIds.includes(set.id);
+      const text = document.createElement('span');
+      text.textContent = set.name;
+      label.append(checkbox, text);
+      templateBelongingList.appendChild(label);
+    });
+  }
+
+  function startTemplateEdit(id) {
+    const template = getTemplates().find((item) => item.id === id);
+    if (!template) return;
+    editingTemplateId = id;
+    templateKind.value = template.kind;
+    templateName.value = template.name;
+    populateTemplateBelongings(template.belongingSetIds || []);
+    templateSave.textContent = '変更を保存';
+    templateCancel.hidden = false;
+    templateForm.hidden = false;
+    templateToggle.setAttribute('aria-expanded', 'true');
+    templateName.focus();
+  }
+
+  function closeTemplateForm() {
+    editingTemplateId = null;
+    templateForm.reset();
+    templateForm.hidden = true;
+    templateToggle.setAttribute('aria-expanded', 'false');
+    templateSave.textContent = 'テンプレートを保存';
+    templateCancel.hidden = true;
+    populateTemplateBelongings([]);
+  }
+
+  function openTemplateListModal() {
+    const wrap = document.createElement('div');
+    getTemplates().forEach((template) => {
+      const row = document.createElement('div');
+      row.className = 'hs-template-modal-row';
+      const title = document.createElement('strong');
+      title.textContent = template.name;
+      const type = document.createElement('span');
+      type.textContent = template.kind === 'class' ? '授業・履修' : 'アルバイトのシフト';
+      const belongings = (template.belongingSetIds || [])
+        .map((id) => LM.get(LM.KEYS.BELONGING_SETS, []).find((set) => set.id === id)?.name)
+        .filter(Boolean);
+      const sets = document.createElement('small');
+      sets.textContent = belongings.length ? `持ちもの: ${belongings.join('、')}` : '持ちものセットなし';
+      row.append(title, type, sets);
+      wrap.appendChild(row);
+    });
+    LM.openModal('予定テンプレート一覧', wrap);
+  }
+
   function renderTemplates() {
     const templates = getTemplates();
     templateList.replaceChildren();
@@ -184,9 +269,7 @@
     }
     const pageCount = Math.max(1, Math.ceil(templates.length / TEMPLATES_PER_PAGE));
     templatePage = Math.min(templatePage, pageCount - 1);
-    const visibleTemplates = showAllTemplates
-      ? templates
-      : templates.slice(templatePage * TEMPLATES_PER_PAGE, (templatePage + 1) * TEMPLATES_PER_PAGE);
+    const visibleTemplates = templates.slice(templatePage * TEMPLATES_PER_PAGE, (templatePage + 1) * TEMPLATES_PER_PAGE);
     visibleTemplates.forEach((template) => {
       const row = document.createElement('div');
       row.className = 'hs-template-row';
@@ -205,17 +288,22 @@
       add.className = 'lm-btn';
       add.dataset.addTemplate = template.id;
       add.textContent = '予定を追加';
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.className = 'lm-btn secondary';
+      edit.dataset.editTemplate = template.id;
+      edit.textContent = '編集';
       const remove = document.createElement('button');
       remove.type = 'button';
       remove.className = 'lm-btn secondary';
       remove.dataset.deleteTemplate = template.id;
       remove.textContent = '削除';
-      actions.append(add, remove);
+      actions.append(add, edit, remove);
       row.append(name, actions);
       templateList.appendChild(row);
     });
     templatePager.replaceChildren();
-    templatePager.hidden = templates.length <= TEMPLATES_PER_PAGE || showAllTemplates;
+    templatePager.hidden = templates.length <= TEMPLATES_PER_PAGE;
     if (!templatePager.hidden) {
       const previous = document.createElement('button');
       previous.type = 'button';
@@ -234,7 +322,6 @@
       templatePager.append(previous, position, next);
     }
     templateListAll.hidden = templates.length <= TEMPLATES_PER_PAGE;
-    templateListAll.textContent = showAllTemplates ? 'ページ表示に戻る' : '一覧表示';
     updateAddForm();
   }
 
@@ -263,6 +350,7 @@
     addUntilDate.required = weekly;
     const template = templates.find((item) => item.id === addTemplate.value);
     document.querySelector('.hs-add-shift-only').hidden = !template || template.kind === 'class';
+    document.querySelector('.hs-add-class-only').hidden = !template || template.kind !== 'class';
     addForm.querySelector('button[type="submit"]').disabled = templates.length === 0;
     weekdayRows.forEach((row) => {
       const checkbox = row.querySelector('input[type="checkbox"]');
@@ -354,6 +442,8 @@
       start: item.start,
       end: item.end,
       breakMin,
+      belongingSetIds: template.belongingSetIds || [],
+      ...(template.kind === 'class' ? getSchoolPresetData(schoolPreset.value) : {}),
     }));
     if (!LM.set(LM.KEYS.SHIFTS, LM.get(LM.KEYS.SHIFTS, []).concat(records))) return;
     const schedulesSynced = syncLinkedSchedules();
@@ -368,6 +458,7 @@
     addEndTime.value = '';
     addLocation.value = '';
     addBreak.value = '0';
+    schoolPreset.value = '';
     weekdayRows.forEach((row) => {
       row.querySelector('input[type="checkbox"]').checked = false;
       row.querySelectorAll('input[type="time"]').forEach((input) => {
@@ -636,7 +727,23 @@
     const pay = shifts.reduce((sum, item) => sum + calculatePay(item, wage), 0);
     const period = addRepeat.value === 'weekly' ? '週あたり' : '1回分';
     const countLabel = addRepeat.value === 'weekly' ? `${shifts.length}曜日分` : '勤務分';
-    addPreview.textContent = `見込み給与(${countLabel}): ¥${pay.toLocaleString()} / ${period}`;
+    const preset = addRepeat.value === 'weekly' ? '' : getSchoolPresetPreview();
+    addPreview.textContent = `見込み給与(${countLabel}): ¥${pay.toLocaleString()} / ${period}${preset}`;
+  }
+
+  function getSchoolPresetData(value) {
+    const presets = {
+      car: { routePreset: '車', travelMin: 20, prepMin: 40, arriveBeforeMin: 10 },
+      itsukaichi: { routePreset: '五日市', travelMin: 70, prepMin: 30, arriveBeforeMin: 10 },
+      nishihiroshima: { routePreset: '西広島', travelMin: 45, prepMin: 40, arriveBeforeMin: 10 },
+    };
+    return presets[value] || { routePreset: '', travelMin: 0, prepMin: 0, arriveBeforeMin: 0 };
+  }
+
+  function getSchoolPresetPreview() {
+    const preset = schoolPreset.value;
+    const names = { car: '車', itsukaichi: '五日市', nishihiroshima: '西広島' };
+    return preset ? ` ・ 逆算: ${names[preset]}` : '';
   }
 
   function groupByDate(items) {

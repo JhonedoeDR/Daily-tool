@@ -77,11 +77,12 @@ LM.syncShiftSchedules = function () {
         start: shift.start,
         end: shift.end || '',
         place: shift.location || '',
-        travelMin: 0,
-        prepMin: 0,
-        arriveBeforeMin: 0,
-        belongingSetIds: [],
+        travelMin: Number(shift.travelMin) || 0,
+        prepMin: Number(shift.prepMin) || 0,
+        arriveBeforeMin: Number(shift.arriveBeforeMin) || 0,
+        belongingSetIds: shift.belongingSetIds || [],
         memo: '',
+        routePreset: shift.routePreset || '',
         autoSource: 'shift',
       };
     })

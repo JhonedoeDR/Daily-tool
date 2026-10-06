@@ -2123,6 +2123,78 @@ body {
   padding: 5px 7px;
   font-size: 10px;
 }
+.hs-template-form-actions {
+  display: flex;
+  gap: 8px;
+}
+.hs-template-belongings {
+  min-width: 0;
+  margin: 0 0 10px;
+  border: 1px solid var(--paper-line);
+  border-radius: 8px;
+  padding: 8px;
+}
+.hs-template-belongings legend {
+  padding: 0 4px;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+.hs-template-belongings .lm-check-list {
+  max-height: 150px;
+  overflow-y: auto;
+}
+.hs-template-modal-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--paper-line);
+  font-size: 13px;
+}
+.hs-template-modal-row:last-child {
+  border-bottom: 0;
+}
+.hs-template-modal-row span,
+.hs-template-modal-row small {
+  color: var(--text-soft);
+}
+.lm-schedule-filters {
+  display: flex;
+  overflow-x: auto;
+  gap: 6px;
+  padding: 2px 0 10px;
+}
+.lm-schedule-filters .lm-btn {
+  flex: 0 0 auto;
+  padding: 7px 10px;
+  font-size: 12px;
+}
+.lm-schedule-filters .lm-btn.is-active {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--paper);
+}
+.lm-schedule-source {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-soft);
+  font-size: 11px;
+}
+.lm-modal .lm-schedule-item {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 3px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--paper-line);
+}
+.lm-modal .lm-schedule-departure {
+  color: var(--text-soft);
+  font-size: 12px;
+}
+.hs-add-class-only[hidden] {
+  display: none;
+}
 .hs-template-list-all {
   display: block;
   margin: 7px auto 0;

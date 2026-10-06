@@ -84,6 +84,12 @@
 
     <section class="lm-section">
       <div class="lm-section-title">登録済みの予定</div>
+      <div class="lm-schedule-filters" role="group" aria-label="予定の分類">
+        <button type="button" class="lm-btn secondary is-active" data-schedule-filter="all" aria-pressed="true">すべて</button>
+        <button type="button" class="lm-btn secondary" data-schedule-filter="school" aria-pressed="false">学校</button>
+        <button type="button" class="lm-btn secondary" data-schedule-filter="work" aria-pressed="false">バイト</button>
+        <button type="button" class="lm-btn secondary" data-schedule-filter="other" aria-pressed="false">その他(手入力)</button>
+      </div>
       <div id="schedule-list"></div>
     </section>
 
