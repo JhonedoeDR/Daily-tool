@@ -177,6 +177,7 @@
   function startEdit(id) {
     const schedule = LM.get(LM.KEYS.SCHEDULES, []).find((s) => s.id === id);
     if (!schedule) return;
+    if (schedule.kind === 'deadline') { startDeadlineEdit(id); return; }
     if (schedule.autoSource === 'shift') {
       LM.showToast('この予定は履修・シフト側で編集してください', 'error');
       return;
