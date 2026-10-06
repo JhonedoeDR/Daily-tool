@@ -2208,6 +2208,10 @@ body {
 .hs-class-exam-fields[hidden] {
   display: none !important;
 }
+.hs-inline-form .hs-class-period-field[hidden],
+.hs-inline-form .hs-manual-time-field[hidden] {
+  display: none !important;
+}
 .hs-inline-check {
   display: flex;
   align-items: center;
