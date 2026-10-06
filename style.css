@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&family=Zen+Maru+Gothic:wght@700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap');
 
 :root {
   --paper: #ffffff;
@@ -1501,4 +1501,65 @@ body {
 }
 .hm-dog-stack {
   margin-top: -26px; /* 大きいほど(例 -34px)吹き出しに近づく。0で今まで通り */
+}
+/* =========================================================
+   新HOME(STEP 8)追加分 - 円形UIを参照画像に合わせる
+   STEP 1・7の円まわりのルールより優先される
+   ========================================================= */
+:root {
+  --font-ring: 'Noto Sans JP', 'Zen Kaku Gothic New', sans-serif;
+  --ring-dark: #4a9db9;
+}
+
+/* 影はリング全体(SVGの外側)に付ける */
+.hm-ring {
+  overflow: visible;
+  filter: drop-shadow(0 12px 14px rgba(48, 67, 74, 0.28));
+}
+.hm-ring .band { stroke-width: 19; }
+.hm-ring .outer { stroke-width: 1.5; }
+.hm-ring .disc { stroke-width: 1.2; filter: none; }
+
+/* 進行を見せるモードは、リングを濃い青にして黄色の弧を重ねる */
+.hm-circle[data-mode='event'] .band,
+.hm-circle[data-mode='task'] .band,
+.hm-circle[data-mode='timecalc'] .band { stroke-opacity: 1; }
+.hm-circle[data-mode='event'] .disc,
+.hm-circle[data-mode='task'] .disc,
+.hm-circle[data-mode='timecalc'] .disc { stroke: var(--ring-dark); }
+
+/* 機能名: 英字の頭文字だけ大文字、太字、円の真上 */
+.hm-mode-title {
+  font-family: var(--font-ring);
+  font-size: 18px;
+  height: 26px;
+  line-height: 26px;
+  letter-spacing: 0.03em;
+}
+
+/* 中央の文字 */
+.hm-inner {
+  left: 15%; right: 15%; top: 18%; bottom: 18%;
+  font-family: var(--font-ring);
+}
+.hm-inner .hm-date {
+  font-family: var(--font-ring);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  font-size: clamp(22px, 7.4vw, 29px);
+}
+.hm-inner .hm-date.is-s  { font-size: clamp(17px, 5.6vw, 22px); }
+.hm-inner .hm-date.is-xs { font-size: clamp(14px, 4.4vw, 17px); }
+.hm-pct {
+  font-weight: 700;
+  font-size: clamp(13px, 4.2vw, 16px);
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  color: var(--text-soft);
+}
+.hm-cap-name {
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
