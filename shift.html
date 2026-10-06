@@ -81,15 +81,6 @@
             <label for="add-break">休憩時間(分)</label>
             <input id="add-break" type="number" inputmode="numeric" min="0" value="0" />
           </div>
-          <div class="lm-field hs-add-class-only" hidden>
-            <label for="add-school-preset">学校の逆算プリセット(任意)</label>
-            <select id="add-school-preset">
-              <option value="">プリセットなし</option>
-              <option value="car">車</option>
-              <option value="itsukaichi">五日市</option>
-              <option value="nishihiroshima">西広島</option>
-            </select>
-          </div>
           <div id="add-preview" class="lm-empty"></div>
           <button type="submit" class="lm-btn">カレンダーに追加</button>
         </form>
@@ -102,9 +93,6 @@
         <div class="lm-section-title">予定テンプレート</div>
         <button type="button" class="lm-btn secondary" id="template-toggle" aria-expanded="false">予定を登録</button>
       </div>
-      <div id="template-list"></div>
-      <div id="template-pager" class="lm-pager" hidden></div>
-      <button type="button" class="lm-btn secondary hs-template-list-all" id="template-list-all" hidden>一覧表示</button>
       <form id="template-form" class="hs-template-form" hidden>
         <div class="lm-field">
           <label for="template-kind">種類</label>
@@ -126,6 +114,9 @@
           <button type="submit" class="lm-btn" id="template-save">テンプレートを保存</button>
         </div>
       </form>
+      <div id="template-list"></div>
+      <div id="template-pager" class="lm-pager" hidden></div>
+      <button type="button" class="lm-btn secondary hs-template-list-all" id="template-list-all" hidden>一覧表示</button>
     </section>
 
     <section class="lm-section">

@@ -20,7 +20,6 @@
   const addEndTime = document.getElementById('add-end-time');
   const addLocation = document.getElementById('add-location');
   const addBreak = document.getElementById('add-break');
-  const schoolPreset = document.getElementById('add-school-preset');
   const addPreview = document.getElementById('add-preview');
   const weekdayRows = [...document.querySelectorAll('.hs-weekday-schedule > label')];
   const calendarGrid = document.getElementById('calendar-grid');
@@ -124,7 +123,6 @@
   });
 
   addTemplate.addEventListener('change', updateAddForm);
-  schoolPreset.addEventListener('change', updatePreview);
   addTemplateChips.addEventListener('click', (event) => {
     const chip = event.target.closest('[data-template-chip]');
     if (!chip) return;
@@ -177,8 +175,12 @@
   });
 
   dayList.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-delete-id], [data-delete-series]');
+    const button = event.target.closest('[data-edit-id], [data-delete-id], [data-delete-series]');
     if (!button) return;
+    if (button.dataset.editId) {
+      startShiftEdit(button.dataset.editId);
+      return;
+    }
     const seriesId = button.dataset.deleteSeries;
     if (seriesId) {
       if (!confirm('このくり返し予定をすべて削除しますか?')) return;
@@ -350,7 +352,6 @@
     addUntilDate.required = weekly;
     const template = templates.find((item) => item.id === addTemplate.value);
     document.querySelector('.hs-add-shift-only').hidden = !template || template.kind === 'class';
-    document.querySelector('.hs-add-class-only').hidden = !template || template.kind !== 'class';
     addForm.querySelector('button[type="submit"]').disabled = templates.length === 0;
     weekdayRows.forEach((row) => {
       const checkbox = row.querySelector('input[type="checkbox"]');
@@ -443,7 +444,6 @@
       end: item.end,
       breakMin,
       belongingSetIds: template.belongingSetIds || [],
-      ...(template.kind === 'class' ? getSchoolPresetData(schoolPreset.value) : {}),
     }));
     if (!LM.set(LM.KEYS.SHIFTS, LM.get(LM.KEYS.SHIFTS, []).concat(records))) return;
     const schedulesSynced = syncLinkedSchedules();
@@ -458,7 +458,6 @@
     addEndTime.value = '';
     addLocation.value = '';
     addBreak.value = '0';
-    schoolPreset.value = '';
     weekdayRows.forEach((row) => {
       row.querySelector('input[type="checkbox"]').checked = false;
       row.querySelectorAll('input[type="time"]').forEach((input) => {
@@ -649,7 +648,13 @@
         location.textContent = item.location;
         detail.appendChild(location);
       }
-      if (item.kind !== 'class') {
+        if (item.routePreset) {
+          const route = document.createElement('span');
+          route.className = 'hs-day-route';
+          route.textContent = `逆算: ${item.routePreset}`;
+          detail.appendChild(route);
+        }
+        if (item.kind !== 'class') {
         const payLabel = document.createElement('span');
         payLabel.className = 'hs-day-pay';
         payLabel.textContent = item.start && item.end
@@ -660,6 +665,12 @@
       row.appendChild(detail);
       const actions = document.createElement('div');
       actions.className = 'hs-day-actions';
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.className = 'lm-btn secondary hs-edit';
+      edit.dataset.editId = item.id;
+      edit.textContent = '編集';
+      actions.appendChild(edit);
       actions.appendChild(createDeleteButton(item.id, item.seriesId ? 'この日だけ削除' : '削除'));
       if (item.seriesId) {
         const removeSeries = createDeleteButton('', '全期間を削除');
@@ -678,6 +689,167 @@
     if (id) button.dataset.deleteId = id;
     button.textContent = label;
     return button;
+  }
+
+  function startShiftEdit(id) {
+    const item = LM.get(LM.KEYS.SHIFTS, []).find((shift) => shift.id === id);
+    if (!item) return;
+
+    const form = document.createElement('form');
+    form.className = 'hs-edit-form';
+    const fields = {};
+    const addField = (labelText, name, type, value, attributes = {}) => {
+      const field = document.createElement('div');
+      field.className = 'lm-field';
+      const label = document.createElement('label');
+      label.textContent = labelText;
+      const input = document.createElement('input');
+      input.name = name;
+      input.type = type;
+      input.value = value ?? '';
+      Object.entries(attributes).forEach(([key, attributeValue]) => {
+        input.setAttribute(key, attributeValue);
+      });
+      label.htmlFor = `shift-edit-${name}`;
+      input.id = label.htmlFor;
+      field.append(label, input);
+      form.appendChild(field);
+      fields[name] = input;
+      return input;
+    };
+
+    addField('予定の名前', 'name', 'text', item.name, { maxlength: '60', required: '' });
+    addField('日付', 'date', 'date', item.date, { required: '' });
+    addField('開始時刻(任意)', 'start', 'time', item.start);
+    addField('終了時刻(任意)', 'end', 'time', item.end);
+    addField('場所(任意)', 'location', 'text', item.location, { maxlength: '80' });
+
+    const presetField = document.createElement('div');
+    presetField.className = 'lm-field';
+    const presetLabel = document.createElement('label');
+    presetLabel.htmlFor = 'shift-edit-preset';
+    presetLabel.textContent = '逆算プリセット(日ごとに設定)';
+    const presetSelect = document.createElement('select');
+    presetSelect.id = 'shift-edit-preset';
+    [
+      ['', 'プリセットなし'],
+      ['car', '車'],
+      ['itsukaichi', '五日市'],
+      ['nishihiroshima', '西広島'],
+      ['custom', '個別設定'],
+    ].forEach(([value, label]) => {
+      const option = document.createElement('option');
+      option.value = value;
+      option.textContent = label;
+      presetSelect.appendChild(option);
+    });
+    presetField.append(presetLabel, presetSelect);
+    form.appendChild(presetField);
+
+    const route = item.routePreset || '';
+    const presetKeys = { 車: 'car', 五日市: 'itsukaichi', 西広島: 'nishihiroshima' };
+    const currentPreset = presetKeys[route] || (item.travelMin || item.prepMin || item.arriveBeforeMin ? 'custom' : '');
+    presetSelect.value = currentPreset;
+    addField('移動時間(分)', 'travelMin', 'number', Number(item.travelMin) || 0, { min: '0', inputmode: 'numeric' });
+    addField('準備時間(分)', 'prepMin', 'number', Number(item.prepMin) || 0, { min: '0', inputmode: 'numeric' });
+    addField('到着希望(何分前)', 'arriveBeforeMin', 'number', Number(item.arriveBeforeMin) || 0, { min: '0', inputmode: 'numeric' });
+
+    const belongingField = document.createElement('fieldset');
+    belongingField.className = 'lm-field hs-edit-belongings';
+    const belongingLegend = document.createElement('legend');
+    belongingLegend.textContent = '持ちものセット(任意・複数選択可)';
+    const belongingList = document.createElement('div');
+    belongingList.className = 'lm-check-list';
+    const sets = LM.get(LM.KEYS.BELONGING_SETS, []);
+    if (sets.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'lm-empty';
+      empty.textContent = '持ちものセットはまだ登録されていません';
+      belongingList.appendChild(empty);
+    } else {
+      sets.forEach((set) => {
+        const label = document.createElement('label');
+        label.className = 'lm-check-item';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.value = set.id;
+        checkbox.checked = (item.belongingSetIds || []).includes(set.id);
+        const text = document.createElement('span');
+        text.textContent = set.name;
+        label.append(checkbox, text);
+        belongingList.appendChild(label);
+      });
+    }
+    belongingField.append(belongingLegend, belongingList);
+    form.appendChild(belongingField);
+
+    const actions = document.createElement('div');
+    actions.className = 'hs-template-form-actions';
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'lm-btn secondary';
+    cancel.textContent = 'キャンセル';
+    cancel.addEventListener('click', LM.closeModal);
+    const save = document.createElement('button');
+    save.type = 'submit';
+    save.className = 'lm-btn';
+    save.textContent = '変更を保存';
+    actions.append(cancel, save);
+    form.appendChild(actions);
+
+    presetSelect.addEventListener('change', () => {
+      const values = getSchoolPresetData(presetSelect.value);
+      if (presetSelect.value === 'custom') return;
+      fields.travelMin.value = values.travelMin;
+      fields.prepMin.value = values.prepMin;
+      fields.arriveBeforeMin.value = values.arriveBeforeMin;
+    });
+    ['travelMin', 'prepMin', 'arriveBeforeMin'].forEach((name) => {
+      fields[name].addEventListener('input', () => {
+        if (presetSelect.value !== 'custom') presetSelect.value = 'custom';
+      });
+    });
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      if (!fields.name.value.trim()) {
+        LM.showToast('予定の名前を入力してください', 'error');
+        fields.name.focus();
+        return;
+      }
+      if (Boolean(fields.start.value) !== Boolean(fields.end.value)) {
+        LM.showToast('開始時刻と終了時刻は両方入力するか、両方空欄にしてください', 'error');
+        return;
+      }
+      const shifts = LM.get(LM.KEYS.SHIFTS, []);
+      const index = shifts.findIndex((shift) => shift.id === id);
+      if (index === -1) {
+        LM.showToast('編集する予定が見つかりません', 'error');
+        LM.closeModal();
+        return;
+      }
+      const presetData = getSchoolPresetData(presetSelect.value);
+      shifts[index] = {
+        ...shifts[index],
+        name: fields.name.value.trim(),
+        date: fields.date.value,
+        start: fields.start.value,
+        end: fields.end.value,
+        location: fields.location.value.trim(),
+        routePreset: presetData.routePreset,
+        travelMin: Math.max(0, Number(fields.travelMin.value) || 0),
+        prepMin: Math.max(0, Number(fields.prepMin.value) || 0),
+        arriveBeforeMin: Math.max(0, Number(fields.arriveBeforeMin.value) || 0),
+        belongingSetIds: [...belongingList.querySelectorAll('input:checked')].map((input) => input.value),
+      };
+      if (!LM.set(LM.KEYS.SHIFTS, shifts)) return;
+      selectedDate = fields.date.value;
+      shownMonth = new Date(`${selectedDate}T00:00:00`);
+      LM.closeModal();
+      syncLinkedSchedules();
+      renderAll();
+    });
+    LM.openModal('予定を編集', form);
   }
 
   function renderMonthSummary() {
@@ -727,8 +899,7 @@
     const pay = shifts.reduce((sum, item) => sum + calculatePay(item, wage), 0);
     const period = addRepeat.value === 'weekly' ? '週あたり' : '1回分';
     const countLabel = addRepeat.value === 'weekly' ? `${shifts.length}曜日分` : '勤務分';
-    const preset = addRepeat.value === 'weekly' ? '' : getSchoolPresetPreview();
-    addPreview.textContent = `見込み給与(${countLabel}): ¥${pay.toLocaleString()} / ${period}${preset}`;
+    addPreview.textContent = `見込み給与(${countLabel}): ¥${pay.toLocaleString()} / ${period}`;
   }
 
   function getSchoolPresetData(value) {
@@ -736,14 +907,9 @@
       car: { routePreset: '車', travelMin: 20, prepMin: 40, arriveBeforeMin: 10 },
       itsukaichi: { routePreset: '五日市', travelMin: 70, prepMin: 30, arriveBeforeMin: 10 },
       nishihiroshima: { routePreset: '西広島', travelMin: 45, prepMin: 40, arriveBeforeMin: 10 },
+      custom: { routePreset: '個別設定' },
     };
     return presets[value] || { routePreset: '', travelMin: 0, prepMin: 0, arriveBeforeMin: 0 };
-  }
-
-  function getSchoolPresetPreview() {
-    const preset = schoolPreset.value;
-    const names = { car: '車', itsukaichi: '五日市', nishihiroshima: '西広島' };
-    return preset ? ` ・ 逆算: ${names[preset]}` : '';
   }
 
   function groupByDate(items) {

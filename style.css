@@ -1676,7 +1676,7 @@ body {
 .hs-repeat-fields[hidden],
 .hs-once-fields[hidden],
 .hs-add-shift-only[hidden] {
-  display: none;
+  display: none !important;
 }
 .hs-calendar-grid {
   display: grid;
@@ -1835,11 +1835,16 @@ body {
   font-weight: 400;
 }
 .hs-day-location,
-.hs-day-pay {
+.hs-day-pay,
+.hs-day-route {
   color: var(--text-soft);
   font-size: 12px;
 }
 .hs-delete {
+  padding: 6px;
+  font-size: 11px;
+}
+.hs-edit {
   padding: 6px;
   font-size: 11px;
 }
@@ -2128,11 +2133,14 @@ body {
   gap: 8px;
 }
 .hs-template-belongings {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
   min-width: 0;
-  margin: 0 0 10px;
+  margin: 12px 0 10px;
   border: 1px solid var(--paper-line);
   border-radius: 8px;
-  padding: 8px;
+  padding: 10px 12px;
 }
 .hs-template-belongings legend {
   padding: 0 4px;
@@ -2140,8 +2148,28 @@ body {
   font-size: 12px;
 }
 .hs-template-belongings .lm-check-list {
+  width: 100%;
+  min-width: 0;
   max-height: 150px;
   overflow-y: auto;
+}
+.hs-edit-form .lm-field {
+  margin-bottom: 10px;
+}
+.hs-edit-belongings {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  margin: 12px 0 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--paper-line);
+  border-radius: 8px;
+}
+.hs-edit-belongings legend {
+  padding: 0 4px;
+  color: var(--text-soft);
+  font-size: 12px;
 }
 .hs-template-modal-row {
   display: flex;
@@ -2191,9 +2219,6 @@ body {
 .lm-modal .lm-schedule-departure {
   color: var(--text-soft);
   font-size: 12px;
-}
-.hs-add-class-only[hidden] {
-  display: none;
 }
 .hs-template-list-all {
   display: block;
