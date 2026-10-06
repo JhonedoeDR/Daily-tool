@@ -204,6 +204,7 @@
       LM.showToast('この予定は履修・シフト側で編集してください', 'error');
       return;
     }
+    switchFormTab('schedule');
     editingId = id;
     fields.name.value = schedule.name;
     fields.date.value = schedule.date;
