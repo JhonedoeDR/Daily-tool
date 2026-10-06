@@ -261,18 +261,34 @@
   });
 
   dayList.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-toggle-attendance], [data-toggle-schedule], [data-edit-id], [data-delete-id], [data-delete-series]');
+    const button = event.target.closest('[data-toggle-attendance], [data-toggle-schedule-group], [data-toggle-schedule], [data-edit-group], [data-edit-id], [data-delete-group], [data-delete-id], [data-delete-series]');
     if (!button) return;
     if (button.dataset.toggleAttendance) {
       toggleAttendance(button.dataset.toggleAttendance);
+      return;
+    }
+    if (button.dataset.toggleScheduleGroup) {
+      openSchedulePeriodPicker(JSON.parse(button.dataset.toggleScheduleGroup));
       return;
     }
     if (button.dataset.toggleSchedule) {
       toggleScheduleRegistration(button.dataset.toggleSchedule);
       return;
     }
+    if (button.dataset.editGroup) {
+      startShiftEdit(JSON.parse(button.dataset.editGroup));
+      return;
+    }
     if (button.dataset.editId) {
       startShiftEdit(button.dataset.editId);
+      return;
+    }
+    if (button.dataset.deleteGroup) {
+      const ids = new Set(JSON.parse(button.dataset.deleteGroup));
+      if (!confirm('この科目の予定をすべて削除しますか?')) return;
+      if (!LM.set(LM.KEYS.SHIFTS, LM.get(LM.KEYS.SHIFTS, []).filter((item) => !ids.has(item.id)))) return;
+      if (!syncLinkedSchedules()) return;
+      renderAll();
       return;
     }
     const seriesId = button.dataset.deleteSeries;
@@ -306,6 +322,65 @@
     renderAll();
     const kind = shifts[index].kind === 'class' ? '履修' : '予定逆算';
     LM.showToast(registered ? `${kind}登録を解除しました` : `${kind}に登録しました`);
+  }
+
+  function openSchedulePeriodPicker(ids) {
+    const idSet = new Set(ids);
+    const shifts = LM.get(LM.KEYS.SHIFTS, []);
+    const entries = shifts
+      .filter((item) => idSet.has(item.id) && item.kind === 'class')
+      .sort((a, b) => (a.start || '').localeCompare(b.start || ''));
+    if (entries.length < 2) {
+      if (entries[0]) toggleScheduleRegistration(entries[0].id);
+      return;
+    }
+    const form = document.createElement('form');
+    const prompt = document.createElement('p');
+    const isExam = entries[0].isExam === true;
+    prompt.textContent = `${isExam ? '試験' : '履修'}登録する時限を選択してください。複数選択できます。`;
+    const options = document.createElement('div');
+    options.className = 'hs-schedule-period-picker';
+    entries.forEach((item) => {
+      const label = document.createElement('label');
+      label.className = 'lm-check-item';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.value = item.id;
+      checkbox.checked = item.scheduleRegistered === true;
+      const text = document.createElement('span');
+      text.textContent = `${item.periodNumber ? `${item.periodNumber}限目 ` : ''}${item.start || '時間未設定'}${item.end ? `〜${item.end}` : ''}`;
+      label.append(checkbox, text);
+      options.appendChild(label);
+    });
+    const actions = document.createElement('div');
+    actions.className = 'hs-template-form-actions';
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'lm-btn secondary';
+    cancel.textContent = 'キャンセル';
+    cancel.addEventListener('click', LM.closeModal);
+    const save = document.createElement('button');
+    save.type = 'submit';
+    save.className = 'lm-btn';
+    save.textContent = '選択を保存';
+    actions.append(cancel, save);
+    form.append(prompt, options, actions);
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const selectedIds = new Set([...options.querySelectorAll('input:checked')].map((input) => input.value));
+      const current = LM.get(LM.KEYS.SHIFTS, []);
+      const updated = current.map((item) => idSet.has(item.id)
+        ? { ...item, scheduleRegistered: selectedIds.has(item.id) }
+        : item);
+      if (!LM.set(LM.KEYS.SHIFTS, updated)) return;
+      if (!syncLinkedSchedules()) return;
+      LM.closeModal();
+      renderAll();
+      LM.showToast(selectedIds.size
+        ? `${isExam ? '試験' : '履修'}登録する時限を更新しました`
+        : `${isExam ? '試験' : '履修'}登録を解除しました`);
+    });
+    LM.openModal(`${isExam ? '試験' : '履修'}登録する時限`, form);
   }
 
   function toggleAttendance(id) {
@@ -1004,7 +1079,7 @@
     const year = shownMonth.getFullYear();
     const month = shownMonth.getMonth();
     const days = new Date(year, month + 1, 0).getDate();
-    const eventsByDate = groupByDate(filterClassEvents(LM.get(LM.KEYS.SHIFTS, [])));
+    const eventsByDate = groupByDate(groupClassEvents(filterClassEvents(LM.get(LM.KEYS.SHIFTS, []))));
     calendarTitle.textContent = `${year}年${month + 1}月`;
     dateStrip.replaceChildren();
     for (let day = 1; day <= days; day += 1) {
@@ -1041,7 +1116,7 @@
     const firstWeekday = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const cellCount = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
-    const byDate = groupByDate(filterClassEvents(LM.get(LM.KEYS.SHIFTS, [])));
+    const byDate = groupByDate(groupClassEvents(filterClassEvents(LM.get(LM.KEYS.SHIFTS, []))));
     calendarGrid.replaceChildren();
     WEEKDAYS.forEach((weekday) => {
       const heading = document.createElement('span');
@@ -1074,7 +1149,7 @@
         const chip = document.createElement('span');
         chip.className = `hs-calendar-chip${item.kind === 'class' ? ' is-class' : ''}${item.isExam ? ' is-exam' : ''}`;
         chip.textContent = item.kind === 'class'
-          ? `${item.name || '授業'} ${addClassUnitLabel(item)}`
+          ? `${item.name || '授業'} ${addClassUnitLabel(item)}${item.entries.length > 1 ? `・${item.entries.length}限` : ''}`
           : item.name || 'シフト';
         button.appendChild(chip);
       });
@@ -1097,7 +1172,7 @@
 
   function renderDayList() {
     const allEvents = LM.get(LM.KEYS.SHIFTS, []);
-    const events = filterClassEvents(groupByDate(allEvents).get(selectedDate) || [])
+    const events = groupClassEvents(filterClassEvents(groupByDate(allEvents).get(selectedDate) || []))
       .sort((a, b) => (a.start || '').localeCompare(b.start || ''));
     const date = new Date(`${selectedDate}T00:00:00`);
     const placementHint = isPlacementModeReady() ? ' ・ 日付をタップして予定を追加' : '';
@@ -1109,22 +1184,42 @@
       return;
     }
     events.forEach((item) => {
+      const entries = item.entries || [item];
+      const isClass = item.kind === 'class';
       const row = document.createElement('article');
-      row.className = `hs-day-item${item.kind === 'class' ? ' is-class' : ''}${item.isExam ? ' is-exam' : ''}`;
+      row.className = `hs-day-item${isClass ? ' is-class' : ''}${item.isExam ? ' is-exam' : ''}${entries.length > 1 ? ' has-multiple-periods' : ''}`;
       const detail = document.createElement('div');
       detail.className = 'hs-day-detail';
       const title = document.createElement('strong');
-      title.textContent = item.name || (item.kind === 'class' ? '授業' : 'シフト');
-      const time = document.createElement('span');
-      time.textContent = item.start && item.end
-        ? `${item.periodNumber ? `${item.periodNumber}限目 ` : ''}${item.start}〜${item.end}`
-        : '時間未設定';
-      detail.append(title, time);
-      if (item.kind === 'class') {
-        const section = document.createElement('span');
-        section.className = 'hs-day-route';
-        section.textContent = addClassUnitLabel(item);
-        detail.appendChild(section);
+      title.textContent = item.name || (isClass ? '授業' : 'シフト');
+      detail.appendChild(title);
+      if (isClass) {
+        const periods = document.createElement('div');
+        periods.className = 'hs-day-period-list';
+        entries.forEach((entry) => {
+          const period = document.createElement('div');
+          period.className = 'hs-day-period';
+          const periodInfo = document.createElement('span');
+          periodInfo.className = 'hs-day-period-label';
+          const section = addClassUnitLabel(entry);
+          periodInfo.textContent = `${entry.periodNumber ? `${entry.periodNumber}限目 ` : ''}${entry.start && entry.end ? `${entry.start}〜${entry.end}` : '時間未設定'}${entry.isExam ? '' : ` ・ ${section}`}`;
+          period.appendChild(periodInfo);
+          if (!entry.isExam) {
+            const attendance = document.createElement('button');
+            attendance.type = 'button';
+            attendance.className = `lm-btn secondary hs-attendance${entry.attended ? ' is-attended' : ''}`;
+            attendance.dataset.toggleAttendance = entry.id;
+            attendance.setAttribute('aria-pressed', String(entry.attended === true));
+            attendance.textContent = entry.attended ? '出席済み' : '出席を記録';
+            period.appendChild(attendance);
+          }
+          periods.appendChild(period);
+        });
+        detail.appendChild(periods);
+      } else {
+        const time = document.createElement('span');
+        time.textContent = item.start && item.end ? `${item.start}〜${item.end}` : '時間未設定';
+        detail.appendChild(time);
       }
       if (item.location) {
         const location = document.createElement('span');
@@ -1149,35 +1244,35 @@
       row.appendChild(detail);
       const actions = document.createElement('div');
       actions.className = 'hs-day-actions';
-      if (item.kind === 'class' && !item.isExam) {
-        const attendance = document.createElement('button');
-        attendance.type = 'button';
-        attendance.className = `lm-btn secondary hs-attendance${item.attended ? ' is-attended' : ''}`;
-        attendance.dataset.toggleAttendance = item.id;
-        attendance.setAttribute('aria-pressed', String(item.attended === true));
-        attendance.textContent = item.attended ? '出席済み' : '出席を記録';
-        actions.appendChild(attendance);
-      }
-      const registered = item.scheduleRegistered === true;
+      const registeredCount = entries.filter((entry) => entry.scheduleRegistered === true).length;
+      const registered = registeredCount === entries.length;
       const register = document.createElement('button');
       register.type = 'button';
       register.className = `lm-btn secondary hs-register${registered ? ' is-registered' : ''}`;
-      register.dataset.toggleSchedule = item.id;
-      register.textContent = item.kind === 'class'
+      if (isClass) register.dataset.toggleScheduleGroup = JSON.stringify(entries.map((entry) => entry.id));
+      else register.dataset.toggleSchedule = item.id;
+      register.textContent = isClass
         ? (item.isExam
-          ? (registered ? '試験の登録を解除' : '試験を登録')
-          : (registered ? '履修登録を解除' : '履修登録する'))
+          ? (entries.length > 1
+            ? '試験の時限を選択'
+            : (registered ? '試験の登録を解除' : '試験を登録'))
+          : (entries.length > 1
+            ? '履修登録する時限を選択'
+            : (registered ? '履修登録を解除' : '履修登録する')))
         : (registered ? '逆算登録を解除' : '予定逆算に登録');
       register.setAttribute('aria-pressed', String(registered));
       actions.appendChild(register);
       const edit = document.createElement('button');
       edit.type = 'button';
       edit.className = 'lm-btn secondary hs-edit';
-      edit.dataset.editId = item.id;
+      if (isClass) edit.dataset.editGroup = JSON.stringify(entries.map((entry) => entry.id));
+      else edit.dataset.editId = item.id;
       edit.textContent = '編集';
       actions.appendChild(edit);
       const isShiftSeries = item.kind !== 'class' && item.seriesId;
-      actions.appendChild(createDeleteButton(item.id, isShiftSeries ? 'この日だけ削除' : '削除'));
+      const remove = createDeleteButton(isClass ? '' : item.id, isShiftSeries ? 'この日だけ削除' : '削除');
+      if (isClass) remove.dataset.deleteGroup = JSON.stringify(entries.map((entry) => entry.id));
+      actions.appendChild(remove);
       if (isShiftSeries) {
         const removeSeries = createDeleteButton('', '全期間を削除');
         removeSeries.dataset.deleteSeries = item.seriesId;
@@ -1197,8 +1292,12 @@
     return button;
   }
 
-  function startShiftEdit(id) {
-    const item = LM.get(LM.KEYS.SHIFTS, []).find((shift) => shift.id === id);
+  function startShiftEdit(ids) {
+    const editIds = new Set(Array.isArray(ids) ? ids : [ids]);
+    const originalEntries = LM.get(LM.KEYS.SHIFTS, [])
+      .filter((shift) => editIds.has(shift.id))
+      .sort((a, b) => Number(a.periodNumber) - Number(b.periodNumber));
+    const item = originalEntries[0];
     if (!item) return;
 
     const form = document.createElement('form');
@@ -1263,7 +1362,7 @@
           periodOptions.appendChild(optionLabel);
         });
       };
-      updatePeriods(item.periodNumber ? [Number(item.periodNumber)] : []);
+      updatePeriods(originalEntries.map((entry) => Number(entry.periodNumber)).filter(Number.isFinite));
       dateInput.addEventListener('change', () => updatePeriods());
     } else {
       addField('開始時刻(任意)', 'start', 'time', item.start);
@@ -1336,14 +1435,15 @@
         return;
       }
       const shifts = LM.get(LM.KEYS.SHIFTS, []);
-      const index = shifts.findIndex((shift) => shift.id === id);
-      if (index === -1) {
+      const matchingEntries = shifts.filter((shift) => editIds.has(shift.id));
+      const firstIndex = shifts.findIndex((shift) => editIds.has(shift.id));
+      if (matchingEntries.length === 0 || firstIndex === -1) {
         LM.showToast('編集する予定が見つかりません', 'error');
         LM.closeModal();
         return;
       }
       const conflict = selectedPeriods.find((period) => shifts.some((shift) =>
-        shift.id !== id &&
+        !editIds.has(shift.id) &&
         shift.kind === 'class' &&
         getTemplateKey(shift) === getTemplateKey(item) &&
         shift.date === fields.date.value &&
@@ -1361,23 +1461,22 @@
         belongingSetIds: [...belongingList.querySelectorAll('input:checked')].map((input) => input.value),
       };
       if (item.kind === 'class') {
-        const [firstPeriod, ...additionalPeriods] = selectedPeriods;
-        shifts[index] = {
-          ...shifts[index],
-          ...commonUpdates,
-          periodNumber: firstPeriod.number,
-          start: firstPeriod.start,
-          end: firstPeriod.end,
-        };
-        shifts.push(...additionalPeriods.map((period) => ({
-          ...shifts[index],
-          id: LM.uid(),
-          periodNumber: period.number,
-          start: period.start,
-          end: period.end,
-          attended: false,
-        })));
+        const updatedEntries = selectedPeriods.map((period) => {
+          const existing = matchingEntries.find((entry) => Number(entry.periodNumber) === period.number);
+          return {
+            ...(existing || matchingEntries[0]),
+            ...commonUpdates,
+            ...(existing ? {} : { id: LM.uid(), attended: false, scheduleRegistered: false }),
+            periodNumber: period.number,
+            start: period.start,
+            end: period.end,
+          };
+        });
+        const remaining = shifts.filter((shift) => !editIds.has(shift.id));
+        remaining.splice(Math.min(firstIndex, remaining.length), 0, ...updatedEntries);
+        shifts.splice(0, shifts.length, ...remaining);
       } else {
+        const index = shifts.findIndex((shift) => shift.id === item.id);
         shifts[index] = {
           ...shifts[index],
           ...commonUpdates,
@@ -1444,6 +1543,33 @@
       grouped.get(item.date).push(item);
     });
     return grouped;
+  }
+
+  function groupClassEvents(items) {
+    const groups = new Map();
+    const result = [];
+    items.forEach((item) => {
+      if (item.kind !== 'class') {
+        result.push({ ...item, entries: [item] });
+        return;
+      }
+      const key = JSON.stringify([item.date, getTemplateKey(item), Boolean(item.isExam)]);
+      if (!groups.has(key)) {
+        const group = { ...item, entries: [] };
+        groups.set(key, group);
+        result.push(group);
+      }
+      groups.get(key).entries.push(item);
+    });
+    result.forEach((group) => {
+      if (group.kind === 'class') {
+        group.entries.sort((a, b) =>
+          (a.start || '').localeCompare(b.start || '') || Number(a.periodNumber) - Number(b.periodNumber)
+        );
+        group.start = group.entries[0]?.start || '';
+      }
+    });
+    return result;
   }
 
   function loadWageSettings() {
