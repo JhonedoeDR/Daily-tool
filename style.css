@@ -2541,10 +2541,23 @@ body {
 }
 
 /* ---------- タスクページ: ごほうび入力(テキスト風) ---------- */
-.lm-reward-input {
-  display: block;
-  width: 100%;
+.lm-reward-row {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
   margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+.lm-reward-label {
+  flex: 0 0 auto;
+}
+
+.lm-reward-input {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
   padding: 4px 0;
   border: none;
   border-radius: 0;
@@ -2559,3 +2572,4 @@ body {
   color: var(--text-soft);
   opacity: 1;
 }
+
