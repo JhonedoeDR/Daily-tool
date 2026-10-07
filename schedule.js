@@ -945,6 +945,18 @@
     return div.innerHTML;
   }
   
+    /* ---------- カレンダーの選択日を登録フォームの日付に反映 ---------- */
+  function syncSelectedDateToForms() {
+    const selectedButton = calendarGrid.querySelector('[data-date][aria-pressed="true"]');
+    if (!selectedButton) return;
+    const date = selectedButton.dataset.date;
+    if (!editingId) fields.date.value = date;
+    if (!editingDeadlineId) deadlineFields.date.value = date;
+  }
+  // カレンダーが再描画されるたび(日付タップ・月移動・今日ボタン・日付ナビ)に反映
+  new MutationObserver(syncSelectedDateToForms).observe(calendarGrid, { childList: true });
+  syncSelectedDateToForms();
+  
   /* ---------- 日本の祝日(holidays-jp API・カレンダーに薄紫の印を付ける) ---------- */
 (function () {
   const API_URL = 'https://holidays-jp.github.io/api/v1/date.json';
