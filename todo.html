@@ -21,25 +21,9 @@
   </div>
   <p class="lm-sub-header">タスクは毎日AM4:00に自動でリセットされます。予定・イベントは0:00で切り替わります(ルーティンの内容と「その他」の枠数は引き継がれます)</p>
 
-  <section class="lm-section" style="border-top:none;">
-    <div class="lm-section-title">週間達成のごほうび</div>
-    <input id="f-reward" placeholder="100%達成した時のご褒美を入力" style="width:100%; font-family:var(--font-body); font-size:16px; padding:10px 12px; border:1px solid var(--paper-line); border-radius:8px; background:#fff; color:var(--text);" />
-    <p class="lm-empty" style="margin-top:6px;">毎週月曜AM4:00にリセットされます</p>
-  </section>
-
-  <section class="lm-section" style="border-top:none;">
-    <div class="lm-section-title">月間ルーティン達成のごほうび</div>
-    <input id="f-routine-reward" placeholder="ルーティンを達成した時のご褒美を入力" style="width:100%; font-family:var(--font-body); font-size:16px; padding:10px 12px; border:1px solid var(--paper-line); border-radius:8px; background:#fff; color:var(--text);" />
-    <p class="lm-empty" style="margin-top:6px;">毎月1日AM4:00にリセットされます</p>
-  </section>
-
-  <section class="lm-section" style="border-top:none;">
-    <div id="todo-groups"></div>
-  </section>
-
-  <section class="lm-section">
+    <section class="lm-section" style="border-top:none;">
     <div class="lm-section-title">今週のメインタスククリア</div>
-    <p class="lm-empty" style="margin-bottom:10px;">メインタスクをクリアするたび、次のマスが埋まります</p>
+    <input id="f-reward" class="lm-reward-input" type="text" placeholder="ここにごほうびを入力" />
     <div id="weekly-grid" class="lm-week-grid"></div>
     <div id="weekly-count" style="margin-top:8px; font-size:13px; color:var(--text-soft);"></div>
     <div id="reward-box" style="display:none; margin-top:10px; padding:10px 12px; background:var(--accent-soft); border-radius:8px; font-size:13px;">
@@ -50,12 +34,18 @@
 
   <section class="lm-section">
     <div class="lm-section-title">今月のルーティンクリア</div>
+    <input id="f-routine-reward" class="lm-reward-input" type="text" placeholder="ここにごほうびを入力" />
     <div id="routine-progress" class="lm-event" style="margin-top:0;"></div>
     <div id="routine-reward-box" style="display:none; margin-top:10px; padding:10px 12px; background:var(--accent-soft); border-radius:8px; font-size:13px;">
       <div id="routine-reward-title" style="font-weight:500;"></div>
       <div style="color:var(--text-soft); margin-top:2px;">ご褒美を受け取れます</div>
     </div>
   </section>
+
+  <section class="lm-section">
+    <div id="todo-groups"></div>
+  </section>
+
 
   <div id="nav-container"></div>
 </div>
