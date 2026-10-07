@@ -17,7 +17,10 @@
 
   <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px;">
     <h1 class="lm-date-header">タスク</h1>
-    <button type="button" id="daily-reset-btn" class="lm-btn secondary" style="font-size:12px; padding:6px 12px; white-space:nowrap;">デイリーリセット</button>
+    <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
+      <button type="button" id="tomorrow-task-btn" class="lm-btn secondary" style="font-size:12px; padding:6px 12px; white-space:nowrap;">明日のタスク</button>
+      <button type="button" id="daily-reset-btn" class="lm-btn secondary" style="font-size:12px; padding:6px 12px; white-space:nowrap;">デイリーリセット</button>
+    </div>
   </div>
   <p class="lm-sub-header">タスクは毎日AM4:00に自動でリセットされます。予定・イベントは0:00で切り替わります(ルーティンの内容と「その他」の枠数は引き継がれます)</p>
 
@@ -58,6 +61,135 @@
 
 <script src="./app.js"></script>
 <script src="./renderNav-menu.js"></script>
+<script>
+(function () {
+  const KEY = 'lm_tomorrowTasks';
+
+  // 「次のタスク日」(AM4:00基準の明日)のキー
+  function nextDayKey() {
+    const [y, m, d] = LM.todoDayKey().split('-').map(Number);
+    return LM.scheduleDateKey(new Date(y, m - 1, d + 1));
+  }
+
+  // ---- 反映: todo.js より前に実行し、リセット後の今日のタスク名に流し込む ----
+  (function applyPending() {
+    const pending = LM.get(KEY, null);
+    if (!pending || !pending.forDay) return;
+    const state = LM.getTodoState(); // AM4:00のリセット判定を先に済ませる
+    if (pending.forDay > state.dayKey) return; // まだ先の日の分は残す
+    if (pending.forDay === state.dayKey) {
+      const slots = Math.max(1, Number(pending.otherSlotCount) || 1);
+      if (slots > state.otherSlotCount) {
+        state.otherSlotCount = LM.configureOtherTodoSlots(slots);
+      }
+      LM.TODO_GROUPS.forEach((g) => g.ids.forEach((id) => {
+        if (!state.dailyTasks[id]) state.dailyTasks[id] = { name: '', checked: false };
+      }));
+      const tasks = pending.tasks || {};
+      Object.keys(tasks).forEach((id) => {
+        const name = String(tasks[id] || '').trim();
+        if (!name || !state.dailyTasks[id]) return;
+        if (String(state.dailyTasks[id].name || '').trim()) return; // 既にある内容は上書きしない
+        LM.setTodoTaskName(state, id, name);
+      });
+      LM.saveTodoState(state);
+    }
+    localStorage.removeItem(KEY); // 反映済み・期限切れはここで消す
+  })();
+
+  // ---- 入力レイヤー ----
+  document.getElementById('tomorrow-task-btn').addEventListener('click', () => {
+    const forDay = nextDayKey();
+    const saved = LM.get(KEY, null);
+    const data = (saved && saved.forDay === forDay)
+      ? { forDay, tasks: saved.tasks || {}, otherSlotCount: Math.max(1, Number(saved.otherSlotCount) || 1) }
+      : { forDay, tasks: {}, otherSlotCount: 1 };
+
+    function persist() {
+      const has = Object.values(data.tasks).some((v) => String(v || '').trim());
+      if (has) LM.set(KEY, data);
+      else localStorage.removeItem(KEY);
+    }
+
+    const wrap = document.createElement('div');
+
+    function render() {
+      wrap.innerHTML = '';
+      const note = document.createElement('p');
+      note.className = 'lm-empty';
+      note.style.marginBottom = '12px';
+      note.textContent = 'AM4:00以降に最初にこのページを開いたとき、今日のタスクに反映されます(ルーティンは毎日引き継がれるため対象外です)';
+      wrap.appendChild(note);
+
+      LM.TODO_GROUPS.filter((g) => g.key !== 'routine').forEach((g) => {
+        const ids = g.key === 'other'
+          ? Array.from({ length: data.otherSlotCount }, (_, i) => `other${i + 1}`)
+          : g.ids;
+
+        const groupEl = document.createElement('div');
+        groupEl.className = 'lm-todo-group';
+        const label = document.createElement('div');
+        label.className = 'lm-todo-group-label' + (g.isMain ? ' is-main' : '');
+        label.textContent = g.label;
+        groupEl.appendChild(label);
+
+        ids.forEach((id, idx) => {
+          const row = document.createElement('div');
+          row.className = 'lm-todo-row';
+          const input = document.createElement('input');
+          input.type = 'text';
+          const num = ids.length > 1 ? '①②③'[idx] || String(idx + 1) : '';
+          input.placeholder = `${g.label}${num} のタスク`;
+          input.value = data.tasks[id] || '';
+          input.addEventListener('input', () => {
+            data.tasks[id] = input.value;
+            persist();
+          });
+          row.appendChild(input);
+
+          if (g.key === 'other' && idx > 0) {
+            const rm = document.createElement('button');
+            rm.type = 'button';
+            rm.className = 'lm-todo-slot-remove';
+            rm.textContent = '-';
+            rm.setAttribute('aria-label', 'この追加枠を削除');
+            rm.addEventListener('click', () => {
+              for (let slot = idx + 1; slot < data.otherSlotCount; slot += 1) {
+                data.tasks[`other${slot}`] = data.tasks[`other${slot + 1}`] || '';
+              }
+              delete data.tasks[`other${data.otherSlotCount}`];
+              data.otherSlotCount -= 1;
+              persist();
+              render();
+            });
+            row.appendChild(rm);
+          }
+          groupEl.appendChild(row);
+        });
+
+        if (g.key === 'other') {
+          const add = document.createElement('button');
+          add.type = 'button';
+          add.className = 'lm-btn secondary';
+          add.style.cssText = 'margin-top:8px; font-size:12px; padding:6px 12px;';
+          add.textContent = '＋ 枠を追加';
+          add.addEventListener('click', () => {
+            data.otherSlotCount += 1;
+            persist();
+            render();
+          });
+          groupEl.appendChild(add);
+        }
+        wrap.appendChild(groupEl);
+      });
+    }
+
+    render();
+    LM.openModal('明日のタスク', wrap);
+  });
+})();
+</script>
 <script src="./todo.js"></script>
+
 </body>
 </html>
