@@ -957,6 +957,99 @@
   new MutationObserver(syncSelectedDateToForms).observe(calendarGrid, { childList: true });
   syncSelectedDateToForms();
   
+    /* ---------- 確認ポップアップ:画面中央表示 + ✒マークで編集 ---------- */
+  (function () {
+    const style = document.createElement('style');
+    style.textContent = `
+      .lm-modal-overlay.sc-confirm-center {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+      }
+      .lm-modal-overlay.sc-confirm-center .lm-modal {
+        position: relative !important;
+        top: auto !important;
+        bottom: auto !important;
+        left: auto !important;
+        right: auto !important;
+        transform: none !important;
+        margin: 0 auto !important;
+        width: min(90vw, 420px);
+        max-height: 80vh;
+        overflow-y: auto;
+        border-radius: 16px !important;
+      }
+      .sc-confirm-edit {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        margin-left: 6px;
+        padding: 0;
+        vertical-align: middle;
+        border: none;
+        background: transparent;
+        color: var(--text-soft, #888);
+        cursor: pointer;
+      }
+      .sc-confirm-edit svg {
+        width: 18px;
+        height: 18px;
+        fill: currentColor;
+      }
+    `;
+    document.head.appendChild(style);
+
+    const PENCIL_SVG =
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>';
+    const TITLE_SELECTOR = '.lm-modal-title, .lm-modal-head h2, h2, h3, h1';
+
+    function enhanceConfirmModals() {
+      document.querySelectorAll('.lm-modal-overlay').forEach((overlay) => {
+        const modal = overlay.querySelector('.lm-modal');
+        if (!modal) return;
+        const text = modal.textContent || '';
+        const isConfirm = text.includes('開始時刻') || text.includes('締切時刻');
+        overlay.classList.toggle('sc-confirm-center', isConfirm);
+        if (!isConfirm) return;
+
+        const titleEl = modal.querySelector(TITLE_SELECTOR);
+        if (!titleEl) return;
+        const clone = titleEl.cloneNode(true);
+        clone.querySelectorAll('.sc-confirm-edit').forEach((el) => el.remove());
+        const name = clone.textContent.trim();
+
+        const target = LM.get(LM.KEYS.SCHEDULES, []).find((s) =>
+          s.name === name &&
+          text.includes(LM.formatDateHeader(s.date)) &&
+          text.includes(s.start)
+        );
+        if (!target) return;
+
+        const existing = titleEl.querySelector('.sc-confirm-edit');
+        if (existing && existing.dataset.scheduleId === target.id) return;
+        if (existing) existing.remove();
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'sc-confirm-edit';
+        btn.dataset.scheduleId = target.id;
+        btn.setAttribute('aria-label', '予定を編集');
+        btn.innerHTML = PENCIL_SVG;
+        btn.addEventListener('click', (event) => {
+          event.stopPropagation();
+          LM.closeModal();
+          if (document.querySelector('.lm-modal-overlay')) LM.closeModal();
+          startEdit(target.id);
+        });
+        titleEl.appendChild(btn);
+      });
+    }
+
+    new MutationObserver(enhanceConfirmModals).observe(document.body, { childList: true, subtree: true });
+  })();
+  
   /* ---------- 日本の祝日(holidays-jp API・カレンダーに薄紫の印を付ける) ---------- */
 (function () {
   const API_URL = 'https://holidays-jp.github.io/api/v1/date.json';
