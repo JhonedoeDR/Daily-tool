@@ -1005,7 +1005,7 @@
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>';
     const TITLE_SELECTOR = '.lm-modal-title, .lm-modal-head h2, h2, h3, h1';
 
-    function enhanceConfirmModals() {
+        function enhanceConfirmModals() {
       document.querySelectorAll('.lm-modal-overlay').forEach((overlay) => {
         const modal = overlay.querySelector('.lm-modal');
         if (!modal) return;
@@ -1013,37 +1013,37 @@
         const isConfirm = text.includes('開始時刻') || text.includes('締切時刻');
         overlay.classList.toggle('sc-confirm-center', isConfirm);
         if (!isConfirm) return;
+        if (modal.querySelector('.sc-confirm-edit')) return;
 
-        const titleEl = modal.querySelector(TITLE_SELECTOR);
-        if (!titleEl) return;
-        const clone = titleEl.cloneNode(true);
-        clone.querySelectorAll('.sc-confirm-edit').forEach((el) => el.remove());
-        const name = clone.textContent.trim();
-
-        const target = LM.get(LM.KEYS.SCHEDULES, []).find((s) =>
-          s.name === name &&
+        const elements = Array.from(modal.querySelectorAll('*'));
+        const candidates = LM.get(LM.KEYS.SCHEDULES, []).filter((s) =>
+          s.name &&
+          text.includes(s.name) &&
           text.includes(LM.formatDateHeader(s.date)) &&
           text.includes(s.start)
         );
-        if (!target) return;
 
-        const existing = titleEl.querySelector('.sc-confirm-edit');
-        if (existing && existing.dataset.scheduleId === target.id) return;
-        if (existing) existing.remove();
+        for (const target of candidates) {
+          const titleEl = elements.find((el) =>
+            el.children.length === 0 && el.textContent.trim() === target.name
+          );
+          if (!titleEl) continue;
 
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'sc-confirm-edit';
-        btn.dataset.scheduleId = target.id;
-        btn.setAttribute('aria-label', '予定を編集');
-        btn.innerHTML = PENCIL_SVG;
-        btn.addEventListener('click', (event) => {
-          event.stopPropagation();
-          LM.closeModal();
-          if (document.querySelector('.lm-modal-overlay')) LM.closeModal();
-          startEdit(target.id);
-        });
-        titleEl.appendChild(btn);
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'sc-confirm-edit';
+          btn.dataset.scheduleId = target.id;
+          btn.setAttribute('aria-label', '予定を編集');
+          btn.innerHTML = PENCIL_SVG;
+          btn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            LM.closeModal();
+            if (document.querySelector('.lm-modal-overlay')) LM.closeModal();
+            startEdit(target.id);
+          });
+          titleEl.appendChild(btn);
+          break;
+        }
       });
     }
 
