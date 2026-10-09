@@ -671,7 +671,7 @@
   function renderShift() {
     const el = document.getElementById('shift-box');
     const shifts = LM.get(LM.KEYS.SHIFTS, [])
-      .filter((s) => s.date === today && s.kind === 'class')
+      .filter((s) => s.date === today && s.kind === 'class' && s.scheduleRegistered === true)
       .sort((a, b) => (a.start || '').localeCompare(b.start || ''));
 
     if (shifts.length === 0) {
