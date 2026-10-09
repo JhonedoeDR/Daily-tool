@@ -545,9 +545,17 @@
       row.className = 'hs-template-modal-row';
       const title = document.createElement('strong');
       title.textContent = template.name;
+      const pen = createTemplatePenButton(template.id);
+      pen.addEventListener('click', () => {
+        LM.closeModal();
+        startTemplateEdit(template.id);
+      });
+      const titleRow = document.createElement('div');
+      titleRow.style.cssText = 'display:flex; align-items:center; gap:2px;';
+      titleRow.append(title, pen);
       const type = document.createElement('span');
       type.textContent = template.kind === 'class' ? '授業・履修' : 'アルバイトのシフト';
-      row.append(title, type);
+      row.append(titleRow, type);
       if (template.kind === 'class') {
         const capacity = document.createElement('small');
         const skippedSections = getSkippedSections(template, selectedDate);
