@@ -69,6 +69,18 @@ LM.syncShiftSchedules = function () {
     const current = earliestByDateAndKind.get(key);
     if (!current || shift.start < current.start) earliestByDateAndKind.set(key, shift);
   });
+  
+    // 学校の予定用: その日の全授業のセット + 常備 + 学校
+  const allBelongingSets = LM.get(LM.KEYS.BELONGING_SETS, []);
+  const setIdsByName = (name) => allBelongingSets.filter((s) => s.name === name).map((s) => s.id);
+  const classSetIdsByDate = new Map();
+  LM.get(LM.KEYS.SHIFTS, []).forEach((s) => {
+    if (s.kind !== 'class' || !/^\d{4}-\d{2}-\d{2}$/.test(s.date || '')) return;
+    if (!classSetIdsByDate.has(s.date)) classSetIdsByDate.set(s.date, new Set());
+    const acc = classSetIdsByDate.get(s.date);
+    (s.belongingSetIds || []).forEach((id) => acc.add(id));
+    setIdsByName(s.name).forEach((id) => acc.add(id));
+  });
 
   const projected = [...earliestByDateAndKind.entries()]
     .map(([key, shift]) => {
@@ -84,7 +96,14 @@ LM.syncShiftSchedules = function () {
         travelMin: Number(shift.travelMin) || 0,
         prepMin: Number(shift.prepMin) || 0,
         arriveBeforeMin: Number(shift.arriveBeforeMin) || 0,
-        belongingSetIds: shift.belongingSetIds || [],
+                belongingSetIds: kind === 'class'
+          ? [...new Set([
+              ...(shift.belongingSetIds || []),
+              ...(classSetIdsByDate.get(date) || []),
+              ...setIdsByName('常備'),
+              ...setIdsByName('学校'),
+            ])]
+          : (shift.belongingSetIds || []),
         memo: '',
         routePreset: shift.routePreset || '',
         autoSource: 'shift',
