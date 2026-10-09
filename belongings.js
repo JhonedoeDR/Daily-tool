@@ -2,9 +2,12 @@
   const PAGE_SIZE = 5;
   const setForm = document.getElementById('set-form');
   const setNameInput = document.getElementById('f-set-name');
+  const setTagsInput = document.getElementById('f-set-tags');
   const listEl = document.getElementById('set-list');
+  const tagFilterEl = document.getElementById('tag-filter');
 
   let page = 0;
+  let activeTag = '__all__'; // '__all__' | '__none__' | タグ名
   const openSetIds = new Set();
 
   render();
@@ -16,15 +19,53 @@
     const name = setNameInput.value.trim();
     if (!name) return;
     const sets = LM.get(LM.KEYS.BELONGING_SETS, []);
-    sets.push({ id: LM.uid(), name, items: [] });
+    sets.push({ id: LM.uid(), name, items: [], tags: parseTags(setTagsInput.value) });
     LM.set(LM.KEYS.BELONGING_SETS, sets);
     setNameInput.value = '';
+    setTagsInput.value = '';
     render();
   });
 
-  function render() {
+  function parseTags(text) {
+    const tags = String(text || '')
+      .split(/[,、，\s]+/)
+      .map((t) => t.replace(/^[#＃]/, '').trim())
+      .filter(Boolean);
+    return [...new Set(tags)];
+  }
+
+  function getFilteredSets() {
     const sets = LM.get(LM.KEYS.BELONGING_SETS, []);
-    renderPaged(listEl, sets, false);
+    if (activeTag === '__all__') return sets;
+    if (activeTag === '__none__') return sets.filter((s) => !(s.tags && s.tags.length));
+    return sets.filter((s) => (s.tags || []).includes(activeTag));
+  }
+
+  function renderTagFilter() {
+    const sets = LM.get(LM.KEYS.BELONGING_SETS, []);
+    const allTags = [...new Set(sets.flatMap((s) => s.tags || []))].sort((a, b) => a.localeCompare(b, 'ja'));
+    if (activeTag !== '__all__' && activeTag !== '__none__' && !allTags.includes(activeTag)) activeTag = '__all__';
+    const hasUntagged = sets.some((s) => !(s.tags && s.tags.length));
+    const buttons = [{ key: '__all__', label: 'すべて' }]
+      .concat(allTags.map((t) => ({ key: t, label: '#' + t })));
+    if (allTags.length && hasUntagged) buttons.push({ key: '__none__', label: 'タグなし' });
+    tagFilterEl.innerHTML = '';
+    if (!allTags.length) return;
+    buttons.forEach((b) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'lm-btn secondary' + (activeTag === b.key ? ' is-active' : '');
+      btn.style.cssText = 'padding:4px 10px; font-size:12px;';
+      btn.dataset.tagFilter = b.key;
+      btn.setAttribute('aria-pressed', String(activeTag === b.key));
+      btn.textContent = b.label;
+      tagFilterEl.appendChild(btn);
+    });
+  }
+
+  function render() {
+    renderTagFilter();
+    renderPaged(listEl, getFilteredSets(), false);
   }
 
   function renderPaged(container, sets, isModal) {
@@ -66,6 +107,7 @@
   function renderSetBox(set) {
     const wrap = document.createElement('div');
     wrap.className = 'lm-collapsible' + (openSetIds.has(set.id) ? ' open' : '');
+    const tags = set.tags || [];
 
     const itemsHtml = set.items
       .map(
@@ -77,12 +119,35 @@
       )
       .join('');
 
+    const headerTagsHtml = tags.length
+      ? `<div style="font-size:11px; color:var(--text-soft); margin-top:2px;">${tags.map((t) => '#' + escapeHtml(t)).join(' ')}</div>`
+      : '';
+    const tagChipsHtml = tags
+      .map(
+        (t, i) => `
+      <span style="display:inline-flex; align-items:center; gap:4px; padding:2px 4px 2px 8px; font-size:12px; background:var(--accent-soft); border:1px solid var(--paper-line); border-radius:999px;">
+        #${escapeHtml(t)}
+        <button type="button" data-remove-tag="${set.id}|${i}" aria-label="タグを外す" style="border:none; background:transparent; font-size:12px; padding:2px 4px; cursor:pointer; color:var(--text-soft);">✕</button>
+      </span>`
+      )
+      .join('');
+
     wrap.innerHTML = `
       <div class="lm-collapsible-header" data-toggle-set="${set.id}">
-        <strong>${escapeHtml(set.name)}(${set.items.length})</strong>
+        <div>
+          <strong>${escapeHtml(set.name)}(${set.items.length})</strong>
+          ${headerTagsHtml}
+        </div>
         <span class="lm-collapsible-arrow">▶</span>
       </div>
       <div class="lm-collapsible-body">
+        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+          ${tagChipsHtml || '<span class="lm-empty" style="margin:0;">タグなし</span>'}
+        </div>
+        <form data-add-tag="${set.id}" style="display:flex; gap:8px; margin-bottom:12px;">
+          <input placeholder="タグを追加" style="flex:1; min-width:0; font-family:var(--font-body); font-size:16px; padding:8px 10px; border:1px solid var(--paper-line); border-radius:8px;" required />
+          <button type="submit" class="lm-btn secondary" style="padding:8px 14px;">追加</button>
+        </form>
         <ul class="lm-check-list">${itemsHtml || '<li class="lm-empty">まだ持ちものが登録されていません</li>'}</ul>
         <form data-add-item="${set.id}" style="display:flex; gap:8px; margin-top:8px;">
           <input placeholder="持ちものを追加" style="flex:1; min-width:0; font-family:var(--font-body); font-size:16px; padding:8px 10px; border:1px solid var(--paper-line); border-radius:8px;" required />
@@ -111,6 +176,19 @@
       render();
     });
 
+    wrap.querySelector('form[data-add-tag]').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const input = e.target.querySelector('input');
+      const added = parseTags(input.value);
+      if (!added.length) return;
+      const sets = LM.get(LM.KEYS.BELONGING_SETS, []);
+      const s = sets.find((x) => x.id === set.id);
+      if (s) s.tags = [...new Set([...(s.tags || []), ...added])];
+      LM.set(LM.KEYS.BELONGING_SETS, sets);
+      openSetIds.add(set.id);
+      render();
+    });
+
     return wrap;
   }
 
@@ -120,6 +198,26 @@
     const prev = e.target.dataset.prev;
     const next = e.target.dataset.next;
     const listAll = e.target.dataset.listAll;
+    const tagFilter = e.target.dataset.tagFilter;
+    const removeTag = e.target.dataset.removeTag;
+
+    if (tagFilter) {
+      activeTag = tagFilter;
+      page = 0;
+      render();
+      return;
+    }
+
+    if (removeTag) {
+      const [setId, index] = removeTag.split('|');
+      const sets = LM.get(LM.KEYS.BELONGING_SETS, []);
+      const set = sets.find((s) => s.id === setId);
+      if (set) set.tags = (set.tags || []).filter((_, i) => i !== Number(index));
+      LM.set(LM.KEYS.BELONGING_SETS, sets);
+      openSetIds.add(setId);
+      render();
+      return;
+    }
 
     if (removeKey) {
       const [setId, itemId] = removeKey.split(':');
@@ -155,9 +253,8 @@
       render();
     }
     if (listAll) {
-      const sets = LM.get(LM.KEYS.BELONGING_SETS, []);
       const wrap = document.createElement('div');
-      renderPaged(wrap, sets, true);
+      renderPaged(wrap, getFilteredSets(), true);
       LM.openModal('セット 一覧', wrap);
     }
   }
