@@ -582,15 +582,17 @@
       name.className = 'hs-template-name';
       const title = document.createElement('strong');
       title.textContent = template.name;
+      const titleRow = document.createElement('div');
+      titleRow.style.cssText = 'display:flex; align-items:center; gap:2px;';
+      titleRow.append(title, createTemplatePenButton(template.id));
       const kind = document.createElement('span');
       if (template.kind === 'class') {
-        const attendance = getAttendanceProgress(template);
+      const attendance = getAttendanceProgress(template);
         kind.textContent = `授業・履修 ・ 区分ごと${template.unitCapacity || 1}回 ・ 出席${attendance.attended}/${attendance.required}（残り${attendance.remaining}） ・ 履修登録${attendance.registered}/${attendance.required}`;
       } else {
         kind.textContent = 'アルバイトのシフト';
       }
-      name.append(title, kind);
-
+      name.append(titleRow, kind);
       const actions = document.createElement('div');
       actions.className = 'hs-template-actions';
       const add = document.createElement('button');
