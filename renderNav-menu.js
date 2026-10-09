@@ -11,7 +11,7 @@
  */
 LM.NAV_ITEMS = [
   { href: './index.html', label: '今日のページ' },
-  { href: './schedule.html', label: '予定・逆算' },
+  { href: './schedule.html', label: '予定・締切' },
   { href: './belongings.html', label: '持ちもの' },
   { href: './todo.html', label: 'タスク' },
   { href: './wishlist.html', label: 'WISHリスト' },
@@ -56,7 +56,7 @@ LM.renderNav = function () {
 
     <a class="hm-nav-item" href="./schedule.html"${cur('schedule.html')}>
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3.5v3M15 3.5v3"/></svg>
-      <span>予定逆算</span>
+      <span>予定・締切</span>
     </a>
 
     <a class="hm-nav-item" href="./todo.html"${cur('todo.html')}>
