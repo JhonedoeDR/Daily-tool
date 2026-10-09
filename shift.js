@@ -429,6 +429,16 @@
     const required = Math.max(0, Number(template.attendanceRequired) || 0);
     return { attended, registered, required, remaining: Math.max(0, required - attended) };
   }
+  
+    function createTemplatePenButton(id) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.dataset.editTemplate = id;
+    button.setAttribute('aria-label', 'テンプレートを編集');
+    button.style.cssText = 'display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; padding:0; border:none; background:transparent; color:var(--text-soft, #888); cursor:pointer;';
+    button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" style="width:18px; height:18px; fill:currentColor;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>';
+    return button;
+  }
 
   function getTemplates() {
     return LM.get(LM.KEYS.SHIFT_TEMPLATES, []);
@@ -521,6 +531,9 @@
     templateCancel.hidden = false;
     templateForm.hidden = false;
     templateToggle.setAttribute('aria-expanded', 'true');
+    templateName.focus();
+    templateToggle.setAttribute('aria-expanded', 'true');
+    templateForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
     templateName.focus();
   }
 
