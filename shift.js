@@ -42,6 +42,7 @@
   const monthLabel = document.getElementById('month-label');
   const monthSummary = document.getElementById('month-summary');
   const classRegistrationFilter = document.getElementById('class-registration-filter');
+  const classAttendanceFilter = document.getElementById('class-attendance-filter');
   const templatePager = document.getElementById('template-pager');
   const templateListAll = document.getElementById('template-list-all');
   const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -54,6 +55,7 @@
   let activeSubjectFilter = '';
   let activeSectionFilter = '';
   let activeRegistrationFilter = '';
+  let activeAttendanceFilter = '';
   let addUndoId = null;
   let addUndoIds = [];
   let placementDate = '';
@@ -128,6 +130,10 @@
   });
   classRegistrationFilter.addEventListener('change', () => {
     activeRegistrationFilter = classRegistrationFilter.value;
+    renderAll();
+  });
+  classAttendanceFilter.addEventListener('change', () => {
+    activeAttendanceFilter = classAttendanceFilter.value;
     renderAll();
   });
   classSectionFilter.addEventListener('change', () => {
