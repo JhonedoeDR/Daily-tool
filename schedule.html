@@ -132,10 +132,16 @@
         <label for="d-time">締切時刻</label>
         <input id="d-time" type="time" required />
       </div>
-            <div class="lm-field">
-        <label>通知設定(複数選択可)</label>
-        <div id="d-notify-list" class="lm-check-list"></div>
-      </div>
+      <details class="dl-accordion">
+        <summary><span>通知設定(複数選択可)</span></summary>
+        <div class="dl-accordion-body">
+          <div id="d-notify-list" class="lm-check-list"></div>
+        </div>
+      </details>
+      <details class="dl-accordion">
+        <summary><span>タスク追加<span id="d-task-count" class="dl-accordion-count"></span></span></summary>
+        <div class="dl-accordion-body" id="d-task-area"></div>
+      </details>
       <button type="submit" class="lm-btn">保存</button>
     </form>
   </section>
