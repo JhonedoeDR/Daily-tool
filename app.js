@@ -970,21 +970,30 @@ LM.getActiveDeadlineTasks = function () {
 
 // メイン分の配置: 空いているメイン枠を前から使う。埋まっていれば
 // 「今日先行条件をクリアしたもの」だけ追加行、それ以外は枠待ち。期限切れ・削除済みは追加行
+// メイン分の配置: 空いているメイン枠を、締切が近い順に前から使う。
+// 枠が足りない場合は、(1)7日以内の締切でメインにタスクがある締切が2つ以上ある時の7日以内のタスク、
+// (2)今日先行条件をクリアしたタスク、だけ追加行にする。それ以外は枠待ち。期限切れ・削除済みは追加行
 LM.getLinkedMainPlan = function () {
   const state = LM.getTodoState();
   const today = LM.todoDayKey();
+  const todayStr = LM.todayStr();
   const freeIdx = [];
   LM.TODO_MAIN_IDS.forEach((id, i) => {
     const task = state.dailyTasks[id];
     if (!String((task && task.name) || '').trim()) freeIdx.push(i);
   });
+  const active = LM.getActiveDeadlineTasks().filter((t) => t.category === 'main');
+  const isUrgent = (t) => !t.orphan && t.deadlineDate &&
+    LM.daysBetween(todayStr, t.deadlineDate) <= 7;
+  const urgentMode = new Set(active.filter(isUrgent).map((t) => t.deadlineId)).size >= 2;
   const slots = {};
   const extra = [];
   const orphans = [];
   const queued = new Set();
-  LM.getActiveDeadlineTasks().filter((t) => t.category === 'main').forEach((t) => {
+  active.forEach((t) => {
     if (t.orphan) orphans.push(t);
     else if (freeIdx.length) slots[freeIdx.shift()] = t;
+    else if (urgentMode && isUrgent(t)) extra.push(t);
     else if (t.visibleSince === today && (t.prereqIds || []).length > 0) extra.push(t);
     else queued.add(t.id);
   });
@@ -1321,11 +1330,11 @@ LM._dlTodoRow = function (t, rerender) {
 };
 
 // タスクページの各グループに連携タスクを出す
-// メイン: 空いている枠の行を連携タスクに差し替える(3枠を超える分は、今日先行条件をクリアしたものだけ追加行)
+// 空いている枠の行を連携タスクに差し替え、埋まっていれば行を足す(メインは上のルールで配置)
 LM.appendLinkedTodoRows = function (groupEl, groupKey, rerender) {
+  const rows = [...groupEl.querySelectorAll(':scope > .lm-todo-row')];
   if (groupKey === 'main') {
     const plan = LM.getLinkedMainPlan();
-    const rows = groupEl.querySelectorAll(':scope > .lm-todo-row');
     Object.keys(plan.slots).forEach((i) => {
       const row = LM._dlTodoRow(plan.slots[i], rerender);
       if (rows[Number(i)]) rows[Number(i)].replaceWith(row);
@@ -1334,7 +1343,18 @@ LM.appendLinkedTodoRows = function (groupEl, groupKey, rerender) {
     plan.extra.forEach((t) => groupEl.appendChild(LM._dlTodoRow(t, rerender)));
     return;
   }
+  // メイン以外: 明日のタスク(すでに枠に入っている)を優先し、空き枠に入れる。なければ行を足す
+  const isEmptyRow = (row) => {
+    const input = row.querySelector('input[type="text"]');
+    return !!input && input.value.trim() === '';
+  };
+  const free = rows.filter(isEmptyRow);
   LM.getActiveDeadlineTasks()
     .filter((t) => t.category === groupKey)
-    .forEach((t) => groupEl.appendChild(LM._dlTodoRow(t, rerender)));
- };
+    .forEach((t) => {
+      const row = LM._dlTodoRow(t, rerender);
+      const slot = free.shift();
+      if (slot) slot.replaceWith(row);
+      else groupEl.appendChild(row);
+    });
+};
