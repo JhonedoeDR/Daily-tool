@@ -2847,8 +2847,8 @@ body {
   font-size: 10px;
   line-height: 1.6;
 }
-.hs-att-badge.is-attended { border-color: #4f8b68; background: #e8f3eb; color: #28573a; }
+.hs-att-badge.is-attended { border-color: #4f8b68; background: #e8f3eb; color: var(--accent); }
 .hs-att-badge.is-missed { border-color: var(--red); background: var(--paper); color: var(--red); }
-.hs-day-item.all-attended { padding-left: 8px; border-left: 3px solid #4f8b68; }
+.hs-day-item.all-attended { padding-left: 8px; border-left: 3px solid var(--accent); }
 .hs-day-item.has-missed { padding-left: 8px; border-left: 3px solid var(--red); }
 .hs-calendar-marker.is-missed { background: var(--red); }
