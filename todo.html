@@ -85,6 +85,11 @@
       LM.TODO_GROUPS.forEach((g) => g.ids.forEach((id) => {
         if (!state.dailyTasks[id]) state.dailyTasks[id] = { name: '', checked: false };
       }));
+      const locked = new Set(LM.TODO_MAIN_IDS.slice(0, LM.getMainLockTitles ? LM.getMainLockTitles('today').length : 0));
+      const tasks = pending.tasks || {};
+      Object.keys(tasks).forEach((id) => {
+        if (locked.has(id)) return; // 締切タスクが占める枠には反映しない
+        const name = String(tasks[id] || '').trim();
       const tasks = pending.tasks || {};
       Object.keys(tasks).forEach((id) => {
         const name = String(tasks[id] || '').trim();
@@ -115,6 +120,7 @@
 
     function render() {
       wrap.innerHTML = '';
+      const locks = LM.getMainLockTitles ? LM.getMainLockTitles('tomorrow') : [];
       const note = document.createElement('p');
       note.className = 'lm-empty';
       note.style.marginBottom = '12px';
@@ -141,6 +147,13 @@
           const num = ids.length > 1 ? '①②③'[idx] || String(idx + 1) : '';
           input.placeholder = `${g.label}${num} のタスク`;
           input.value = data.tasks[id] || '';
+          const lockTitle = g.isMain ? locks[idx] : undefined;
+          if (lockTitle) {
+            input.value = lockTitle;
+            input.disabled = true;
+            input.classList.add('dl-locked');
+            input.title = '締切のタスクが使用中です';
+          }
           input.addEventListener('input', () => {
             data.tasks[id] = input.value;
             persist();
