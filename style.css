@@ -2828,3 +2828,11 @@ body {
 }
 #deadline-list .lm-btn { padding: 4px 9px !important; font-size: 11px !important; }
 #deadline-list .lm-pager { margin-top: 4px; }
+
+/* ホームのタスクボックス: 締切タスクの分類見出し */
+.dl-home-cat {
+  margin: 8px 0 2px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  color: var(--text-soft);
+}
