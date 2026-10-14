@@ -1338,4 +1338,4 @@ LM.appendLinkedTodoRows = function (groupEl, groupKey, rerender) {
     .filter((t) => t.category === groupKey)
     .forEach((t) => groupEl.appendChild(LM._dlTodoRow(t, rerender)));
  };
-};
+}();
