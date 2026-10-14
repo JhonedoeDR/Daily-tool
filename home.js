@@ -80,7 +80,8 @@
     const dotsEl = document.getElementById('hm-dots');
     let modes = getCircleModes();
     let index = modes.findIndex((m) => m.key === DEFAULT_CIRCLE_MODE);
-    if (index < 0) index = 0;
+    const AUTO_SLIDE_MS = 6000; // 自動スライドの間隔(ミリ秒)。変えたい時はここ
+    let autoSlideTimer = null;
 
     renderModeDots();
 
@@ -109,7 +110,21 @@
         void hero.offsetWidth; // アニメーションを再生し直す
         hero.classList.add(dir > 0 ? 'is-next' : 'is-prev');
       }
+      scheduleAutoSlide();
     }
+    
+  // 自動スライド: 一定時間ごとに次の円へ。時間計算でタイマーが動いている間は止める
+    function scheduleAutoSlide() {
+      clearTimeout(autoSlideTimer);
+      autoSlideTimer = setTimeout(() => {
+        const holding = modes[index].key === 'timecalc' && timer.status === 'running';
+        const busy = document.hidden || document.querySelector('.lm-modal-overlay');
+        if (holding || busy) scheduleAutoSlide();
+        else show(index + 1, 1); // show の最後で次の予約が入る
+      }, AUTO_SLIDE_MS);
+    }
+    // 操作した直後に切り替わらないよう、タッチしたら間隔を数え直す
+    hero.addEventListener('touchstart', scheduleAutoSlide, { passive: true });
 
     document.getElementById('hm-prev').addEventListener('click', () => show(index - 1, -1));
     document.getElementById('hm-next').addEventListener('click', () => show(index + 1, 1));
