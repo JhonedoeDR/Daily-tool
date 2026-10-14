@@ -2734,12 +2734,83 @@ body {
   display: inline-block;
   margin: 2px 0 6px;
   font-size: 11px;
-  color: #e04b4b;
+  color: var(--text-soft);
 }
 .dl-home-card .lm-event-remain { margin-top: 4px; }
 .dl-home-more {
   margin-top: 4px;
   text-align: right;
   font-size: 12px;
+  color: var(--text-soft);
+}
+
+/* ---------- 締切・タスク連携(追加分) ---------- */
+.dl-home-due.is-soon { color: #e04b4b; }
+
+/* タスク追加の枠を低くする */
+.dl-add > summary { padding: 8px 14px; font-size: 13px; }
+.dl-add-form { padding: 8px; }
+.dl-add-form .lm-field { gap: 2px; margin-bottom: 6px; }
+.dl-add-form .lm-field label { font-size: 12px; }
+.dl-add-form .lm-field input,
+.dl-add-form .lm-field select { padding: 6px 10px; }
+.dl-add-form .lm-check-item { padding: 3px 4px; }
+.dl-add-form .lm-check-list { max-height: 110px; }
+.dl-add-form .lm-btn { padding: 8px 14px; }
+
+/* アコーディオン(締切の新規作成) */
+.dl-accordion {
+  margin: 0 0 10px;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  background: var(--paper);
+}
+.dl-accordion > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  list-style: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.dl-accordion > summary::-webkit-details-marker { display: none; }
+.dl-accordion > summary::after {
+  content: '›';
+  color: var(--text-soft);
+  font-size: 18px;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+.dl-accordion[open] > summary::after { transform: rotate(90deg); }
+.dl-accordion-count { margin-left: 6px; color: var(--text-soft); font-size: 12px; }
+.dl-accordion-body { padding: 0 12px 12px; }
+.dl-accordion-body .dl-panel {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+/* 新規作成中のタスク一覧 */
+.dl-draft-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 0;
+  border-top: 1px solid var(--paper-line);
+}
+.dl-draft-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+/* 明日のタスクで締切タスクが使っている枠 */
+.lm-todo-row input[type='text'].dl-locked {
+  border-style: dashed;
+  background: var(--paper);
   color: var(--text-soft);
 }
