@@ -85,13 +85,10 @@
       LM.TODO_GROUPS.forEach((g) => g.ids.forEach((id) => {
         if (!state.dailyTasks[id]) state.dailyTasks[id] = { name: '', checked: false };
       }));
-      const locked = new Set(LM.TODO_MAIN_IDS.slice(0, LM.getMainLockTitles ? LM.getMainLockTitles('today').length : 0));
+            const locked = new Set(LM.TODO_MAIN_IDS.slice(0, LM.getMainLockTitles ? LM.getMainLockTitles('today').length : 0));
       const tasks = pending.tasks || {};
       Object.keys(tasks).forEach((id) => {
         if (locked.has(id)) return; // 締切タスクが占める枠には反映しない
-        const name = String(tasks[id] || '').trim();
-      const tasks = pending.tasks || {};
-      Object.keys(tasks).forEach((id) => {
         const name = String(tasks[id] || '').trim();
         if (!name || !state.dailyTasks[id]) return;
         if (String(state.dailyTasks[id].name || '').trim()) return; // 既にある内容は上書きしない
