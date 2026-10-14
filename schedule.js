@@ -48,7 +48,11 @@
   const presetTitle = document.getElementById('preset-form-title');
   const presetCancelBtn = document.getElementById('preset-cancel-edit');
   let editingPresetId = null;
-
+  const deadlineTaskCount = document.getElementById('d-task-count');
+  const deadlineTaskDraft = LM.createDeadlineTaskDraft(
+    document.getElementById('d-task-area'),
+    (n) => { deadlineTaskCount.textContent = n ? `(${n})` : ''; }
+  );
 
   let editingId = null;
   let currentStep = 1;
