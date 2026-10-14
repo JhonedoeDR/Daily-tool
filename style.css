@@ -2573,3 +2573,173 @@ body {
   opacity: 1;
 }
 
+/* ---------- 締切・タスク連携 ---------- */
+.dl-panel {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--paper-line);
+}
+.dl-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+}
+.dl-head-count {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+.dl-panel .lm-progress-track { margin-bottom: 6px; }
+.dl-row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  column-gap: 8px;
+  row-gap: 4px;
+  align-items: start;
+  padding: 9px 0;
+  border-top: 1px solid var(--paper-line);
+}
+.dl-row input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  accent-color: var(--accent);
+}
+.dl-title {
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.dl-row.is-waiting .dl-title { color: var(--text-soft); }
+.dl-row.is-done .dl-title {
+  color: var(--text-soft);
+  text-decoration: line-through;
+  text-decoration-color: var(--paper-line);
+}
+.dl-meta {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.dl-badge {
+  padding: 1px 8px;
+  border: 1px solid var(--paper-line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--text-soft);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.dl-badge.is-on {
+  border-color: var(--accent-soft);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.dl-badge.is-wait { border-style: dashed; }
+.dl-actions {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+.dl-btn {
+  min-height: 30px;
+  padding: 5px 12px;
+  border: 1px solid var(--paper-line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.dl-btn:active { background: var(--accent-soft); }
+.dl-btn.is-danger { color: var(--red); }
+.dl-prereq {
+  margin: 2px 0 6px 30px;
+  padding: 8px 10px;
+  border: 1px solid var(--paper-line);
+  border-radius: 10px;
+}
+.dl-prereq-title {
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+.dl-add { margin-top: 12px; }
+.dl-add-form {
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--paper-line);
+  border-radius: 12px;
+}
+.dl-add-form .lm-field { margin-bottom: 10px; }
+.dl-add-form .lm-check-list {
+  max-height: 140px;
+  overflow-y: auto;
+}
+.dl-add-form .lm-btn { width: 100%; }
+
+/* タスクページの連携タスク行(既存の入力枠と同じ見た目に揃える) */
+.dl-todo-label {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--paper-line);
+  border-radius: 8px;
+  background: #fff;
+}
+.dl-todo-title {
+  font-size: 16px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.dl-todo-meta {
+  font-size: 11px;
+  color: var(--text-soft);
+}
+.dl-todo-meta.is-orphan { color: #e04b4b; }
+.lm-todo-row.is-checked .dl-todo-title {
+  color: var(--text-soft);
+  text-decoration: line-through;
+  text-decoration-color: var(--paper-line);
+}
+
+/* ホームの締切カード(半幅の左カラムでも崩れないよう縦積み) */
+.dl-home-card { margin-bottom: 12px; }
+.dl-home-card:last-child { margin-bottom: 0; }
+.dl-home-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+.dl-home-name {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.dl-home-due {
+  display: inline-block;
+  margin: 2px 0 6px;
+  font-size: 11px;
+  color: #e04b4b;
+}
+.dl-home-card .lm-event-remain { margin-top: 4px; }
+.dl-home-more {
+  margin-top: 4px;
+  text-align: right;
+  font-size: 12px;
+  color: var(--text-soft);
+}
