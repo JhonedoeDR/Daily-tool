@@ -424,7 +424,7 @@
     renderAll();
   }
 
-  function getAttendanceProgress(template) {
+    function getAttendanceProgress(template) {
     const entries = LM.get(LM.KEYS.SHIFTS, []).filter((item) =>
       item.kind === 'class' &&
       !item.isExam &&
@@ -432,8 +432,22 @@
     );
     const attended = entries.filter((item) => item.attended === true).length;
     const registered = entries.filter((item) => item.scheduleRegistered === true).length;
+    const missed = entries.filter((item) => getAttendanceStatus(item) === 'missed').length;
     const required = Math.max(0, Number(template.attendanceRequired) || 0);
-    return { attended, registered, required, remaining: Math.max(0, required - attended) };
+    return { attended, registered, missed, required, remaining: Math.max(0, required - attended) };
+  }
+
+  // 'attended': 出席を記録済み / 'missed': 履修登録済みで時間が過ぎたのに出席の記録がない / それ以外は null
+  function getAttendanceStatus(entry) {
+    if (entry.kind !== 'class' || entry.isExam) return null;
+    if (entry.attended === true) return 'attended';
+    if (entry.scheduleRegistered !== true) return null;
+    const today = LM.todayStr();
+    if (entry.date < today) return 'missed';
+    const now = new Date();
+    if (entry.date === today && /^\d{2}:\d{2}$/.test(entry.end || '') &&
+        LM.clockToMinutes(entry.end) < now.getHours() * 60 + now.getMinutes()) return 'missed';
+    return null;
   }
   
     function createTemplatePenButton(id) {
