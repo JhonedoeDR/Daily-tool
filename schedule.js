@@ -796,6 +796,8 @@
       <div><span style="color:var(--text-soft);">締切時刻</span> ${schedule.start}</div>
       <div><span style="color:var(--text-soft);">通知</span> ${notifyLabels.length ? notifyLabels.join('、') : '(なし)'}</div>
     `;
+    if (LM.appendDeadlineTaskPanel) LM.appendDeadlineTaskPanel(wrap, schedule);
+    LM.openModal(schedule.name, wrap);
     LM.openModal(schedule.name, wrap);
   }
 
