@@ -80,7 +80,7 @@
     const dotsEl = document.getElementById('hm-dots');
     let modes = getCircleModes();
     let index = modes.findIndex((m) => m.key === DEFAULT_CIRCLE_MODE);
-    const AUTO_SLIDE_MS = 3000; // 自動スライドの間隔(ミリ秒)。変えたい時はここ
+    const AUTO_SLIDE_MS = 4000; // 自動スライドの間隔(ミリ秒)。変えたい時はここ
     let autoSlideTimer = null;
 
     renderModeDots();
