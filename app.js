@@ -1106,44 +1106,6 @@ LM.appendDeadlineTaskPanel = function (wrap, schedule) {
   render();
  };
 
-    const add = LM._dlEl('div', 'dl-add');
-    const input = document.createElement('input');
-    input.type = 'text';
-    input.placeholder = 'タスク名';
-    const sel = document.createElement('select');
-    LM.TODO_GROUPS.forEach((g) => {
-      const o = document.createElement('option');
-      o.value = g.key;
-      o.textContent = g.label;
-      sel.appendChild(o);
-    });
-    const pre = LM._dlEl('div', 'dl-prereq');
-    pre.style.paddingLeft = '0';
-    if (mine.length) {
-      pre.appendChild(LM._dlEl('div', '', '先行タスク(任意・全て達成すると表示)'));
-      mine.forEach((o) => {
-        const { label, input: ci } = checkRow(o.title, false);
-        ci.dataset.pid = o.id;
-        pre.appendChild(label);
-      });
-    }
-    const btn = LM._dlEl('button', 'lm-btn secondary', 'タスクを追加');
-    btn.type = 'button';
-    const submit = () => {
-      const ids = [...pre.querySelectorAll('input:checked')].map((i) => i.dataset.pid);
-      if (!LM.addDeadlineTask(schedule.id, input.value, sel.value, ids)) return;
-      render();
-    };
-    btn.addEventListener('click', submit);
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); submit(); }
-    });
-    add.append(input, sel, pre, btn);
-    box.appendChild(add);
-  }
-  render();
-};
-
 // タスクページの各グループ末尾に、表示条件を満たす連携タスクの行を追加する
 LM.appendLinkedTodoRows = function (groupEl, groupKey, rerender) {
   const all = LM.refreshDeadlineTaskLinks();
