@@ -2847,7 +2847,7 @@ body {
   font-size: 10px;
   line-height: 1.6;
 }
-.hs-att-badge.is-attended { border-color: var(--accent-soft); background: #e8f3eb; color: var(--accent-soft); }
+.hs-att-badge.is-attended { border-color: var(--accent-soft); background: #ffffff; color: var(--text-soft); }
 .hs-att-badge.is-missed { border-color: var(--red); background: var(--paper); color: var(--red); }
 .hs-day-item.all-attended { padding-left: 8px; border-left: 3px solid var(--accent-soft); }
 .hs-day-item.has-missed { padding-left: 8px; border-left: 3px solid var(--red); }
