@@ -1396,7 +1396,8 @@
       number.textContent = String(day);
       button.appendChild(number);
       const markers = document.createElement('span');
-      markers.className = 'hs-calendar-markers';
+      const missed = item.kind === 'class' && (item.entries || [item]).some((entry) => getAttendanceStatus(entry) === 'missed');
+        marker.className = `hs-calendar-marker${item.kind === 'class' ? ' is-class' : ' is-shift'}${item.isExam ? ' is-exam' : ''}${registered ? ' is-registered' : ''}${missed ? ' is-missed' : ''}`;
       events.slice(0, 4).forEach((item) => {
         const marker = document.createElement('span');
         const registered = item.kind === 'class' &&
@@ -1437,6 +1438,9 @@
       const isClass = item.kind === 'class';
       const row = document.createElement('article');
       row.className = `hs-day-item${isClass ? ' is-class' : ''}${item.isExam ? ' is-exam' : ''}${entries.length > 1 ? ' has-multiple-periods' : ''}`;
+      const rowStatuses = isClass && !item.isExam ? entries.map(getAttendanceStatus) : [];
+      if (rowStatuses.includes('missed')) row.classList.add('has-missed');
+      else if (rowStatuses.length > 0 && rowStatuses.every((status) => status === 'attended')) row.classList.add('all-attended');
       const detail = document.createElement('div');
       detail.className = 'hs-day-detail';
       const title = document.createElement('strong');
@@ -1450,6 +1454,13 @@
           periodInfo.className = `hs-day-period${entry.scheduleRegistered === true ? ' is-registered' : ''}`;
           const section = addClassUnitLabel(entry);
           periodInfo.textContent = `${entry.periodNumber ? `${entry.periodNumber}限目 ` : ''}${entry.start && entry.end ? `${entry.start}〜${entry.end}` : '時間未設定'}${entry.isExam ? '' : ` ・ ${section}`}`;
+          const attStatus = getAttendanceStatus(entry);
+          if (attStatus) {
+            const badge = document.createElement('span');
+            badge.className = `hs-att-badge is-${attStatus}`;
+            badge.textContent = attStatus === 'attended' ? '出席' : '欠席';
+            periodInfo.appendChild(badge);
+          }
           periods.appendChild(periodInfo);
         });
         detail.appendChild(periods);
