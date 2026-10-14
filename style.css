@@ -2814,3 +2814,6 @@ body {
   background: var(--paper);
   color: var(--text-soft);
 }
+
+/* 登録済みの締切: 1週間以内は日付を赤にする */
+.lm-schedule-time.is-soon { color: #e04b4b; }
