@@ -612,32 +612,67 @@
   }
 
   /* ---------- 今日のタスク(メインタスク+ほかの件数) ---------- */
-  function renderTasks() {
+    function renderTasks() {
     const el = document.getElementById('tasks-list');
     const state = LM.getTodoState();
 
     const mainTasks = LM.TODO_MAIN_IDS.map((id) => ({ id, ...state.dailyTasks[id] })).filter((t) => t.name.trim());
     const otherIds = LM.TODO_GROUPS.filter((g) => !g.isMain).flatMap((g) => g.ids);
     const otherCount = otherIds.filter((id) => (state.dailyTasks[id].name || '').trim()).length;
+    // 締切に紐付いたタスク: メイン分はメインの先頭に合流、それ以外はメインの下に並べる
+    const linkedMain = LM.getLinkedMainPlan ? LM.getLinkedMainPlan().shown : [];
+    const linkedOther = LM.getActiveDeadlineTasks
+      ? LM.getActiveDeadlineTasks().filter((t) => t.category !== 'main') : [];
 
-    if (mainTasks.length === 0 && otherCount === 0) {
+    if (mainTasks.length === 0 && otherCount === 0 && linkedMain.length === 0 && linkedOther.length === 0) {
       el.innerHTML = '<p class="lm-empty">今日のタスクはまだ登録されていません</p>';
       return false;
     }
 
     el.innerHTML = '';
-    const ul = document.createElement('ul');
-    ul.className = 'lm-check-list';
-    mainTasks.forEach((t) => {
+    const onChange = (e) => {
+      const checkbox = e.target;
+      if (checkbox.type !== 'checkbox') return;
+      if (checkbox.dataset.dlTaskId) {
+        LM.toggleDeadlineTask(checkbox.dataset.dlTaskId, checkbox.checked);
+        renderDeadlineOverview(); // 締切の進行バーも進める
+      } else {
+        const s = LM.getTodoState();
+        LM.toggleTodoCheck(s, checkbox.dataset.todoId, checkbox.checked);
+      }
+      hasContent.task = renderTasks();
+      refreshCircle();
+    };
+    const buildItem = (item) => {
       const li = document.createElement('li');
-      li.className = 'lm-check-item' + (t.checked ? ' done' : '');
+      li.className = 'lm-check-item' + (item.checked ? ' done' : '');
       li.innerHTML = `
-        <input type="checkbox" ${t.checked ? 'checked' : ''} data-todo-id="${t.id}" />
-        <span>${escapeHtml(t.name)}</span>
+        <input type="checkbox" ${item.checked ? 'checked' : ''} ${item.linked ? 'data-dl-task-id' : 'data-todo-id'}="${item.id}" />
+        <span>${escapeHtml(item.name)}</span>
       `;
-      ul.appendChild(li);
-    });
-    el.appendChild(ul);
+      return li;
+    };
+
+    const mainItems = [
+      ...linkedMain.map((t) => ({ linked: true, id: t.id, name: t.title, checked: t.done })),
+      ...mainTasks.map((t) => ({ linked: false, id: t.id, name: t.name, checked: t.checked })),
+    ];
+    if (mainItems.length > 0) {
+      const ul = document.createElement('ul');
+      ul.className = 'lm-check-list';
+      mainItems.forEach((item) => ul.appendChild(buildItem(item)));
+      ul.addEventListener('change', onChange);
+      el.appendChild(ul);
+    }
+
+    if (linkedOther.length > 0) {
+      const ul2 = document.createElement('ul');
+      ul2.className = 'lm-check-list';
+      ul2.style.marginTop = '2px';
+      linkedOther.forEach((t) => ul2.appendChild(buildItem({ linked: true, id: t.id, name: t.title, checked: t.done })));
+      ul2.addEventListener('change', onChange);
+      el.appendChild(ul2);
+    }
 
     if (otherCount > 0) {
       const otherEl = document.createElement('div');
@@ -645,16 +680,6 @@
       otherEl.textContent = `ほか${otherCount}`;
       el.appendChild(otherEl);
     }
-
-    ul.addEventListener('change', (e) => {
-      const checkbox = e.target;
-      if (checkbox.type !== 'checkbox') return;
-      const id = checkbox.dataset.todoId;
-      const s = LM.getTodoState();
-      LM.toggleTodoCheck(s, id, checkbox.checked);
-      hasContent.task = renderTasks();
-      refreshCircle();
-    });
 
     return true;
   }
@@ -835,7 +860,7 @@
   }
   
     /* ---------- 締切とタスク(追加) ---------- */
-    function renderDeadlineOverview() {
+      function renderDeadlineOverview() {
     const el = document.getElementById('deadline-overview');
     if (!el || !LM.getDeadlineOverview) return false;
     const items = LM.getDeadlineOverview(3);
@@ -847,39 +872,16 @@
     items.forEach((it) => {
       const s = it.deadline;
       const rate = it.total > 0 ? Math.round((it.done / it.total) * 100) : 0;
+      const soon = it.remainDays <= 7; // 赤くするのは1週間以内だけ
       const card = document.createElement('div');
       card.className = 'dl-home-card';
       card.innerHTML = `
         <a class="dl-home-link" href="./schedule.html?id=${encodeURIComponent(s.id)}">
           <div class="dl-home-name">${escapeHtml(s.name)}</div>
-          <span class="dl-home-due">${it.remainDays > 0 ? `あと${it.remainDays}日` : '今日'} ・ ${escapeHtml(s.start)}</span>
+          <span class="dl-home-due${soon ? ' is-soon' : ''}">${it.remainDays > 0 ? `あと${it.remainDays}日` : '今日'} ・ ${escapeHtml(s.start)}</span>
         </a>
         ${it.total > 0 ? `<div class="lm-progress-track"><div class="lm-progress-fill" style="width:${rate}%"></div></div>
         <div class="lm-event-remain">タスク ${it.done}/${it.total}</div>` : ''}`;
-      if (it.pending.length > 0) {
-        const ul = document.createElement('ul');
-        ul.className = 'lm-check-list';
-        ul.style.marginTop = '4px';
-        it.pending.slice(0, 3).forEach((t) => {
-          const li = document.createElement('li');
-          li.className = 'lm-check-item';
-          li.innerHTML = `<input type="checkbox" data-dl-task-id="${t.id}" /><span>${escapeHtml(t.title)}</span>`;
-          ul.appendChild(li);
-        });
-        ul.addEventListener('change', (e) => {
-          const cb = e.target;
-          if (cb.type !== 'checkbox' || !cb.dataset.dlTaskId) return;
-          LM.toggleDeadlineTask(cb.dataset.dlTaskId, cb.checked);
-          renderDeadlineOverview();
-        });
-        card.appendChild(ul);
-        if (it.pending.length > 3) {
-          const more = document.createElement('div');
-          more.className = 'dl-home-more';
-          more.textContent = `ほか${it.pending.length - 3}`;
-          card.appendChild(more);
-        }
-      }
       el.appendChild(card);
     });
     return true;
