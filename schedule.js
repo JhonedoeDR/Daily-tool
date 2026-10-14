@@ -817,6 +817,102 @@
   });
   deadlineCancelBtn.addEventListener('click', resetDeadlineForm);
   deadlineFields.date.value = LM.todayStr();
+    /* ---------- 登録済みの締切(締切タブの下部) ---------- */
+  const deadlineListEl = document.getElementById('deadline-list');
+  const DEADLINE_PAGE_SIZE = 5;
+  let deadlineListPage = 0;
+
+  function renderDeadlineList() {
+    if (!deadlineListEl) return;
+    const today = LM.todayStr();
+    const deadlines = LM.get(LM.KEYS.SCHEDULES, [])
+      .filter((s) => s.kind === 'deadline')
+      .sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
+    deadlineListEl.replaceChildren();
+
+    if (deadlines.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'lm-empty';
+      empty.textContent = '登録されている締切はありません';
+      deadlineListEl.appendChild(empty);
+      return;
+    }
+
+    const tasks = LM.refreshDeadlineTaskLinks();
+    const totalPages = Math.max(1, Math.ceil(deadlines.length / DEADLINE_PAGE_SIZE));
+    deadlineListPage = Math.min(deadlineListPage, totalPages - 1);
+    deadlines
+      .slice(deadlineListPage * DEADLINE_PAGE_SIZE, (deadlineListPage + 1) * DEADLINE_PAGE_SIZE)
+      .forEach((s) => {
+        const remainDays = LM.daysBetween(today, s.date);
+        const mine = tasks.filter((t) => t.deadlineId === s.id);
+        const doneCount = mine.filter((t) => t.done).length;
+        const row = document.createElement('div');
+        row.className = 'lm-schedule-item';
+        row.style.cursor = 'pointer';
+        row.style.justifyContent = 'space-between';
+        row.style.alignItems = 'center';
+        row.innerHTML = `
+          <span data-dl-open="${s.id}" style="flex:1; min-width:0;">
+            <span class="lm-schedule-time${remainDays <= 7 ? ' is-soon' : ''}">${LM.formatDateHeader(s.date).slice(0, -3)} ${s.start}</span>
+            <span>${escapeHtml(s.name)}</span>
+            <small class="lm-schedule-source">${remainDays > 0 ? `あと${remainDays}日` : '今日'}${mine.length ? ` ・ タスク ${doneCount}/${mine.length}` : ''}</small>
+          </span>
+          <span style="display:flex; gap:6px;">
+            <button type="button" data-dl-edit="${s.id}" class="lm-btn secondary" style="padding:6px 10px; font-size:12px;">編集</button>
+            <button type="button" data-dl-delete="${s.id}" class="lm-btn secondary" style="padding:6px 10px; font-size:12px;">削除</button>
+          </span>
+        `;
+        deadlineListEl.appendChild(row);
+      });
+
+    if (deadlines.length > DEADLINE_PAGE_SIZE) {
+      const pager = document.createElement('div');
+      pager.className = 'lm-pager';
+      pager.innerHTML = `
+        <button type="button" data-dl-page="-1" ${deadlineListPage === 0 ? 'disabled' : ''}>◀</button>
+        <span>${deadlineListPage + 1}/${totalPages}</span>
+        <button type="button" data-dl-page="1" ${deadlineListPage >= totalPages - 1 ? 'disabled' : ''}>▶</button>
+      `;
+      deadlineListEl.appendChild(pager);
+    }
+  }
+
+  if (deadlineListEl) {
+    deadlineListEl.addEventListener('click', (e) => {
+      const pageBtn = e.target.closest('[data-dl-page]');
+      if (pageBtn) {
+        deadlineListPage = Math.max(0, deadlineListPage + Number(pageBtn.dataset.dlPage));
+        renderDeadlineList();
+        return;
+      }
+      const editId = e.target.closest('[data-dl-edit]')?.dataset.dlEdit;
+      const deleteId = e.target.closest('[data-dl-delete]')?.dataset.dlDelete;
+      const openId = e.target.closest('[data-dl-open]')?.dataset.dlOpen;
+      if (editId) {
+        startEdit(editId);
+      } else if (deleteId) {
+        const taskCount = LM.getDeadlineTasks().filter((t) => t.deadlineId === deleteId).length;
+        if (!confirm(`この締切を削除しますか?${taskCount ? '\n関連タスクは「締切削除済み」として残ります' : ''}`)) return;
+        LM.set(LM.KEYS.SCHEDULES, LM.get(LM.KEYS.SCHEDULES, []).filter((s) => s.id !== deleteId));
+        LM.syncFirebase();
+        if (editingDeadlineId === deleteId) resetDeadlineForm();
+        renderList();
+        renderCalendar();
+        renderDeadlineList();
+      } else if (openId) {
+        showConfirm(openId);
+      }
+    });
+
+    // 予定一覧が描き直されるたび(締切の保存・削除・フィルタ切り替え)に、締切一覧も描き直す
+    new MutationObserver(renderDeadlineList).observe(scheduleList, { childList: true });
+    // 詳細ポップアップを閉じた時に、タスクの進捗表示を最新にする
+    new MutationObserver(() => {
+      if (!document.querySelector('.lm-modal-overlay')) renderDeadlineList();
+    }).observe(document.body, { childList: true });
+    renderDeadlineList();
+  }
 
     /* ---------- 逆算プリセット ---------- */
   function getRoutePresets() {
