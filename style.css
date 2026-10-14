@@ -1886,9 +1886,9 @@ body {
   background: var(--accent-soft);
 }
 .hs-attendance.is-attended {
-  border-color: #4f8b68;
-  background: #e8f3eb;
-  color: #28573a;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
 }
 .hs-day-actions .hs-attendance {
   font-size: 11px;
