@@ -1004,6 +1004,7 @@
     });
     classSubjectFilter.value = activeSubjectFilter;
     classRegistrationFilter.value = activeRegistrationFilter;
+    classAttendanceFilter.value = activeAttendanceFilter;
 
     const term = getSchoolTerm(selectedDate);
     const selectedTemplate = templates.find((entry) => entry.id === activeSubjectFilter);
@@ -1059,6 +1060,7 @@
       if (!matchesSubject) return false;
       if (activeRegistrationFilter === 'registered' && item.scheduleRegistered !== true) return false;
       if (activeRegistrationFilter === 'unregistered' && item.scheduleRegistered === true) return false;
+      if (activeAttendanceFilter && getAttendanceStatus(item) !== activeAttendanceFilter) return false;
       if (!activeSectionFilter) return true;
       if (activeSectionFilter === 'exam') return item.isExam === true;
       return String(getClassUnitInfo(item)?.section || '') === activeSectionFilter;
