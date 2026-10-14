@@ -835,7 +835,7 @@
   }
   
     /* ---------- 締切とタスク(追加) ---------- */
-  function renderDeadlineOverview() {
+    function renderDeadlineOverview() {
     const el = document.getElementById('deadline-overview');
     if (!el || !LM.getDeadlineOverview) return false;
     const items = LM.getDeadlineOverview(3);
@@ -847,21 +847,20 @@
     items.forEach((it) => {
       const s = it.deadline;
       const rate = it.total > 0 ? Math.round((it.done / it.total) * 100) : 0;
-      const box = document.createElement('div');
-      box.className = 'lm-event';
-      box.innerHTML = `
-        <a href="./schedule.html?id=${encodeURIComponent(s.id)}" style="display:block; text-decoration:none; color:inherit;">
-          <div class="lm-event-top">
-            <span>${escapeHtml(s.name)}</span>
-            <span>${it.remainDays > 0 ? `あと${it.remainDays}日` : '今日'} ${escapeHtml(s.start)}</span>
-          </div>
+      const card = document.createElement('div');
+      card.className = 'dl-home-card';
+      card.innerHTML = `
+        <a class="dl-home-link" href="./schedule.html?id=${encodeURIComponent(s.id)}">
+          <div class="dl-home-name">${escapeHtml(s.name)}</div>
+          <span class="dl-home-due">${it.remainDays > 0 ? `あと${it.remainDays}日` : '今日'} ・ ${escapeHtml(s.start)}</span>
         </a>
         ${it.total > 0 ? `<div class="lm-progress-track"><div class="lm-progress-fill" style="width:${rate}%"></div></div>
         <div class="lm-event-remain">タスク ${it.done}/${it.total}</div>` : ''}`;
       if (it.pending.length > 0) {
         const ul = document.createElement('ul');
         ul.className = 'lm-check-list';
-        it.pending.forEach((t) => {
+        ul.style.marginTop = '4px';
+        it.pending.slice(0, 3).forEach((t) => {
           const li = document.createElement('li');
           li.className = 'lm-check-item';
           li.innerHTML = `<input type="checkbox" data-dl-task-id="${t.id}" /><span>${escapeHtml(t.title)}</span>`;
@@ -873,9 +872,15 @@
           LM.toggleDeadlineTask(cb.dataset.dlTaskId, cb.checked);
           renderDeadlineOverview();
         });
-        box.appendChild(ul);
+        card.appendChild(ul);
+        if (it.pending.length > 3) {
+          const more = document.createElement('div');
+          more.className = 'dl-home-more';
+          more.textContent = `ほか${it.pending.length - 3}`;
+          card.appendChild(more);
+        }
       }
-      el.appendChild(box);
+      el.appendChild(card);
     });
     return true;
   }
