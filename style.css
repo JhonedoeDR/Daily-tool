@@ -2817,3 +2817,14 @@ body {
 
 /* 登録済みの締切: 1週間以内は日付を赤にする */
 .lm-schedule-time.is-soon { color: #e04b4b; }
+
+/* 登録済みの締切をコンパクトに */
+#deadline-list .lm-schedule-item { padding: 3px 0; gap: 8px; }
+#deadline-list .lm-schedule-source {
+  display: inline;
+  margin: 0 0 0 6px;
+  font-size: 10px;
+  line-height: 1.3;
+}
+#deadline-list .lm-btn { padding: 4px 9px !important; font-size: 11px !important; }
+#deadline-list .lm-pager { margin-top: 4px; }
