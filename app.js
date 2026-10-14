@@ -940,87 +940,90 @@ LM._dlEl = function (tag, cls, text) {
   return el;
 };
 
-LM._dlEnsureStyle = function () {
-  if (document.getElementById('dl-style')) return;
-  const style = document.createElement('style');
-  style.id = 'dl-style';
-  style.textContent = `
-    .dl-panel{margin-top:14px;padding-top:10px;border-top:1px solid var(--paper-line);line-height:1.5}
-    .dl-head{font-weight:600;margin-bottom:6px}
-    .dl-row{display:flex;align-items:center;gap:8px;padding:4px 0;flex-wrap:wrap}
-    .dl-row.is-done .dl-title{text-decoration:line-through;color:var(--text-soft)}
-    .dl-title{flex:1;min-width:0;word-break:break-all}
-    .dl-meta{font-size:11px;color:var(--text-soft);width:100%;padding-left:26px}
-    .dl-btn{font-size:11px;padding:3px 8px;border:1px solid var(--paper-line);border-radius:999px;background:transparent;color:var(--text-soft);cursor:pointer}
-    .dl-prereq{padding:4px 0 6px 26px;font-size:12px}
-    .dl-prereq label{display:flex;gap:6px;align-items:center}
-    .dl-add{display:flex;flex-direction:column;gap:6px;margin-top:10px}
-    .dl-add input[type=text],.dl-add select{font-size:16px;padding:6px 8px}
-    .dl-todo-label{flex:1;min-width:0;word-break:break-all}
-    .dl-todo-meta{font-size:11px;color:var(--text-soft);margin-left:6px}
-  `;
-  document.head.appendChild(style);
-};
+LM._dlEnsureStyle = function () {}; // 見た目は style.css の dl- 系クラスに移した
 
 // 締切の詳細モーダルに「関連タスク」を追加する(wrap内だけを再描画し、モーダルは作り直さない)
 LM.appendDeadlineTaskPanel = function (wrap, schedule) {
-  LM._dlEnsureStyle();
   const box = LM._dlEl('div', 'dl-panel');
   wrap.appendChild(box);
   let openPrereqId = null;
+  let addOpen = false;
   const labelOf = (key) => {
     const g = LM.TODO_GROUPS.find((x) => x.key === key);
     return g ? g.label : key;
   };
 
-  function checkRow(labelText, checked) {
-    const label = document.createElement('label');
+  function checkItem(text, checked, pid) {
+    const label = LM._dlEl('label', 'lm-check-item');
     const input = document.createElement('input');
     input.type = 'checkbox';
     input.checked = checked;
-    label.append(input, LM._dlEl('span', '', labelText));
+    input.dataset.pid = pid;
+    label.append(input, LM._dlEl('span', '', text));
     return { label, input };
+  }
+
+  function actionBtn(text, cls, handler) {
+    const b = LM._dlEl('button', 'dl-btn' + (cls ? ' ' + cls : ''), text);
+    b.type = 'button';
+    b.addEventListener('click', handler);
+    return b;
   }
 
   function render() {
     const all = LM.refreshDeadlineTaskLinks();
     const mine = all.filter((t) => t.deadlineId === schedule.id);
+    const doneCount = mine.filter((t) => t.done).length;
     box.replaceChildren();
-    box.appendChild(LM._dlEl('div', 'dl-head', `関連タスク ${mine.filter((t) => t.done).length}/${mine.length}`));
+
+    const head = LM._dlEl('div', 'dl-head');
+    head.append(LM._dlEl('span', '', '関連タスク'), LM._dlEl('span', 'dl-head-count', `${doneCount}/${mine.length}`));
+    box.appendChild(head);
+
+    if (mine.length === 0) {
+      box.appendChild(LM._dlEl('p', 'lm-empty', '関連タスクはまだありません'));
+    } else {
+      const track = LM._dlEl('div', 'lm-progress-track');
+      const fill = LM._dlEl('div', 'lm-progress-fill');
+      fill.style.width = `${Math.round((doneCount / mine.length) * 100)}%`;
+      track.appendChild(fill);
+      box.appendChild(track);
+    }
 
     mine.forEach((t) => {
       const visible = LM.isDeadlineTaskVisible(t, all);
       const prereqs = t.prereqIds || [];
-      const row = LM._dlEl('div', 'dl-row' + (t.done ? ' is-done' : ''));
+      const row = LM._dlEl('div', 'dl-row' + (t.done ? ' is-done' : '') + (!visible ? ' is-waiting' : ''));
+
       const cb = document.createElement('input');
       cb.type = 'checkbox';
       cb.checked = t.done;
       cb.addEventListener('change', () => { LM.toggleDeadlineTask(t.id, cb.checked); render(); });
-      row.append(cb, LM._dlEl('span', 'dl-title', t.title));
 
-      const cond = LM._dlEl('button', 'dl-btn', '条件');
-      cond.type = 'button';
-      cond.addEventListener('click', () => { openPrereqId = openPrereqId === t.id ? null : t.id; render(); });
-      row.appendChild(cond);
+      const meta = LM._dlEl('div', 'dl-meta');
+      meta.appendChild(LM._dlEl('span', 'dl-badge', labelOf(t.category)));
+      if (prereqs.length) meta.appendChild(LM._dlEl('span', 'dl-badge', `先行${prereqs.length}件`));
+      if (t.manualShown) meta.appendChild(LM._dlEl('span', 'dl-badge is-on', '手動表示中'));
+      else if (!visible) meta.appendChild(LM._dlEl('span', 'dl-badge is-wait', '待機中'));
 
+      const actions = LM._dlEl('div', 'dl-actions');
+      actions.appendChild(actionBtn('先行条件', '', () => {
+        openPrereqId = openPrereqId === t.id ? null : t.id;
+        render();
+      }));
       if (t.manualShown || !visible) {
-        const manual = LM._dlEl('button', 'dl-btn', t.manualShown ? '待機に戻す' : '手動で表示');
-        manual.type = 'button';
-        manual.addEventListener('click', () => { LM.setDeadlineTaskManualShown(t.id, !t.manualShown); render(); });
-        row.appendChild(manual);
+        actions.appendChild(actionBtn(t.manualShown ? '待機に戻す' : '手動で表示', '', () => {
+          LM.setDeadlineTaskManualShown(t.id, !t.manualShown);
+          render();
+        }));
       }
-      const del = LM._dlEl('button', 'dl-btn', '削除');
-      del.type = 'button';
-      del.addEventListener('click', () => {
+      actions.appendChild(actionBtn('削除', 'is-danger', () => {
         if (!confirm('このタスクを削除しますか?')) return;
         LM.deleteDeadlineTask(t.id);
         render();
-      });
-      row.appendChild(del);
+      }));
 
-      const status = t.manualShown ? ' ・ 手動表示中' : (!visible ? ' ・ 待機中' : '');
-      row.appendChild(LM._dlEl('div', 'dl-meta',
-        `${labelOf(t.category)}${prereqs.length ? ` ・ 先行${prereqs.length}件` : ''}${status}`));
+      row.append(cb, LM._dlEl('span', 'dl-title', t.title), meta, actions);
       box.appendChild(row);
 
       if (openPrereqId === t.id) {
@@ -1028,23 +1031,80 @@ LM.appendDeadlineTaskPanel = function (wrap, schedule) {
         const cands = mine.filter((o) => o.id !== t.id && !dep.has(o.id));
         const pr = LM._dlEl('div', 'dl-prereq');
         if (cands.length === 0) {
-          pr.textContent = '先行にできるタスクがありません';
+          pr.appendChild(LM._dlEl('div', 'dl-prereq-title', '先行にできるタスクがありません'));
         } else {
-          pr.appendChild(LM._dlEl('div', '', '先行タスク(全て達成すると表示)'));
+          pr.appendChild(LM._dlEl('div', 'dl-prereq-title', '先行タスク(全て達成すると表示)'));
+          const list = LM._dlEl('div', 'lm-check-list');
           cands.forEach((o) => {
-            const { label, input } = checkRow(o.title, prereqs.includes(o.id));
-            input.dataset.pid = o.id;
+            const { label, input } = checkItem(o.title, prereqs.includes(o.id), o.id);
             input.addEventListener('change', () => {
-              const ids = [...pr.querySelectorAll('input:checked')].map((i) => i.dataset.pid);
+              const ids = [...list.querySelectorAll('input:checked')].map((i) => i.dataset.pid);
               LM.setDeadlineTaskPrereqs(t.id, ids);
               render();
             });
-            pr.appendChild(label);
+            list.appendChild(label);
           });
+          pr.appendChild(list);
         }
         box.appendChild(pr);
       }
     });
+    
+    // 追加フォーム(折りたたみ。追加後も開いたままにする)
+    const details = LM._dlEl('details', 'hs-add-details dl-add');
+    details.open = addOpen;
+    details.addEventListener('toggle', () => { addOpen = details.open; });
+    details.appendChild(LM._dlEl('summary', 'lm-btn secondary', '＋ タスクを追加'));
+    const form = LM._dlEl('div', 'dl-add-form');
+
+    const nameField = LM._dlEl('div', 'lm-field');
+    nameField.appendChild(LM._dlEl('label', '', 'タスク名'));
+    const input = document.createElement('input');
+    input.type = 'text';
+    nameField.appendChild(input);
+
+    const catField = LM._dlEl('div', 'lm-field');
+    catField.appendChild(LM._dlEl('label', '', '分類'));
+    const sel = document.createElement('select');
+    LM.TODO_GROUPS.forEach((g) => {
+      const o = document.createElement('option');
+      o.value = g.key;
+      o.textContent = g.label;
+      sel.appendChild(o);
+    });
+    catField.appendChild(sel);
+    form.append(nameField, catField);
+
+    const preList = LM._dlEl('div', 'lm-check-list');
+    if (mine.length) {
+      const preField = LM._dlEl('div', 'lm-field');
+      preField.appendChild(LM._dlEl('label', '', '先行タスク(任意・全て達成すると表示)'));
+      mine.forEach((o) => preList.appendChild(checkItem(o.title, false, o.id).label));
+      preField.appendChild(preList);
+      form.appendChild(preField);
+    }
+
+    const btn = LM._dlEl('button', 'lm-btn', '追加');
+    btn.type = 'button';
+    const submit = () => {
+      const ids = [...preList.querySelectorAll('input:checked')].map((i) => i.dataset.pid);
+      if (!LM.addDeadlineTask(schedule.id, input.value, sel.value, ids)) {
+        input.focus();
+        return;
+      }
+      addOpen = true;
+      render();
+    };
+    btn.addEventListener('click', submit);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); submit(); }
+    });
+    form.appendChild(btn);
+    details.appendChild(form);
+    box.appendChild(details);
+  }
+  render();
+ };
 
     const add = LM._dlEl('div', 'dl-add');
     const input = document.createElement('input');
@@ -1086,7 +1146,6 @@ LM.appendDeadlineTaskPanel = function (wrap, schedule) {
 
 // タスクページの各グループ末尾に、表示条件を満たす連携タスクの行を追加する
 LM.appendLinkedTodoRows = function (groupEl, groupKey, rerender) {
-  LM._dlEnsureStyle();
   const all = LM.refreshDeadlineTaskLinks();
   all
     .filter((t) => (t.category || 'other') === groupKey && LM.isDeadlineTaskVisible(t, all))
@@ -1101,8 +1160,11 @@ LM.appendLinkedTodoRows = function (groupEl, groupKey, rerender) {
         LM.toggleDeadlineTask(t.id, cb.checked);
         row.classList.toggle('is-checked', cb.checked);
       });
-      const label = LM._dlEl('span', 'dl-todo-label', t.title);
-      label.appendChild(LM._dlEl('span', 'dl-todo-meta', info.text));
+      const label = LM._dlEl('div', 'dl-todo-label');
+      label.append(
+        LM._dlEl('span', 'dl-todo-title', t.title),
+        LM._dlEl('span', 'dl-todo-meta' + (info.orphan ? ' is-orphan' : ''), info.text)
+      );
       row.append(cb, label);
       if (info.orphan) {
         const rm = LM._dlEl('button', 'lm-todo-slot-remove', '-');
