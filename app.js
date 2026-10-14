@@ -798,6 +798,7 @@ LM.saveDeadlineTasks = function (tasks) {
 LM.refreshDeadlineTaskLinks = function () {
   const byId = new Map(LM.get(LM.KEYS.SCHEDULES, [])
     .filter((s) => s.kind === 'deadline').map((s) => [s.id, s]));
+  const today = LM.todoDayKey();
   let changed = false;
   const tasks = LM.getDeadlineTasks().filter((t) => {
     if (byId.has(t.deadlineId)) return true;
@@ -811,6 +812,10 @@ LM.refreshDeadlineTaskLinks = function () {
       t.deadlineDate = s.date;
       changed = true;
     }
+    // 表示条件を満たし始めた日を記録(先行条件クリア日だけ枠を一時的に増やすため)
+    const visible = LM.isDeadlineTaskVisible(t, tasks);
+    if (visible && !t.visibleSince) { t.visibleSince = today; changed = true; }
+    else if (!visible && t.visibleSince) { t.visibleSince = ''; changed = true; }
   });
   if (changed) LM.saveDeadlineTasks(tasks);
   return tasks;
@@ -862,11 +867,12 @@ LM.addDeadlineTask = function (deadlineId, title, category, prereqIds) {
     id: LM.uid(),
     deadlineId,
     title: name,
-    category: LM.TODO_GROUPS.some((g) => g.key === category) ? category : 'other',
+    category: LM.TODO_GROUPS.some((g) => g.key === category) ? category : 'main',
     done: false,
     doneAt: 0,
     prereqIds: (prereqIds || []).filter((pid) => tasks.some((t) => t.id === pid && t.deadlineId === deadlineId)),
     manualShown: false,
+    visibleSince: '',
     deadlineName: dl ? dl.name : '',
     deadlineDate: dl ? dl.date : '',
     createdAt: Date.now(),
@@ -943,7 +949,70 @@ LM._dlEl = function (tag, cls, text) {
 LM._dlEnsureStyle = function () {}; // 見た目は style.css の dl- 系クラスに移した
 
 // 締切の詳細モーダルに「関連タスク」を追加する(wrap内だけを再描画し、モーダルは作り直さない)
-LM.appendDeadlineTaskPanel = function (wrap, schedule) {
+// 並び順: 締切が近い順 → 作成順
+LM._dlCompare = function (a, b) {
+  return (a.deadlineDate || '9999-99-99').localeCompare(b.deadlineDate || '9999-99-99') ||
+    (a.createdAt || 0) - (b.createdAt || 0);
+};
+
+// 今日のタスク一覧に出す連携タスク(表示条件を満たし、未達成、または今日達成したもの)
+LM.getActiveDeadlineTasks = function () {
+  const all = LM.refreshDeadlineTaskLinks();
+  const today = LM.todoDayKey();
+  const alive = new Set(LM.get(LM.KEYS.SCHEDULES, [])
+    .filter((s) => s.kind === 'deadline').map((s) => s.id));
+  return all
+    .filter((t) => LM.isDeadlineTaskVisible(t, all) &&
+      (!t.done || (t.doneAt && LM.taskDayKey(new Date(t.doneAt)) === today)))
+    .map((t) => Object.assign({}, t, { orphan: !alive.has(t.deadlineId) }))
+    .sort(LM._dlCompare);
+};
+
+// メイン分の配置: 空いているメイン枠を前から使う。埋まっていれば
+// 「今日先行条件をクリアしたもの」だけ追加行、それ以外は枠待ち。期限切れ・削除済みは追加行
+LM.getLinkedMainPlan = function () {
+  const state = LM.getTodoState();
+  const today = LM.todoDayKey();
+  const freeIdx = [];
+  LM.TODO_MAIN_IDS.forEach((id, i) => {
+    const task = state.dailyTasks[id];
+    if (!String((task && task.name) || '').trim()) freeIdx.push(i);
+  });
+  const slots = {};
+  const extra = [];
+  const orphans = [];
+  const queued = new Set();
+  LM.getActiveDeadlineTasks().filter((t) => t.category === 'main').forEach((t) => {
+    if (t.orphan) orphans.push(t);
+    else if (freeIdx.length) slots[freeIdx.shift()] = t;
+    else if (t.visibleSince === today && (t.prereqIds || []).length > 0) extra.push(t);
+    else queued.add(t.id);
+  });
+  const extras = extra.concat(orphans);
+  const shown = Object.keys(slots).map(Number).sort((a, b) => a - b)
+    .map((i) => slots[i]).concat(extras);
+  return { slots, extra: extras, queued, shown };
+};
+
+// 締切タスクがメイン枠を占める分のタイトル(最大3件)。when: 'today'(反映時) / 'tomorrow'(明日のタスク入力時)
+LM.getMainLockTitles = function (when) {
+  const all = LM.refreshDeadlineTaskLinks();
+  const alive = new Set(LM.get(LM.KEYS.SCHEDULES, [])
+    .filter((s) => s.kind === 'deadline').map((s) => s.id));
+  const list = when === 'tomorrow'
+    ? all.filter((t) => !t.done && LM.isDeadlineTaskVisible(t, all))
+    : LM.getActiveDeadlineTasks();
+  return list
+    .filter((t) => t.category === 'main' && alive.has(t.deadlineId))
+    .sort(LM._dlCompare)
+    .slice(0, 3)
+    .map((t) => t.title);
+};
+
+// 締切の詳細・編集に「関連タスク」を追加する(wrap内だけを再描画し、モーダルは作り直さない)
+// opts.flat: true なら追加フォームを折りたたまずに出す(アコーディオン内で使う時)
+LM.appendDeadlineTaskPanel = function (wrap, schedule, opts) {
+  opts = opts || {};
   const box = LM._dlEl('div', 'dl-panel');
   wrap.appendChild(box);
   let openPrereqId = null;
@@ -972,6 +1041,7 @@ LM.appendDeadlineTaskPanel = function (wrap, schedule) {
 
   function render() {
     const all = LM.refreshDeadlineTaskLinks();
+    const plan = LM.getLinkedMainPlan();
     const mine = all.filter((t) => t.deadlineId === schedule.id);
     const doneCount = mine.filter((t) => t.done).length;
     box.replaceChildren();
@@ -1005,6 +1075,7 @@ LM.appendDeadlineTaskPanel = function (wrap, schedule) {
       if (prereqs.length) meta.appendChild(LM._dlEl('span', 'dl-badge', `先行${prereqs.length}件`));
       if (t.manualShown) meta.appendChild(LM._dlEl('span', 'dl-badge is-on', '手動表示中'));
       else if (!visible) meta.appendChild(LM._dlEl('span', 'dl-badge is-wait', '待機中'));
+      if (visible && plan.queued.has(t.id)) meta.appendChild(LM._dlEl('span', 'dl-badge is-wait', '枠待ち'));
 
       const actions = LM._dlEl('div', 'dl-actions');
       actions.appendChild(actionBtn('先行条件', '', () => {
@@ -1049,12 +1120,15 @@ LM.appendDeadlineTaskPanel = function (wrap, schedule) {
         box.appendChild(pr);
       }
     });
-    
-    // 追加フォーム(折りたたみ。追加後も開いたままにする)
-    const details = LM._dlEl('details', 'hs-add-details dl-add');
-    details.open = addOpen;
-    details.addEventListener('toggle', () => { addOpen = details.open; });
-    details.appendChild(LM._dlEl('summary', 'lm-btn secondary', '＋ タスクを追加'));
+
+    // 追加フォーム(flatでなければ折りたたみ。追加後も開いたままにする)
+    const flat = !!opts.flat;
+    const details = LM._dlEl(flat ? 'div' : 'details', flat ? 'dl-add' : 'hs-add-details dl-add');
+    if (!flat) {
+      details.open = addOpen;
+      details.addEventListener('toggle', () => { addOpen = details.open; });
+      details.appendChild(LM._dlEl('summary', 'lm-btn secondary', '＋ タスクを追加'));
+    }
     const form = LM._dlEl('div', 'dl-add-form');
 
     const nameField = LM._dlEl('div', 'lm-field');
@@ -1104,41 +1178,164 @@ LM.appendDeadlineTaskPanel = function (wrap, schedule) {
     box.appendChild(details);
   }
   render();
- };
+};
 
-// タスクページの各グループ末尾に、表示条件を満たす連携タスクの行を追加する
-LM.appendLinkedTodoRows = function (groupEl, groupKey, rerender) {
-  const all = LM.refreshDeadlineTaskLinks();
-  all
-    .filter((t) => (t.category || 'other') === groupKey && LM.isDeadlineTaskVisible(t, all))
-    .sort((a, b) => (a.deadlineDate || '').localeCompare(b.deadlineDate || ''))
-    .forEach((t) => {
-      const info = LM.describeDeadlineTask(t);
-      const row = LM._dlEl('div', 'lm-todo-row' + (t.done ? ' is-checked' : ''));
-      const cb = document.createElement('input');
-      cb.type = 'checkbox';
-      cb.checked = t.done;
-      cb.addEventListener('change', () => {
-        LM.toggleDeadlineTask(t.id, cb.checked);
-        row.classList.toggle('is-checked', cb.checked);
+// 締切の新規作成フォーム用: 保存前のタスクを一時的に持ち、締切の保存時にまとめて登録する
+// 編集中の締切では showExisting で実データの管理画面に切り替える
+LM.createDeadlineTaskDraft = function (container, onChange) {
+  let drafts = [];
+  const labelOf = (key) => {
+    const g = LM.TODO_GROUPS.find((x) => x.key === key);
+    return g ? g.label : key;
+  };
+  const notify = (n) => { if (onChange) onChange(n); };
+
+  function render() {
+    container.replaceChildren();
+    if (drafts.length === 0) {
+      container.appendChild(LM._dlEl('p', 'lm-empty', '追加するタスクはまだありません'));
+    }
+    drafts.forEach((d) => {
+      const row = LM._dlEl('div', 'dl-draft-row');
+      row.appendChild(LM._dlEl('span', 'dl-draft-title', d.title));
+      row.appendChild(LM._dlEl('span', 'dl-badge', labelOf(d.category)));
+      if (d.prereqIds.length) row.appendChild(LM._dlEl('span', 'dl-badge', `先行${d.prereqIds.length}件`));
+      const del = LM._dlEl('button', 'dl-btn is-danger', '削除');
+      del.type = 'button';
+      del.addEventListener('click', () => {
+        drafts = drafts.filter((x) => x.id !== d.id);
+        drafts.forEach((x) => { x.prereqIds = x.prereqIds.filter((p) => p !== d.id); });
+        render();
+        notify(drafts.length);
       });
-      const label = LM._dlEl('div', 'dl-todo-label');
-      label.append(
-        LM._dlEl('span', 'dl-todo-title', t.title),
-        LM._dlEl('span', 'dl-todo-meta' + (info.orphan ? ' is-orphan' : ''), info.text)
-      );
-      row.append(cb, label);
-      if (info.orphan) {
-        const rm = LM._dlEl('button', 'lm-todo-slot-remove', '-');
-        rm.type = 'button';
-        rm.setAttribute('aria-label', 'この連携タスクを削除');
-        rm.addEventListener('click', () => {
-          if (!confirm('この連携タスクを削除しますか?')) return;
-          LM.deleteDeadlineTask(t.id);
-          rerender();
-        });
-        row.appendChild(rm);
-      }
-      groupEl.appendChild(row);
+      row.appendChild(del);
+      container.appendChild(row);
     });
+
+    const form = LM._dlEl('div', 'dl-add-form');
+    const nameField = LM._dlEl('div', 'lm-field');
+    nameField.appendChild(LM._dlEl('label', '', 'タスク名'));
+    const input = document.createElement('input');
+    input.type = 'text';
+    nameField.appendChild(input);
+
+    const catField = LM._dlEl('div', 'lm-field');
+    catField.appendChild(LM._dlEl('label', '', '分類'));
+    const sel = document.createElement('select');
+    LM.TODO_GROUPS.forEach((g) => {
+      const o = document.createElement('option');
+      o.value = g.key;
+      o.textContent = g.label;
+      sel.appendChild(o);
+    });
+    catField.appendChild(sel);
+    form.append(nameField, catField);
+
+    const preList = LM._dlEl('div', 'lm-check-list');
+    if (drafts.length) {
+      const preField = LM._dlEl('div', 'lm-field');
+      preField.appendChild(LM._dlEl('label', '', '先行タスク(任意・全て達成すると表示)'));
+      drafts.forEach((o) => {
+        const label = LM._dlEl('label', 'lm-check-item');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.dataset.pid = o.id;
+        label.append(cb, LM._dlEl('span', '', o.title));
+        preList.appendChild(label);
+      });
+      preField.appendChild(preList);
+      form.appendChild(preField);
+    }
+
+    const btn = LM._dlEl('button', 'lm-btn', '追加');
+    btn.type = 'button';
+    const submit = () => {
+      const title = input.value.trim();
+      if (!title) { input.focus(); return; }
+      const ids = [...preList.querySelectorAll('input:checked')].map((i) => i.dataset.pid);
+      drafts.push({ id: LM.uid(), title, category: sel.value, prereqIds: ids });
+      render();
+      notify(drafts.length);
+    };
+    btn.addEventListener('click', submit);
+    input.addEventListener('keydown', (e) => {
+      // フォームの送信(保存)を防ぐ
+      if (e.key === 'Enter' && !e.isComposing) { e.preventDefault(); submit(); }
+    });
+    form.appendChild(btn);
+    container.appendChild(form);
+  }
+
+  render();
+  return {
+    // 締切の保存後に呼ぶ。先行条件は一時IDから実IDへ置き換えて登録する
+    commit(deadlineId) {
+      const idMap = new Map();
+      drafts.forEach((d) => {
+        const t = LM.addDeadlineTask(deadlineId, d.title, d.category,
+          d.prereqIds.map((p) => idMap.get(p)).filter(Boolean));
+        if (t) idMap.set(d.id, t.id);
+      });
+      const n = drafts.length;
+      drafts = [];
+      return n;
+    },
+    reset() { drafts = []; render(); notify(0); },
+    showExisting(schedule) {
+      container.replaceChildren();
+      LM.appendDeadlineTaskPanel(container, schedule, { flat: true });
+      notify(0);
+    },
+  };
+};
+
+// タスクページの連携タスクの1行
+LM._dlTodoRow = function (t, rerender) {
+  const info = LM.describeDeadlineTask(t);
+  const row = LM._dlEl('div', 'lm-todo-row' + (t.done ? ' is-checked' : ''));
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.checked = t.done;
+  cb.addEventListener('change', () => {
+    LM.toggleDeadlineTask(t.id, cb.checked);
+    rerender(); // 先行条件のクリアで後続タスクが現れるため再描画する
+  });
+  const label = LM._dlEl('div', 'dl-todo-label');
+  label.append(
+    LM._dlEl('span', 'dl-todo-title', t.title),
+    LM._dlEl('span', 'dl-todo-meta' + (info.orphan ? ' is-orphan' : ''), info.text)
+  );
+  row.append(cb, label);
+  if (info.orphan) {
+    const rm = LM._dlEl('button', 'lm-todo-slot-remove', '-');
+    rm.type = 'button';
+    rm.setAttribute('aria-label', 'この連携タスクを削除');
+    rm.addEventListener('click', () => {
+      if (!confirm('この連携タスクを削除しますか?')) return;
+      LM.deleteDeadlineTask(t.id);
+      rerender();
+    });
+    row.appendChild(rm);
+  }
+  return row;
+};
+
+// タスクページの各グループに連携タスクを出す
+// メイン: 空いている枠の行を連携タスクに差し替える(3枠を超える分は、今日先行条件をクリアしたものだけ追加行)
+LM.appendLinkedTodoRows = function (groupEl, groupKey, rerender) {
+  if (groupKey === 'main') {
+    const plan = LM.getLinkedMainPlan();
+    const rows = groupEl.querySelectorAll(':scope > .lm-todo-row');
+    Object.keys(plan.slots).forEach((i) => {
+      const row = LM._dlTodoRow(plan.slots[i], rerender);
+      if (rows[Number(i)]) rows[Number(i)].replaceWith(row);
+      else groupEl.appendChild(row);
+    });
+    plan.extra.forEach((t) => groupEl.appendChild(LM._dlTodoRow(t, rerender)));
+    return;
+  }
+  LM.getActiveDeadlineTasks()
+    .filter((t) => t.category === groupKey)
+    .forEach((t) => groupEl.appendChild(LM._dlTodoRow(t, rerender)));
+ };
 };
