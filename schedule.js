@@ -757,6 +757,7 @@
       schedules.push(data);
     }
     if (!LM.set(LM.KEYS.SCHEDULES, schedules)) return;
+    deadlineTaskDraft.commit(data.id);
     LM.syncFirebase();
     resetDeadlineForm();
     renderList();
@@ -776,6 +777,7 @@
     });
     deadlineTitle.textContent = '締切を編集';
     deadlineCancelBtn.style.display = 'inline-block';
+    deadlineTaskDraft.showExisting(schedule);
     switchFormTab('deadline');
     window.scrollTo({ top: deadlinePanel.offsetTop - 20, behavior: 'smooth' });
   }
@@ -787,6 +789,7 @@
     deadlineTitle.textContent = '締切を登録';
     deadlineCancelBtn.style.display = 'none';
     history.replaceState(null, '', location.pathname);
+    deadlineTaskDraft.reset();
   }
 
     function showDeadlineConfirm(schedule) {
