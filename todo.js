@@ -104,7 +104,8 @@
         }
         groupEl.appendChild(row);
       });
-
+      
+      if (LM.appendLinkedTodoRows) LM.appendLinkedTodoRows(groupEl, g.key, renderGroups);
       if (g.key === 'other') {
         const addButton = document.createElement('button');
         addButton.type = 'button';
