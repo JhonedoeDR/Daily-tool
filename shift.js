@@ -1396,13 +1396,14 @@
       number.textContent = String(day);
       button.appendChild(number);
       const markers = document.createElement('span');
-      const missed = item.kind === 'class' && (item.entries || [item]).some((entry) => getAttendanceStatus(entry) === 'missed');
-        marker.className = `hs-calendar-marker${item.kind === 'class' ? ' is-class' : ' is-shift'}${item.isExam ? ' is-exam' : ''}${registered ? ' is-registered' : ''}${missed ? ' is-missed' : ''}`;
+      markers.className = 'hs-calendar-markers';
       events.slice(0, 4).forEach((item) => {
         const marker = document.createElement('span');
         const registered = item.kind === 'class' &&
           (item.entries || [item]).some((entry) => entry.scheduleRegistered === true);
-        marker.className = `hs-calendar-marker${item.kind === 'class' ? ' is-class' : ' is-shift'}${item.isExam ? ' is-exam' : ''}${registered ? ' is-registered' : ''}`;
+        const missed = item.kind === 'class' &&
+          (item.entries || [item]).some((entry) => getAttendanceStatus(entry) === 'missed');
+        marker.className = `hs-calendar-marker${item.kind === 'class' ? ' is-class' : ' is-shift'}${item.isExam ? ' is-exam' : ''}${registered ? ' is-registered' : ''}${missed ? ' is-missed' : ''}`;
         marker.setAttribute('aria-hidden', 'true');
         markers.appendChild(marker);
       });
