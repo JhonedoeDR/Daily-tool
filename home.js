@@ -47,6 +47,7 @@
   hasContent.schedule = renderSchedules();
   hasContent.belongings = renderBelongings();
   hasContent.shift = renderShift();
+  renderDeadlineOverview();
   reorderSections();
   setupTaskLink();
   renderNotifyBanner();
@@ -66,6 +67,7 @@
     hasContent.schedule = renderSchedules();
     hasContent.belongings = renderBelongings();
     hasContent.shift = renderShift();
+    renderDeadlineOverview();
     reorderSections();
     refreshCircle();
   }
@@ -830,6 +832,52 @@
       };
       reader.readAsText(file);
     });
+  }
+  
+    /* ---------- 締切とタスク(追加) ---------- */
+  function renderDeadlineOverview() {
+    const el = document.getElementById('deadline-overview');
+    if (!el || !LM.getDeadlineOverview) return false;
+    const items = LM.getDeadlineOverview(3);
+    if (items.length === 0) {
+      el.innerHTML = '<p class="lm-empty">締切はありません</p>';
+      return false;
+    }
+    el.replaceChildren();
+    items.forEach((it) => {
+      const s = it.deadline;
+      const rate = it.total > 0 ? Math.round((it.done / it.total) * 100) : 0;
+      const box = document.createElement('div');
+      box.className = 'lm-event';
+      box.innerHTML = `
+        <a href="./schedule.html?id=${encodeURIComponent(s.id)}" style="display:block; text-decoration:none; color:inherit;">
+          <div class="lm-event-top">
+            <span>${escapeHtml(s.name)}</span>
+            <span>${it.remainDays > 0 ? `あと${it.remainDays}日` : '今日'} ${escapeHtml(s.start)}</span>
+          </div>
+        </a>
+        ${it.total > 0 ? `<div class="lm-progress-track"><div class="lm-progress-fill" style="width:${rate}%"></div></div>
+        <div class="lm-event-remain">タスク ${it.done}/${it.total}</div>` : ''}`;
+      if (it.pending.length > 0) {
+        const ul = document.createElement('ul');
+        ul.className = 'lm-check-list';
+        it.pending.forEach((t) => {
+          const li = document.createElement('li');
+          li.className = 'lm-check-item';
+          li.innerHTML = `<input type="checkbox" data-dl-task-id="${t.id}" /><span>${escapeHtml(t.title)}</span>`;
+          ul.appendChild(li);
+        });
+        ul.addEventListener('change', (e) => {
+          const cb = e.target;
+          if (cb.type !== 'checkbox' || !cb.dataset.dlTaskId) return;
+          LM.toggleDeadlineTask(cb.dataset.dlTaskId, cb.checked);
+          renderDeadlineOverview();
+        });
+        box.appendChild(ul);
+      }
+      el.appendChild(box);
+    });
+    return true;
   }
 
   function escapeHtml(str) {
