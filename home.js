@@ -666,12 +666,19 @@
     }
 
     if (linkedOther.length > 0) {
-      const ul2 = document.createElement('ul');
-      ul2.className = 'lm-check-list';
-      ul2.style.marginTop = '2px';
-      linkedOther.forEach((t) => ul2.appendChild(buildItem({ linked: true, id: t.id, name: t.title, checked: t.done })));
-      ul2.addEventListener('change', onChange);
-      el.appendChild(ul2);
+      LM.TODO_GROUPS.filter((g) => g.key !== 'main').forEach((g) => {
+        const list = linkedOther.filter((t) => t.category === g.key);
+        if (list.length === 0) return;
+        const head = document.createElement('div');
+        head.className = 'dl-home-cat';
+        head.textContent = g.label;
+        el.appendChild(head);
+        const ul2 = document.createElement('ul');
+        ul2.className = 'lm-check-list';
+        list.forEach((t) => ul2.appendChild(buildItem({ linked: true, id: t.id, name: t.title, checked: t.done })));
+        ul2.addEventListener('change', onChange);
+        el.appendChild(ul2);
+      });
     }
 
     if (otherCount > 0) {
