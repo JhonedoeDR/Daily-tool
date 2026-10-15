@@ -1397,13 +1397,9 @@
       button.appendChild(number);
       const markers = document.createElement('span');
       markers.className = 'hs-calendar-markers';
-      events.slice(0, 4).forEach((item) => {
+      getCalendarDots(events).slice(0, 4).forEach((dot) => {
         const marker = document.createElement('span');
-        const registered = item.kind === 'class' &&
-          (item.entries || [item]).some((entry) => entry.scheduleRegistered === true);
-        const missed = item.kind === 'class' &&
-          (item.entries || [item]).some((entry) => getAttendanceStatus(entry) === 'missed');
-        marker.className = `hs-calendar-marker${item.kind === 'class' ? ' is-class' : ' is-shift'}${item.isExam ? ' is-exam' : ''}${registered ? ' is-registered' : ''}${missed ? ' is-missed' : ''}`;
+        marker.className = `hs-calendar-marker${dot.item.kind === 'class' ? ' is-class' : ' is-shift'}${dot.item.isExam ? ' is-exam' : ''}${dot.registered ? ' is-registered' : ''}${dot.missed ? ' is-missed' : ''}`;
         marker.setAttribute('aria-hidden', 'true');
         markers.appendChild(marker);
       });
@@ -1413,6 +1409,31 @@
       calendarGrid.appendChild(button);
     }
     renderCalendarSelection();
+  }
+  
+    // カレンダーのドット: 時間割順(開始時刻順)。複数時限の授業は、履修登録済みの時限だけを1時限1ドットで並べる。
+  // 履修登録されていない授業(グレー)は、色つきのドットの後ろにまとめる
+  function getCalendarDots(events) {
+    const dots = [];
+    events.forEach((item) => {
+      const entries = item.kind === 'class' ? (item.entries || [item]) : [item];
+      const registeredEntries = entries.filter((entry) => entry.scheduleRegistered === true);
+      const groups = item.kind === 'class' && entries.length > 1 && registeredEntries.length > 0
+        ? registeredEntries.map((entry) => [entry])
+        : [entries];
+      groups.forEach((list) => {
+        const registered = item.kind === 'class' && list.some((entry) => entry.scheduleRegistered === true);
+        dots.push({
+          item,
+          registered,
+          missed: item.kind === 'class' && list.some((entry) => getAttendanceStatus(entry) === 'missed'),
+          gray: item.kind === 'class' && !item.isExam && !registered,
+          start: list[0]?.start || item.start || '',
+        });
+      });
+    });
+    return dots.sort((a, b) =>
+      Number(a.gray) - Number(b.gray) || (a.start || '99:99').localeCompare(b.start || '99:99'));
   }
 
   function renderCalendarSelection() {
