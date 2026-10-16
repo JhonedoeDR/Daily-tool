@@ -284,8 +284,9 @@ LM.checkAndNotify = function () {
     }
   });
 
+  try { LM.applyTomorrowTasks(); } catch (e) { console.error(e); }
   const taskState = LM.get(LM.TODO_KEY, null);
-  const taskSummary = LM.summarizeTodoTasks(taskState, dayKey);
+  const taskSummary = LM.summarizeAllTodoTasks(taskState, dayKey);
   const notifyAt = (key, hour, title, body, shouldNotify) => {
     if (!shouldNotify || Math.abs(nowMin - hour * 60) > 2 || LM._alreadyNotified(key)) return;
     LM.notify(title, body);
@@ -304,7 +305,7 @@ LM.checkAndNotify = function () {
   });
 
   // メインタスク入力時刻(分を四捨五入)の3時間後から、AM4:00のリセットまで通知
-  const enteredAt = Number(taskState && taskState.taskEnteredAt);
+  const enteredAt = Number(taskState && taskState.taskEnteredAt) || LM.linkedTasksEnteredAt(dayKey);
   if (taskState && taskState.dayKey === dayKey && enteredAt > 0 &&
       taskSummary.entered > 0 && !taskSummary.mainComplete && taskSummary.unfinished > 0) {
     const roundedAt = LM.roundTodoEntryTime(enteredAt);
@@ -314,7 +315,7 @@ LM.checkAndNotify = function () {
       if (Math.abs(at - now.getTime()) > 2 * 60 * 1000) continue;
       const key = `task-unfinished:${dayKey}:${at}`;
       if (LM._alreadyNotified(key)) continue;
-      LM.notify('未達成のタスクがあります', `未達成 ${taskSummary.unfinished}件`);
+      LM.notify('未達成のタスクがあります', [`未達成 ${taskSummary.unfinished}件`].concat(LM.buildDeadlineNoteLines()).join('\n'));
       LM._markNotified(key);
     }
   }
@@ -325,7 +326,7 @@ LM.checkAndNotify = function () {
       `task-other-unfinished:${dayKey}:${hour}`,
       hour,
       'その他に未達成のタスクがあります',
-      `未達成 ${taskSummary.otherUnfinished}件`,
+      [`未達成 ${taskSummary.otherUnfinished}件`].concat(LM.buildDeadlineNoteLines()).join('\n'),
       taskSummary.mainComplete && taskSummary.otherUnfinished > 0
     );
   });
@@ -780,7 +781,7 @@ LM.renderNav = function (container) {
 /* =========================================================
    締切・タスク連携(追加ブロック)
    既存の関数・変数は変更していない。データは lm_deadlineTasks に分離。
-   [{id, deadlineId, title, category, done, doneAt, prereqIds, manualShown,
+   [{id, deadlineId, title, category, done, doneAt, prereqIds, manualShown, visibleSince,
      deadlineName, deadlineDate, createdAt}]
    ========================================================= */
 LM.KEYS.DEADLINE_TASKS = 'lm_deadlineTasks';
@@ -790,8 +791,11 @@ LM.getDeadlineTasks = function () {
   return Array.isArray(list) ? list : [];
 };
 
+// 保存したら、少し遅らせてFirestoreへ同期する(外部通知が最新の達成状況を見られるように)
 LM.saveDeadlineTasks = function (tasks) {
-  return LM.set(LM.KEYS.DEADLINE_TASKS, tasks);
+  const ok = LM.set(LM.KEYS.DEADLINE_TASKS, tasks);
+  if (ok) LM.syncFirebaseDebounced();
+  return ok;
 };
 
 // 締切の名前・日付のスナップショットを更新し、完了後7日たった孤児タスクを削除して返す
@@ -948,7 +952,6 @@ LM._dlEl = function (tag, cls, text) {
 
 LM._dlEnsureStyle = function () {}; // 見た目は style.css の dl- 系クラスに移した
 
-// 締切の詳細モーダルに「関連タスク」を追加する(wrap内だけを再描画し、モーダルは作り直さない)
 // 並び順: 締切が近い順 → 作成順
 LM._dlCompare = function (a, b) {
   return (a.deadlineDate || '9999-99-99').localeCompare(b.deadlineDate || '9999-99-99') ||
@@ -968,8 +971,6 @@ LM.getActiveDeadlineTasks = function () {
     .sort(LM._dlCompare);
 };
 
-// メイン分の配置: 空いているメイン枠を前から使う。埋まっていれば
-// 「今日先行条件をクリアしたもの」だけ追加行、それ以外は枠待ち。期限切れ・削除済みは追加行
 // メイン分の配置: 空いているメイン枠を、締切が近い順に前から使う。
 // 枠が足りない場合は、(1)7日以内の締切でメインにタスクがある締切が2つ以上ある時の7日以内のタスク、
 // (2)今日先行条件をクリアしたタスク、だけ追加行にする。それ以外は枠待ち。期限切れ・削除済みは追加行
@@ -1291,6 +1292,7 @@ LM.createDeadlineTaskDraft = function (container, onChange) {
     },
     reset() { drafts = []; render(); notify(0); },
     showExisting(schedule) {
+      drafts = [];
       container.replaceChildren();
       LM.appendDeadlineTaskPanel(container, schedule, { flat: true });
       notify(0);
@@ -1358,3 +1360,127 @@ LM.appendLinkedTodoRows = function (groupEl, groupKey, rerender) {
       else groupEl.appendChild(row);
     });
 };
+
+/* ---------- 通知まわり(締切タスクの集計・明日のタスクの自動入力・サブ文章) ---------- */
+LM.TOMORROW_KEY = 'lm_tomorrowTasks';
+
+// 明日のタスクの自動入力。AM4:00以降、どのページを最初に開いても反映する(タスクページに限らない)
+LM.applyTomorrowTasks = function () {
+  const pending = LM.get(LM.TOMORROW_KEY, null);
+  if (!pending || !pending.forDay) return false;
+  const state = LM.getTodoState(); // AM4:00のリセット判定を先に済ませる
+  if (pending.forDay > state.dayKey) return false; // まだ先の日の分は残す
+  let applied = false;
+  if (pending.forDay === state.dayKey) {
+    const slots = Math.max(1, Number(pending.otherSlotCount) || 1);
+    if (slots > state.otherSlotCount) state.otherSlotCount = LM.configureOtherTodoSlots(slots);
+    LM.TODO_GROUPS.forEach((g) => g.ids.forEach((id) => {
+      if (!state.dailyTasks[id]) state.dailyTasks[id] = { name: '', checked: false };
+    }));
+    const locked = new Set(LM.TODO_MAIN_IDS.slice(0, LM.getMainLockTitles('today').length));
+    const tasks = pending.tasks || {};
+    Object.keys(tasks).forEach((id) => {
+      if (locked.has(id)) return; // 締切タスクが占める枠には反映しない
+      const name = String(tasks[id] || '').trim();
+      if (!name || !state.dailyTasks[id]) return;
+      if (String(state.dailyTasks[id].name || '').trim()) return; // 既にある内容は上書きしない
+      LM.setTodoTaskName(state, id, name);
+      applied = true;
+    });
+    LM.saveTodoState(state);
+  }
+  localStorage.removeItem(LM.TOMORROW_KEY); // 反映済み・期限切れはここで消す
+  return applied;
+};
+
+// 今日のタスク一覧に出ている締切タスク(期限切れ・削除済みは除く)
+LM.getShownDeadlineTasks = function () {
+  const mainShown = LM.getLinkedMainPlan().shown;
+  const others = LM.getActiveDeadlineTasks().filter((t) => t.category !== 'main');
+  return mainShown.concat(others).filter((t) => !t.orphan);
+};
+
+// 固定枠のタスクに、締切タスクも加えた集計(通知の判定に使う)
+LM.summarizeAllTodoTasks = function (state, dayKey) {
+  const base = LM.summarizeTodoTasks(state, dayKey);
+  const shown = LM.getShownDeadlineTasks();
+  if (shown.length === 0) return base;
+  const main = shown.filter((t) => t.category === 'main');
+  const other = shown.filter((t) => t.category !== 'main');
+  const mainEntered = base.mainEntered + main.length;
+  const mainUnfinished = base.mainUnfinished + main.filter((t) => !t.done).length;
+  const otherUnfinished = base.otherUnfinished + other.filter((t) => !t.done).length;
+  return {
+    entered: base.entered + main.length + other.length,
+    mainEntered,
+    mainUnfinished,
+    mainComplete: mainEntered > 0 && mainUnfinished === 0,
+    otherUnfinished,
+    unfinished: mainUnfinished + otherUnfinished,
+  };
+};
+
+// 締切タスクだけがある日の「入力時刻」の代わり(その日のAM4:00)。未達成通知の起点に使う
+LM.linkedTasksEnteredAt = function (dayKey) {
+  if (LM.getShownDeadlineTasks().length === 0) return 0;
+  const [y, m, d] = dayKey.split('-').map(Number);
+  return new Date(y, m - 1, d, 4, 0, 0, 0).getTime();
+};
+
+// 未達成の締切タスクがある締切を、近い順に返す
+LM.getUnfinishedDeadlines = function () {
+  const ids = new Set(LM.getShownDeadlineTasks().filter((t) => !t.done).map((t) => t.deadlineId));
+  return LM.get(LM.KEYS.SCHEDULES, [])
+    .filter((s) => s.kind === 'deadline' && ids.has(s.id))
+    .sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
+};
+
+// 通知のサブ文章(近い順に最大2件)
+LM.buildDeadlineNoteLines = function () {
+  const today = LM.todayStr();
+  const list = LM.getUnfinishedDeadlines();
+  const lines = list.slice(0, 2).map((s) => {
+    const d = LM.daysBetween(today, s.date);
+    if (d <= 0) return `「${s.name}」の締切は今日の${s.start}です`;
+    if (d === 1) return `「${s.name}」の締切は明日の${s.start}です`;
+    return `「${s.name}」の締切まで、あと${d}日です`;
+  });
+  if (list.length > 2) lines.push(`ほか${list.length - 2}件の締切にも、未達成のタスクがあります`);
+  return lines;
+};
+
+// 外部通知用: 同期するデータの中で、締切タスクを空いている枠に入れる(端末内のデータは変えない)
+LM.mergeLinkedTasksForSync = function (todo) {
+  try {
+    if (!todo || todo.dayKey !== LM.todoDayKey()) return;
+    const plan = LM.getLinkedMainPlan();
+    LM.TODO_MAIN_IDS.forEach((id, i) => {
+      const t = plan.slots[i];
+      if (t) todo.dailyTasks[id] = { name: t.title, checked: t.done };
+    });
+    LM.getActiveDeadlineTasks().filter((t) => !t.orphan && t.category !== 'main').forEach((t) => {
+      const group = LM.TODO_GROUPS.find((g) => g.key === t.category);
+      if (!group) return;
+      const id = group.ids.find((gid) => !String((todo.dailyTasks[gid] && todo.dailyTasks[gid].name) || '').trim());
+      if (id) todo.dailyTasks[id] = { name: t.title, checked: t.done };
+    });
+    if (!Number(todo.taskEnteredAt)) todo.taskEnteredAt = LM.linkedTasksEnteredAt(todo.dayKey);
+    // 外部通知のサブ文章用: 未達成の締切タスクがある締切のid(近い順)
+    todo.unfinishedDeadlineIds = LM.getUnfinishedDeadlines().map((s) => s.id);
+  } catch (e) {
+    console.error('mergeLinkedTasksForSync failed', e);
+  }
+};
+
+// ページを開いた時: 明日のタスクを反映し、日付が変わった最初の1回は状態を同期する
+try {
+  LM.applyTomorrowTasks();
+  const syncDay = LM.todoDayKey();
+  if (localStorage.getItem('lm_taskSyncDay') !== syncDay) {
+    localStorage.setItem('lm_taskSyncDay', syncDay);
+    LM.getTodoState();
+    LM.syncFirebaseDebounced(3000);
+  }
+} catch (e) {
+  console.error('task startup failed', e);
+}
