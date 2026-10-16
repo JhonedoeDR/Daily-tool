@@ -80,7 +80,8 @@
     const dotsEl = document.getElementById('hm-dots');
     let modes = getCircleModes();
     let index = modes.findIndex((m) => m.key === DEFAULT_CIRCLE_MODE);
-    const AUTO_SLIDE_MS = 3100; // 自動スライドの間隔(ミリ秒)。変えたい時はここ
+    if (index < 0) index = 0;
+    const AUTO_SLIDE_MS = 6000; // 自動スライドの間隔(ミリ秒)。変えたい時はここ
     let autoSlideTimer = null;
 
     renderModeDots();
@@ -112,8 +113,8 @@
       }
       scheduleAutoSlide();
     }
-    
-  // 自動スライド: 一定時間ごとに次の円へ。時間計算でタイマーが動いている間は止める
+
+    // 自動スライド: 一定時間ごとに次の円へ。時間計算でタイマーが動いている間は止める
     function scheduleAutoSlide() {
       clearTimeout(autoSlideTimer);
       autoSlideTimer = setTimeout(() => {
