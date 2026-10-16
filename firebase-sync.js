@@ -31,6 +31,8 @@ window.LMFirebase = {
         dailyTasks: todoRaw.dailyTasks || {},
         taskEnteredAt: Number(todoRaw.taskEnteredAt) || 0,
       } : null;
+      // 締切タスクを空いている枠に入れて送る(外部通知が「未入力」と誤判定しないように)
+      if (todo && window.LM && window.LM.mergeLinkedTasksForSync) window.LM.mergeLinkedTasksForSync(todo);
       await setDoc(doc(db, ...STATE_REF_PATH), { schedules, events, todo, updatedAt: Date.now() }, { merge: true });
       return true;
     } catch (e) {
