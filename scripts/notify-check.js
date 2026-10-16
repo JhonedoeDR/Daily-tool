@@ -96,6 +96,25 @@ function summarizeTasks(state, dayKey) {
   };
 }
 
+/* ---------- 未達成のタスク通知に添える、締切の文(近い順に最大2件) ----------
+   アプリ側が同期する todo.unfinishedDeadlineIds(未達成の締切タスクがある締切のid)を使う */
+function buildDeadlineNoteLines(st, nowMs) {
+  const ids = (st.todo && Array.isArray(st.todo.unfinishedDeadlineIds)) ? st.todo.unfinishedDeadlineIds : [];
+  if (ids.length === 0) return [];
+  const today = jstDateStr(nowMs);
+  const list = ids
+    .map((id) => (st.schedules || []).find((s) => s.id === id && s.kind === 'deadline'))
+    .filter((s) => s && s.date && s.date >= today);
+  const lines = list.slice(0, 2).map((s) => {
+    const d = daysBetween(today, s.date);
+    if (d <= 0) return `「${s.name}」の締切は今日の${s.start}です`;
+    if (d === 1) return `「${s.name}」の締切は明日の${s.start}です`;
+    return `「${s.name}」の締切まで、あと${d}日です`;
+  });
+  if (list.length > 2) lines.push(`ほか${list.length - 2}件の締切にも、未達成のタスクがあります`);
+  return lines;
+}
+
 function roundHour(epochMs) {
   return Math.round(epochMs / HOUR_MS) * HOUR_MS;
 }
@@ -178,7 +197,7 @@ function buildItems(state, nowMs) {
         build: (st) => {
           const current = summarizeTasks(st, dayKey);
           return current.mainEntered > 0 && !current.mainComplete && current.unfinished > 0
-            ? { title: '未達成のタスクがあります', body: `未達成 ${current.unfinished}件` }
+            ? { title: '未達成のタスクがあります', body: [`未達成 ${current.unfinished}件`, ...buildDeadlineNoteLines(st, Date.now())].join('\n') }
             : null;
         },
       });
@@ -193,7 +212,7 @@ function buildItems(state, nowMs) {
       build: (st) => {
         const current = summarizeTasks(st, dayKey);
         return current.mainComplete && current.otherUnfinished > 0
-          ? { title: 'その他に未達成のタスクがあります', body: `未達成 ${current.otherUnfinished}件` }
+          ? { title: 'その他に未達成のタスクがあります', body: [`未達成 ${current.otherUnfinished}件`, ...buildDeadlineNoteLines(st, Date.now())].join('\n') }
           : null;
       },
     });
@@ -321,7 +340,7 @@ async function main() {
   }
 }
 
-module.exports = { jstDateStr, jstMidnightEpoch, summarizeTasks, roundHour, buildItems, selectDue, calcPrepStartMin };
+module.exports = { jstDateStr, jstMidnightEpoch, summarizeTasks, roundHour, buildItems, selectDue, calcPrepStartMin, buildDeadlineNoteLines };
 
 if (require.main === module) {
   main().catch((e) => {
