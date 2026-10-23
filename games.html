@@ -50,6 +50,7 @@
         <form id="game-form" class="lm-game-form">
           <label>ゲーム名<input id="game-name" required maxlength="80" placeholder="例：ゲームの名前" /></label>
           <label class="lm-game-file-field"><span>アイコン画像（任意）</span><span class="lm-game-file-control"><span id="game-icon-file-name">画像を選ぶ</span><span class="lm-game-file-button">ファイルを選択</span><input id="game-icon" type="file" accept="image/*" /></span></label>
+          <fieldset class="lm-game-quick-config"><legend>石管理で使う追加ボタン</legend><p class="lm-game-status">よく使う入手数を登録できます。初期値は＋300、＋1000です。</p><div id="game-quick-values" class="lm-game-quick-values"></div><div class="lm-game-quick-add"><input id="game-quick-amount" type="number" min="1" step="1" inputmode="numeric" placeholder="追加する数（例：500）" aria-label="追加する石の数"><button type="button" class="lm-btn secondary" id="game-quick-add-button">追加</button></div></fieldset>
           <button class="lm-btn" type="submit">ゲームを追加</button>
         </form>
       </div>
