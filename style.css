@@ -2979,3 +2979,50 @@ body {
 .lm-game-calendar-legend { display:flex; gap:12px; flex-wrap:wrap; font-size:11px; color:var(--text-soft); margin-top:8px; }
 .lm-game-calendar-legend .login-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:#f0c94d; margin-right:4px; }
 .lm-game-calendar-legend .goal-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:#e05b5b; margin-right:4px; }
+
+
+/* ゲーム機能：石クイック追加・通知時刻の複数設定・コンパクトな入力 */
+.lm-games-page .lm-game-form input:not([type="file"]),
+.lm-games-page .lm-game-subsection input:not([type="checkbox"]):not([type="file"]),
+.lm-games-page .lm-game-form select,
+.lm-games-page .lm-game-form textarea,
+.lm-games-page .lm-game-subsection textarea {
+  min-height: 30px;
+  height: 32px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  box-sizing: border-box;
+  font-size: 12px;
+}
+.lm-games-page .lm-game-form textarea,
+.lm-games-page .lm-game-subsection textarea { height: auto; min-height: 58px; }
+.lm-game-quick-config,
+.lm-game-notify-times {
+  min-width: 0;
+  margin: 2px 0;
+  padding: 9px 10px 10px;
+  border: 1px solid var(--paper-line);
+  border-radius: 10px;
+  background: #f8fcfd;
+  box-sizing: border-box;
+}
+.lm-game-quick-config legend,
+.lm-game-notify-times legend {
+  padding: 0 5px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+.lm-game-quick-config .lm-game-status { margin: 0 0 7px; }
+.lm-game-quick-values { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.lm-game-quick-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 7px; border: 1px solid #c7e4ee; border-radius: 8px; background: #eaf7fb; color: var(--text); font-size: 11px; }
+.lm-game-quick-chip button { border: 0; padding: 0 2px; background: transparent; color: var(--text-soft); font-size: 15px; line-height: 1; }
+.lm-game-quick-add { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 7px; }
+.lm-game-quick-add .lm-btn { min-height: 32px; padding: 5px 12px; }
+.lm-game-quick-stone-wrap { display: grid; gap: 7px; }
+.lm-game-quick-stone-buttons { display: flex; flex-wrap: wrap; gap: 7px; }
+.lm-game-quick-stone-buttons .lm-btn { min-height: 32px; padding: 6px 10px; font-size: 12px; }
+.lm-game-reminder-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; margin-bottom: 6px; }
+.lm-game-reminder-row input[type="time"] { width: 100%; min-width: 0; border: 1px solid var(--paper-line); border-radius: 8px; background: #fff; color: var(--text); }
+.lm-game-reminder-row .lm-text-btn { padding: 5px 7px; font-size: 11px; }
+.lm-game-notify-times > .lm-btn { min-height: 31px; padding: 5px 9px; font-size: 11px; }
