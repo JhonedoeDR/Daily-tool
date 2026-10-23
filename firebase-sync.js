@@ -33,7 +33,18 @@ window.LMFirebase = {
       } : null;
       // 締切タスクを空いている枠に入れて送る(外部通知が「未入力」と誤判定しないように)
       if (todo && window.LM && window.LM.mergeLinkedTasksForSync) window.LM.mergeLinkedTasksForSync(todo);
-      await setDoc(doc(db, ...STATE_REF_PATH), { schedules, events, todo, updatedAt: Date.now() }, { merge: true });
+      // ゲームの通知判定に必要な最小限の情報だけ同期する。攻略メモ・画像・石の履歴は送らない。
+      const gameReminders = JSON.parse(localStorage.getItem('lm_gameReminders') || '[]')
+        .filter((g) => g && g.notifyEnabled === true)
+        .map((g) => ({
+          id: String(g.id || ''),
+          name: String(g.name || '').slice(0, 120),
+          lastLoginDate: /^\d{4}-\d{2}-\d{2}$/.test(g.lastLoginDate || '') ? g.lastLoginDate : '',
+          reminderTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(g.reminderTime || '') ? g.reminderTime : '20:00',
+          notifyEnabled: true,
+        }))
+        .filter((g) => g.id && g.name);
+      await setDoc(doc(db, ...STATE_REF_PATH), { schedules, events, todo, gameReminders, updatedAt: Date.now() }, { merge: true });
       return true;
     } catch (e) {
       console.error('Firestore sync failed', e);
