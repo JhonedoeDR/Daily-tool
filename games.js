@@ -8,17 +8,17 @@
   let activeTab = 'register';
   let activeSlide = 0;
   let shownMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const dateString = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const today = () => dateString(new Date());
   let selectedCalendarDate = today();
   const objectUrls = new Set();
-  const dateString = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const uid = () => (window.LM && LM.uid ? LM.uid() : `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`);
   const readGames = () => { try { return JSON.parse(localStorage.getItem(GAMES_KEY) || '[]'); } catch { return []; } };
   const saveGames = (games) => localStorage.setItem(GAMES_KEY, JSON.stringify(games));
   const num = (v) => Math.max(0, Math.floor(Number(v) || 0));
   const escapeHtml = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const safeWebUrl = (value) => { try { const url = new URL(String(value || '')); return ['http:', 'https:'].includes(url.protocol) ? url.href : ''; } catch { return ''; } };
-  const toast = (message, type) => window.LM?.showToast ? LM.showToast(message, type) : alert(message);
+  const toast = (message, type) => (typeof LM !== 'undefined' && typeof LM.showToast === 'function') ? LM.showToast(message, type) : alert(message);
   const currentGame = () => readGames().find((g) => g.id === selectedGameId) || null;
 
   function revokeUrls() { objectUrls.forEach((url) => URL.revokeObjectURL(url)); objectUrls.clear(); }
@@ -27,7 +27,7 @@
   async function syncReminders() {
     const reminders = readGames().filter((g) => g.notifyEnabled).map((g) => ({ id: g.id, name: g.name, lastLoginDate: g.lastLoginDate || '', reminderTime: g.reminderTime || '20:00', notifyEnabled: true }));
     localStorage.setItem(REMINDERS_KEY, JSON.stringify(reminders));
-    if (window.LM && typeof LM.syncFirebase === 'function') await LM.syncFirebase();
+    if (typeof LM !== 'undefined' && typeof LM.syncFirebase === 'function') await LM.syncFirebase();
   }
 
   function updateGame(id, mutator) {
@@ -149,21 +149,70 @@
   }
 
   function renderCalendar() {
-    const games = readGames(); const year = shownMonth.getFullYear(); const month = shownMonth.getMonth();
+    const games = readGames();
+    const year = shownMonth.getFullYear();
+    const month = shownMonth.getMonth();
     $('game-calendar-title').textContent = `${year}年${month + 1}月`;
-    const first = new Date(year, month, 1); const start = new Date(year, month, 1 - first.getDay());
+    const firstWeekday = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const cellCount = Math.ceil((firstWeekday + daysInMonth) / 7) * 7;
     const loginDates = new Set(games.flatMap((g) => [...(g.loginHistory || []), ...(g.lastLoginDate ? [g.lastLoginDate] : [])]));
     const goalDates = new Set(games.filter((g) => g.stoneGoalDate).map((g) => g.stoneGoalDate));
-    const grid = $('game-calendar-grid'); grid.innerHTML = '';
-    for (let i = 0; i < 42; i++) {
-      const date = new Date(start); date.setDate(start.getDate() + i); const key = dateString(date); const button = document.createElement('button'); button.type = 'button'; button.className = 'lm-game-calendar-day';
-      if (date.getMonth() !== month) button.classList.add('is-other-month'); if (key === today()) button.classList.add('is-today'); if (key === selectedCalendarDate) button.classList.add('is-selected');
-      button.innerHTML = `<span>${date.getDate()}</span><span class="lm-game-day-dots">${loginDates.has(key) ? '<i class="login-dot"></i>' : ''}${goalDates.has(key) ? '<i class="goal-dot"></i>' : ''}</span>`;
-      button.setAttribute('aria-label', `${key}${loginDates.has(key) ? ' ログイン記録あり' : ''}${goalDates.has(key) ? ' 石の目標期日' : ''}`);
-      button.addEventListener('click', () => { selectedCalendarDate = key; renderCalendar(); renderSelectedCalendarDate(); }); grid.appendChild(button);
+    const grid = $('game-calendar-grid');
+    grid.replaceChildren();
+    ['日', '月', '火', '水', '木', '金', '土'].forEach((weekday) => {
+      const heading = document.createElement('span');
+      heading.className = 'hs-calendar-weekday';
+      heading.textContent = weekday;
+      grid.appendChild(heading);
+    });
+    for (let cell = 0; cell < cellCount; cell += 1) {
+      const day = cell - firstWeekday + 1;
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'hs-calendar-day';
+      if (day < 1 || day > daysInMonth) {
+        button.disabled = true;
+        button.setAttribute('aria-hidden', 'true');
+        grid.appendChild(button);
+        continue;
+      }
+      const date = dateString(new Date(year, month, day));
+      const hasLogin = loginDates.has(date);
+      const hasGoal = goalDates.has(date);
+      button.dataset.date = date;
+      button.setAttribute('aria-pressed', String(date === selectedCalendarDate));
+      if (date === today()) button.classList.add('is-today');
+      const number = document.createElement('span');
+      number.className = 'hs-calendar-number';
+      number.textContent = String(day);
+      button.appendChild(number);
+      const markers = document.createElement('span');
+      markers.className = 'hs-calendar-markers';
+      if (hasLogin) {
+        const marker = document.createElement('span');
+        marker.className = 'hs-calendar-marker is-game-login';
+        marker.setAttribute('aria-label', 'ログイン');
+        markers.appendChild(marker);
+      }
+      if (hasGoal) {
+        const marker = document.createElement('span');
+        marker.className = 'hs-calendar-marker is-game-goal';
+        marker.setAttribute('aria-label', '石の目標期日');
+        markers.appendChild(marker);
+      }
+      button.appendChild(markers);
+      button.setAttribute('aria-label', `${date}${hasLogin ? '、ログイン記録あり' : ''}${hasGoal ? '、石の目標期日' : ''}`);
+      button.addEventListener('click', () => {
+        selectedCalendarDate = date;
+        renderCalendar();
+        renderSelectedCalendarDate();
+      });
+      grid.appendChild(button);
     }
     renderSelectedCalendarDate();
   }
+
   function renderSelectedCalendarDate() {
     const games = readGames(); const logins = games.filter((g) => (g.loginHistory || []).includes(selectedCalendarDate) || g.lastLoginDate === selectedCalendarDate).map((g) => g.name); const goals = games.filter((g) => g.stoneGoalDate === selectedCalendarDate).map((g) => g.name);
     const parts = []; if (logins.length) parts.push(`ログイン：${logins.join('、')}`); if (goals.length) parts.push(`石の目標期日：${goals.join('、')}`);
@@ -200,9 +249,10 @@
   document.querySelectorAll('[data-open-tab]').forEach((b) => b.addEventListener('click', () => setTab(b.dataset.openTab)));
   $('game-calendar-prev').addEventListener('click', () => { shownMonth = new Date(shownMonth.getFullYear(), shownMonth.getMonth() - 1, 1); renderCalendar(); });
   $('game-calendar-next').addEventListener('click', () => { shownMonth = new Date(shownMonth.getFullYear(), shownMonth.getMonth() + 1, 1); renderCalendar(); });
+  $('game-calendar-today').addEventListener('click', () => { shownMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1); selectedCalendarDate = today(); renderCalendar(); });
   $('game-slide-prev').addEventListener('click', () => setSlide(activeSlide - 1)); $('game-slide-next').addEventListener('click', () => setSlide(activeSlide + 1));
   document.querySelectorAll('[data-slide-to]').forEach((b) => b.addEventListener('click', () => setSlide(Number(b.dataset.slideTo))));
 
-  if (window.LM && typeof LM.renderNav === 'function') LM.renderNav($('nav-container'));
+  if (typeof LM !== 'undefined' && typeof LM.renderNav === 'function') LM.renderNav($('nav-container'));
   refreshGamePicker(); setTab('register'); setSlide(0);
 })();
