@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>ゲーム管理</title>
+  <link rel="stylesheet" href="./style.css" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <meta name="theme-color" content="#ffffff" />
+</head>
+
+<body>
+  <main class="lm-page lm-games-page">
+    <a class="lm-back-link" href="./index.html">← 今日のページに戻る</a>
+    <h1 class="lm-date-header">ゲーム</h1>
+    <p class="lm-sub-header">ログイン・石・攻略メモをゲームごとに管理します。ゲーム情報と画像はこの端末に保存されます。</p>
+
+    <section class="lm-section lm-games-add-section">
+      <div class="lm-section-title">ゲームを登録</div>
+      <form id="game-form" class="lm-game-form">
+        <label>ゲーム名<input id="game-name" required maxlength="80" placeholder="例：ゲームの名前" /></label>
+        <label>アイコン画像（任意）<input id="game-icon" type="file" accept="image/*" /></label>
+        <button class="lm-btn" type="submit">ゲームを追加</button>
+      </form>
+    </section>
+
+    <section class="lm-section">
+      <div class="lm-section-title">登録したゲーム</div>
+      <div id="games-list" class="lm-games-list"><p class="lm-empty">読み込み中…</p></div>
+    </section>
+
+    <section class="lm-section lm-game-notify-setup">
+      <div class="lm-section-title">通知の準備</div>
+      <p class="lm-game-help">アプリを閉じている間のログイン通知には、通知の許可とFirebaseへの通知用情報の同期が必要です。同期するのはゲーム名・最終ログイン日・通知時刻だけです。</p>
+      <button type="button" class="lm-btn secondary" id="game-enable-notifications">通知を許可・同期する</button>
+      <p id="game-notify-status" class="lm-game-status" aria-live="polite"></p>
+    </section>
+    <div id="nav-container"></div>
+  </main>
+  <script src="./app.js"></script>
+  <script src="./renderNav-menu.js"></script>
+  <script src="./games-db.js"></script>
+  <script type="module" src="./firebase-sync.js"></script>
+  <script src="./games.js"></script>
+</body>
+</html>
