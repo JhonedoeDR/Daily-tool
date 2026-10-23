@@ -106,6 +106,10 @@ LM.renderNav = function () {
           <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M24 12c-4-3-10-4-17-3v27c7-1 13 0 17 3 4-3 10-4 17-3V9c-7-1-13 0-17 3z"/><path d="M24 12v27M11 16h8M11 22h8M29 16h8M29 22h8"/></svg>
           <span>BOOKLOG</span>
         </a>
+        <a class="hm-more-item" role="menuitem" href="./games.html" title="ゲーム">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 16h20a8 8 0 0 1 7.6 5.5l3 9.5a5 5 0 0 1-8.1 5.3L30 31H18l-6.5 5.3A5 5 0 0 1 3.4 31l3-9.5A8 8 0 0 1 14 16Z"/><path d="M15 21v8M11 25h8M32 23h.1M36 28h.1"/></svg>
+          <span>GAME</span>
+        </a>
         <button type="button" class="hm-more-item" role="menuitem" data-more="backup" title="バックアップ">
           <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="24" cy="24" r="6"/><path d="M21 6h6l1 5 3 1.5 4.5-2.6 4.2 4.2-2.6 4.5L38.5 21l5 1v6l-5 1-1.5 3 2.6 4.5-4.2 4.2-4.5-2.6L27 37l-1 5h-6l-1-5-3-1.5-4.5 2.6-4.2-4.2 2.6-4.5L9.5 29l-5-1v-6l5-1 1.5-3-2.6-4.5 4.2-4.2 4.5 2.6L20 11z"/></svg>
           <span>BACKUP</span>
