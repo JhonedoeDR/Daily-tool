@@ -40,6 +40,8 @@ window.LMFirebase = {
           id: String(g.id || ''),
           name: String(g.name || '').slice(0, 120),
           lastLoginDate: /^\d{4}-\d{2}-\d{2}$/.test(g.lastLoginDate || '') ? g.lastLoginDate : '',
+          reminderTimes: (Array.isArray(g.reminderTimes) ? g.reminderTimes : [g.reminderTime || '20:00'])
+            .filter((time) => /^([01]\d|2[0-3]):[0-5]\d$/.test(time)).slice(0, 8),
           reminderTime: /^([01]\d|2[0-3]):[0-5]\d$/.test(g.reminderTime || '') ? g.reminderTime : '20:00',
           notifyEnabled: true,
         }))
