@@ -405,8 +405,10 @@ LM.exportAllData = function () {
     const raw = localStorage.getItem(k);
     if (raw !== null) data[k] = JSON.parse(raw);
   });
-  const raw = localStorage.getItem('lm_timeCalcItems');
-  if (raw !== null) data['lm_timeCalcItems'] = JSON.parse(raw);
+  ['lm_timeCalcItems', 'lm_games', 'lm_gameReminders'].forEach((k) => {
+    const raw = localStorage.getItem(k);
+    if (raw !== null) data[k] = JSON.parse(raw);
+  });
   return data;
 };
 
