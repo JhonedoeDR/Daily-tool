@@ -2971,3 +2971,11 @@ body {
   .lm-game-tabs button { font-size: 9px; }
   .lm-game-sticky { min-height: 108px; padding: 7px; }
 }
+
+
+/* ゲームカレンダーは予定・締切画面と同じカレンダー部品を使用 */
+.hs-calendar-marker.is-game-login { background: #f0c94d; }
+.hs-calendar-marker.is-game-goal { background: #e05b5b; }
+.lm-game-calendar-legend { display:flex; gap:12px; flex-wrap:wrap; font-size:11px; color:var(--text-soft); margin-top:8px; }
+.lm-game-calendar-legend .login-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:#f0c94d; margin-right:4px; }
+.lm-game-calendar-legend .goal-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:#e05b5b; margin-right:4px; }
