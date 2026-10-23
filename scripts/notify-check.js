@@ -244,20 +244,26 @@ function buildItems(state, nowMs) {
       });
     });
 
-  // ゲームのログイン忘れ: 指定時刻に、その日のログイン記録がないゲームだけ通知
+  // ゲームのログイン忘れ: 指定時刻ごとに、その日のログイン記録がないゲームだけ通知
   (state.gameReminders || []).forEach((game) => {
     if (!game || game.notifyEnabled !== true || !game.id || !game.name) return;
-    const reminderTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(game.reminderTime || '') ? game.reminderTime : '';
-    if (!reminderTime || game.lastLoginDate === today) return;
-    const at = midnight + clockToMinutes(reminderTime) * MIN_MS;
-    items.push({
-      key: `game-login:${game.id}:${today}:${reminderTime}`,
-      at,
-      build: (st) => {
-        const current = (st.gameReminders || []).find((g) => g && g.id === game.id && g.notifyEnabled === true);
-        if (!current || current.reminderTime !== reminderTime || current.lastLoginDate === today) return null;
-        return { title: 'ゲームのログイン確認', body: `「${current.name}」の今日のログインがまだ記録されていません` };
-      },
+    const reminderTimes = [...new Set((Array.isArray(game.reminderTimes) ? game.reminderTimes : [game.reminderTime || ''])
+      .filter((time) => /^([01]\d|2[0-3]):[0-5]\d$/.test(time)))];
+    if (!reminderTimes.length || game.lastLoginDate === today) return;
+    reminderTimes.forEach((reminderTime) => {
+      const at = midnight + clockToMinutes(reminderTime) * MIN_MS;
+      items.push({
+        key: `game-login:${game.id}:${today}:${reminderTime}`,
+        at,
+        build: (st) => {
+          const current = (st.gameReminders || []).find((g) => g && g.id === game.id && g.notifyEnabled === true);
+          const currentTimes = current
+            ? (Array.isArray(current.reminderTimes) ? current.reminderTimes : [current.reminderTime || ''])
+            : [];
+          if (!current || !currentTimes.includes(reminderTime) || current.lastLoginDate === today) return null;
+          return { title: 'ゲームのログイン確認', body: `「${current.name}」の今日のログインがまだ記録されていません` };
+        },
+      });
     });
   });
 
