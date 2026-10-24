@@ -2980,3 +2980,76 @@ body {
 .lm-game-pin-btn { flex: 0 0 auto; width: 30px; height: 30px; padding: 6px; border: 1px solid var(--paper-line); border-radius: 8px; background: #fff; color: var(--text-soft); }
 .lm-game-pin-btn.is-pinned { border-color: var(--text); background: var(--text); color: var(--paper); }
 .lm-note-image img { display: block; width: 100%; max-height: 320px; object-fit: contain; border-radius: 8px; background: #fff; }
+
+/* ---- ゲーム画面コンパクト調整(枠・入力欄・ボタンを小さく / スライダー固定) ---- */
+.lm-games-page { --game-slide-h: 350px; padding-top: 22px; }
+.lm-games-page .lm-date-header { font-size: 22px; }
+.lm-games-page .lm-sub-header { font-size: 12px; margin-bottom: 10px; }
+.lm-games-page .lm-section { padding: 10px 2px; }
+.lm-games-page .lm-section-title { margin: 0 0 8px; font-size: 14px; }
+.lm-games-page .lm-field { gap: 3px; margin-bottom: 8px; min-width: 0; }
+.lm-games-page .lm-field label { font-size: 12px; }
+.lm-games-page .lm-field input,
+.lm-games-page .lm-field select,
+.lm-games-page .lm-field textarea,
+.lm-games-page .lm-game-current-picker select { width: 100%; min-width: 0; min-height: 34px; padding: 6px 9px; border-radius: 8px; font-size: 14px; }
+.lm-games-page .lm-field textarea { min-height: 54px; }
+.lm-games-page input[type="date"], .lm-games-page input[type="time"] { -webkit-appearance: none; appearance: none; display: block; }
+.lm-games-page .lm-btn { padding: 8px 14px; font-size: 13px; }
+.lm-games-page .lm-game-form-actions { gap: 6px; }
+.lm-games-page .lm-game-form-actions .lm-btn { padding: 8px 14px; }
+/* 機能ボタン */
+.lm-games-page .lm-game-tabs { margin: 2px 0 10px; }
+.lm-games-page .lm-game-tabs .lm-btn { gap: 4px; padding: 7px 2px; font-size: 10px; line-height: 1.25; white-space: nowrap; }
+.lm-games-page .lm-game-tab-icon { width: 18px; height: 18px; }
+/* スライダー: サイズ・位置を固定 */
+.lm-games-page .lm-game-slider { margin: 0 0 10px; padding: 0 2px 4px; }
+.lm-games-page .lm-game-slides { height: var(--game-slide-h); min-height: 0; overflow: hidden; }
+.lm-games-page .lm-game-slide { height: 100%; overflow-y: auto; overscroll-behavior: contain; }
+.lm-games-page .lm-game-slide-heading { margin-bottom: 6px; align-items: center; }
+.lm-games-page .lm-game-slide-heading h2 { font-size: 14px; }
+.lm-games-page .lm-game-today-btn { padding: 4px 10px; font-size: 11px; }
+.lm-games-page .hs-calendar-nav { margin-bottom: 4px; }
+.lm-games-page .hs-calendar-nav .lm-btn { min-width: 34px; padding: 3px 10px; font-size: 16px; }
+.lm-games-page .hs-calendar-nav strong { font-size: 14px; }
+.lm-games-page .hs-calendar-weekday { padding: 2px 0; font-size: 11px; }
+.lm-games-page .hs-calendar-day { min-height: 34px; padding: 2px 1px; }
+.lm-games-page .hs-calendar-number { width: 22px; height: 22px; font-size: 11px; }
+.lm-games-page .lm-game-calendar-legend { margin-top: 4px; font-size: 10px; }
+.lm-games-page .lm-game-calendar-selected { margin-top: 5px; padding-top: 5px; font-size: 11px; }
+.lm-games-page .lm-game-slider-controls { padding-top: 6px; }
+.lm-games-page .lm-game-sticky { min-height: 104px; max-height: 128px; padding: 7px; }
+/* 入力まわり */
+.lm-games-page .lm-game-current-picker { margin-bottom: 8px; }
+.lm-games-page .lm-game-file-control { min-height: 34px; padding: 3px 4px 3px 9px; font-size: 12px; }
+.lm-games-page .lm-game-file-button { padding: 5px 9px; font-size: 11px; }
+.lm-games-page .lm-game-quick-config, .lm-games-page .lm-game-notify-times { margin: 0 0 10px; padding: 6px 9px 9px; }
+.lm-games-page .lm-game-quick-config legend, .lm-games-page .lm-game-notify-times legend { font-size: 12px; }
+.lm-games-page .lm-game-quick-config .lm-game-status { margin-bottom: 6px; font-size: 11px; }
+.lm-games-page .lm-game-quick-chip { padding: 3px 7px; font-size: 11px; }
+.lm-games-page .lm-game-quick-add input, .lm-games-page .lm-game-reminder-row input[type="time"] { min-width: 0; width: 100%; max-width: 100%; min-height: 32px; padding: 5px 8px; font-size: 13px; }
+.lm-games-page .lm-game-quick-add .lm-btn { padding: 7px 12px; font-size: 12px; }
+.lm-games-page .lm-game-reminder-row { grid-template-columns: minmax(0, 1fr) auto; gap: 6px; margin-bottom: 6px; }
+.lm-games-page .lm-game-small-btn { padding: 5px 9px; font-size: 11px; white-space: nowrap; }
+.lm-games-page .lm-game-notify-times > .lm-btn { padding: 6px 10px; font-size: 11px; }
+.lm-games-page .lm-game-subsection { gap: 8px; }
+.lm-games-page .lm-game-subsection h3 { font-size: 13px; }
+.lm-games-page .lm-game-delta-form { column-gap: 6px; }
+.lm-games-page .lm-game-delta-form > .lm-field { min-width: 0; }
+.lm-games-page .lm-game-quick-stone-buttons { gap: 6px; }
+.lm-games-page .lm-game-quick-stone-buttons .lm-btn { padding: 6px 10px; font-size: 12px; }
+.lm-games-page .lm-game-status { font-size: 11px; }
+.lm-games-page .lm-game-check { margin-bottom: 8px; font-size: 12px; }
+/* 一覧 */
+.lm-games-page .lm-game-card { grid-template-columns: 38px minmax(0, 1fr) auto; gap: 8px; padding: 7px 0; }
+.lm-games-page .lm-game-icon { width: 38px; height: 38px; border-radius: 9px; }
+.lm-games-page .lm-game-icon-placeholder .lm-game-svg { width: 20px; height: 20px; }
+.lm-games-page .lm-game-card-main strong { font-size: 13px; }
+.lm-games-page .lm-game-card-summary { margin-top: 2px; font-size: 11px; }
+.lm-games-page .lm-game-card-actions .lm-btn, .lm-games-page .lm-game-note-actions .lm-btn { padding: 5px 9px; font-size: 11px; }
+.lm-games-page .lm-game-note { gap: 5px; padding: 8px 0; }
+.lm-games-page .lm-game-note-head h4 { font-size: 13px; }
+.lm-games-page .lm-game-note p { font-size: 12px; }
+.lm-games-page .lm-game-pin-btn { width: 26px; height: 26px; padding: 5px; }
+.lm-games-page details summary { font-size: 12px; }
+.lm-games-page .lm-game-log-list { font-size: 11px; }
