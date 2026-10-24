@@ -3053,3 +3053,9 @@ body {
 .lm-games-page .lm-game-pin-btn { width: 26px; height: 26px; padding: 5px; }
 .lm-games-page details summary { font-size: 12px; }
 .lm-games-page .lm-game-log-list { font-size: 11px; }
+/* 編集中の表示(控えめに差をつける) */
+.lm-games-page [data-game-edit], .lm-games-page [data-note-edit] { transition: none; }
+.lm-game-card.is-editing [data-game-edit], .lm-game-note.is-editing [data-note-edit] { border-color: var(--accent); background: #eaf7fb; color: #247f9f; font-weight: 700; }
+.lm-games-page .lm-games-add-section.is-editing, .lm-games-page .lm-game-edit-box.is-editing { margin-left: -2px; padding-left: 10px; border-left: 3px solid var(--accent); background: #f4fbfe; }
+.lm-games-page .lm-game-edit-box.is-editing { padding-top: 8px; padding-bottom: 2px; margin-bottom: 10px; border-radius: 0 8px 8px 0; }
+.lm-games-page .lm-games-add-section.is-editing .lm-section-title::after, .lm-games-page .lm-game-edit-box.is-editing .lm-game-form-label::after { content: '編集中'; display: inline-block; margin-left: 8px; padding: 1px 7px; border: 1px solid var(--accent); border-radius: 999px; background: #fff; color: #247f9f; font-family: var(--font-body); font-size: 10px; font-weight: 700; vertical-align: 2px; }
