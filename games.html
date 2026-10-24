@@ -12,13 +12,19 @@
 
 <body>
   <main class="lm-page lm-games-page">
+    <a class="lm-back-link" href="./index.html">← 今日のページに戻る</a>
     <h1 class="lm-date-header">ゲーム</h1>
     <p class="lm-sub-header">ログイン・石・攻略メモをゲームごとに管理します。</p>
 
     <section class="lm-game-slider" aria-label="ゲーム情報スライダー">
       <div class="lm-game-slides">
         <section class="lm-game-slide is-active" data-slide="calendar" aria-label="ログイン・目標カレンダー">
-          <div class="lm-game-slide-heading"><h2>カレンダー</h2><div class="lm-game-calendar-controls"><button type="button" id="game-calendar-prev" aria-label="前の月">‹</button><span id="game-calendar-title"></span><button type="button" id="game-calendar-next" aria-label="次の月">›</button></div></div>
+          <div class="lm-game-slide-heading"><h2>カレンダー</h2></div>
+          <div class="hs-calendar-nav">
+            <button type="button" class="lm-btn secondary" id="game-calendar-prev" aria-label="前の月">‹</button>
+            <strong id="game-calendar-title"></strong>
+            <button type="button" class="lm-btn secondary" id="game-calendar-next" aria-label="次の月">›</button>
+          </div>
           <div id="game-calendar-grid" class="hs-calendar-grid" aria-label="月間カレンダー"></div>
           <div class="hs-calendar-controls sc-calendar-controls"><button type="button" class="lm-btn secondary" id="game-calendar-today">今日</button></div>
           <div class="lm-game-calendar-legend"><span><i class="login-dot"></i>ログイン</span><span><i class="goal-dot"></i>石の目標期日</span></div>
@@ -32,26 +38,36 @@
       <div class="lm-game-slider-controls"><button type="button" id="game-slide-prev" aria-label="前のスライド">‹</button><div class="lm-game-slide-dots"><button type="button" data-slide-to="0" aria-label="カレンダーを表示" class="is-active"></button><button type="button" data-slide-to="1" aria-label="攻略メモを表示"></button></div><button type="button" id="game-slide-next" aria-label="次のスライド">›</button></div>
     </section>
 
-    <nav class="lm-game-tabs" aria-label="ゲーム機能">
-      <button type="button" class="is-active" data-tab="register"><span aria-hidden="true">＋</span><span>ゲーム登録</span></button>
-      <button type="button" data-tab="login"><span aria-hidden="true">✓</span><span>ログイン管理</span></button>
-      <button type="button" data-tab="stones"><span aria-hidden="true">◇</span><span>石管理</span></button>
-      <button type="button" data-tab="notes"><span aria-hidden="true">▤</span><span>攻略メモ</span></button>
+    <nav class="lm-form-tabs lm-game-tabs" aria-label="ゲーム機能">
+      <button type="button" class="lm-btn secondary is-active" data-tab="register"><svg class="lm-game-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>ゲーム登録</span></button>
+      <button type="button" class="lm-btn secondary" data-tab="login"><svg class="lm-game-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="m8.6 12.3 2.4 2.4 4.5-5"/></svg><span>ログイン管理</span></button>
+      <button type="button" class="lm-btn secondary" data-tab="stones"><svg class="lm-game-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4.5h8l4 5-8 10.5L4 9.5l4-5z"/><path d="M4 9.5h16"/></svg><span>石管理</span></button>
+      <button type="button" class="lm-btn secondary" data-tab="notes"><svg class="lm-game-tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19.5l.8-4L16 5.3a1.7 1.7 0 0 1 2.4 0l.3.3a1.7 1.7 0 0 1 0 2.4L8.5 18.7l-3.5.8z"/></svg><span>攻略メモ</span></button>
     </nav>
 
-    <div class="lm-game-current-picker" id="game-current-picker" hidden>
+    <div class="lm-field lm-game-current-picker" id="game-current-picker" hidden>
       <label for="game-current-select">管理するゲーム</label>
       <select id="game-current-select"><option value="">ゲームを選択</option></select>
     </div>
 
     <section class="lm-game-panel is-active" data-panel="register">
-      <div class="lm-section lm-games-add-section">
-        <div class="lm-section-title">ゲームを登録</div>
+      <div class="lm-section lm-games-add-section" id="game-register-section">
+        <div class="lm-section-title" id="game-form-title">ゲームを登録</div>
         <form id="game-form" class="lm-game-form">
-          <label>ゲーム名<input id="game-name" required maxlength="80" placeholder="例：ゲームの名前" /></label>
-          <label class="lm-game-file-field"><span>アイコン画像（任意）</span><span class="lm-game-file-control"><span id="game-icon-file-name">画像を選ぶ</span><span class="lm-game-file-button">ファイルを選択</span><input id="game-icon" type="file" accept="image/*" /></span></label>
+          <div class="lm-field">
+            <label for="game-name">ゲーム名</label>
+            <input id="game-name" required maxlength="80" placeholder="例：ゲームの名前" />
+          </div>
+          <div class="lm-field lm-game-file-field">
+            <label for="game-icon">アイコン画像（任意）</label>
+            <label class="lm-game-file-control"><span id="game-icon-file-name">画像を選ぶ</span><span class="lm-game-file-button">ファイルを選択</span><input id="game-icon" type="file" accept="image/*" /></label>
+          </div>
+          <label class="lm-game-check" id="game-icon-remove-field" hidden><input type="checkbox" id="game-icon-remove" /> 現在のアイコン画像を削除する</label>
           <fieldset class="lm-game-quick-config"><legend>石管理で使う追加ボタン</legend><p class="lm-game-status">よく使う入手数を登録できます。初期値は＋300、＋1000です。</p><div id="game-quick-values" class="lm-game-quick-values"></div><div class="lm-game-quick-add"><input id="game-quick-amount" type="number" min="1" step="1" inputmode="numeric" placeholder="追加する数（例：500）" aria-label="追加する石の数"><button type="button" class="lm-btn secondary" id="game-quick-add-button">追加</button></div></fieldset>
-          <button class="lm-btn" type="submit">ゲームを追加</button>
+          <div class="lm-game-form-actions">
+            <button class="lm-btn" type="submit" id="game-submit">ゲームを追加</button>
+            <button type="button" class="lm-btn secondary" id="game-cancel-edit" style="display:none;">キャンセル</button>
+          </div>
         </form>
       </div>
       <div class="lm-section"><div class="lm-section-title">登録済みのゲーム</div><div id="games-list" class="lm-games-list"><p class="lm-empty">読み込み中…</p></div></div>
