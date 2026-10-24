@@ -146,7 +146,7 @@
     const root = $('game-stones-content'); const game = currentGame();
     if (!game) { root.innerHTML = '<p class="lm-empty">先にゲームを登録してください。</p>'; return; }
     const logs = Array.isArray(game.stoneLogs) ? game.stoneLogs : [];
-    root.innerHTML = `<div class="lm-game-subsection"><h3>${escapeHtml(game.name)}</h3><form id="game-stones-form" class="lm-game-form"><div class="lm-field"><label for="game-stone-current">現在の所持数</label><input id="game-stone-current" type="number" min="0" step="1" inputmode="numeric" name="currentStones" value="${num(game.currentStones)}" required></div><div class="lm-field"><label for="game-stone-goal">目標数</label><input id="game-stone-goal" type="number" min="0" step="1" inputmode="numeric" name="stoneGoal" value="${num(game.stoneGoal)}"></div><div class="lm-field"><label for="game-stone-goal-date">目標期日</label><input id="game-stone-goal-date" type="date" name="stoneGoalDate" value="${escapeHtml(game.stoneGoalDate || '')}"></div><button class="lm-btn" type="submit">所持数・目標を保存</button></form><div class="lm-game-quick-stone-wrap"><div class="lm-game-status">登録したボタンで石を追加</div><div class="lm-game-quick-stone-buttons">${(Array.isArray(game.stoneQuickButtons) ? game.stoneQuickButtons : [300, 1000]).map((amount) => `<button type="button" class="lm-btn secondary lm-game-quick-stone" data-stone-add="${num(amount)}">＋${num(amount).toLocaleString()}</button>`).join('')}</div></div><form id="game-stone-delta" class="lm-game-form lm-game-delta-form"><div class="lm-field"><label for="game-stone-earned">入手した石</label><input id="game-stone-earned" type="number" min="0" step="1" inputmode="numeric" name="earned" value="0"></div><div class="lm-field"><label for="game-stone-spent">使った石</label><input id="game-stone-spent" type="number" min="0" step="1" inputmode="numeric" name="spent" value="0"></div><button class="lm-btn" type="submit">差分を反映</button></form><p class="lm-game-status">目標まであと ${Math.max(0, num(game.stoneGoal) - num(game.currentStones)).toLocaleString()} 個</p><details><summary>最近の石の履歴</summary>${logs.length ? `<ul class="lm-game-log-list">${logs.slice(-10).reverse().map((log) => `<li>${escapeHtml(log.date)}：${Number(log.delta) >= 0 ? '+' : ''}${Number(log.delta).toLocaleString()}（${escapeHtml(log.note || '手動記録')}）</li>`).join('')}</ul>` : '<p class="lm-empty">履歴はありません。</p>'}</details></div>`;
+    root.innerHTML = `<div class="lm-game-subsection"><h3>${escapeHtml(game.name)}</h3><form id="game-stones-form" class="lm-game-form"><div class="lm-field"><label for="game-stone-current">現在の所持数</label><input id="game-stone-current" type="number" min="0" step="1" inputmode="numeric" name="currentStones" value="${num(game.currentStones)}" required></div><div class="lm-field"><label for="game-stone-goal">目標数</label><input id="game-stone-goal" type="number" min="0" step="1" inputmode="numeric" name="stoneGoal" value="${num(game.stoneGoal)}"></div><div class="lm-field"><label for="game-stone-goal-date">目標期日</label><input id="game-stone-goal-date" type="date" name="stoneGoalDate" value="${escapeHtml(game.stoneGoalDate || '')}"></div><button class="lm-btn" type="submit">所持数・目標を保存</button></form><div class="lm-game-quick-stone-wrap"><div class="lm-game-status">登録したボタンで石を追加</div><div class="lm-game-quick-stone-buttons">${(Array.isArray(game.stoneQuickButtons) ? game.stoneQuickButtons : [100, 1000]).map((amount) => `<button type="button" class="lm-btn secondary lm-game-quick-stone" data-stone-add="${num(amount)}">＋${num(amount).toLocaleString()}</button>`).join('')}</div></div><form id="game-stone-delta" class="lm-game-form lm-game-delta-form"><div class="lm-field"><label for="game-stone-earned">入手した石</label><input id="game-stone-earned" type="number" min="0" step="1" inputmode="numeric" name="earned" value="0"></div><div class="lm-field"><label for="game-stone-spent">使った石</label><input id="game-stone-spent" type="number" min="0" step="1" inputmode="numeric" name="spent" value="0"></div><button class="lm-btn" type="submit">差分を反映</button></form><p class="lm-game-status">目標まであと ${Math.max(0, num(game.stoneGoal) - num(game.currentStones)).toLocaleString()} 個</p><details><summary>最近の石の履歴</summary>${logs.length ? `<ul class="lm-game-log-list">${logs.slice(-10).reverse().map((log) => `<li>${escapeHtml(log.date)}：${Number(log.delta) >= 0 ? '+' : ''}${Number(log.delta).toLocaleString()}（${escapeHtml(log.note || '手動記録')}）</li>`).join('')}</ul>` : '<p class="lm-empty">履歴はありません。</p>'}</details></div>`;
     $('game-stones-form').addEventListener('submit', (e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); updateGame(game.id, (g) => { g.currentStones = num(fd.get('currentStones')); g.stoneGoal = num(fd.get('stoneGoal')); g.stoneGoalDate = String(fd.get('stoneGoalDate') || ''); }); renderActivePanel(); toast('石の数と目標を保存しました'); });
     $('game-stone-delta').addEventListener('submit', (e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); const earned = num(fd.get('earned')); const spent = num(fd.get('spent')); if (spent > num(game.currentStones) + earned) { toast('所持数を超えて消費することはできません', 'error'); return; } updateGame(game.id, (g) => { const delta = earned - spent; g.currentStones = num(g.currentStones) + delta; g.stoneLogs = [...(g.stoneLogs || []), { id: uid(), date: today(), delta, note: `入手${earned}・消費${spent}` }]; }); renderActivePanel(); toast('石の差分を反映しました'); });
     root.querySelectorAll('[data-stone-add]').forEach((button) => button.addEventListener('click', () => {
@@ -279,7 +279,7 @@
     saveGames(games.filter((g) => g.id !== id)); if (editingGameId === id) resetGameForm(); if (selectedGameId === id) selectedGameId = ''; await syncReminders(); renderActivePanel();
   }
 
-  let pendingQuickAmounts = [300, 1000];
+  let pendingQuickAmounts = [100, 1000];
   function renderPendingQuickAmounts() {
     const root = $('game-quick-values');
     root.innerHTML = pendingQuickAmounts.length ? pendingQuickAmounts.map((amount) => `<span class="lm-game-quick-chip">＋${amount.toLocaleString()}<button type="button" data-remove-quick="${amount}" aria-label="＋${amount}を削除">×</button></span>`).join('') : '<span class="lm-game-status">追加ボタンは未設定です。</span>';
@@ -297,7 +297,7 @@
   function resetGameForm() {
     editingGameId = '';
     $('game-form').reset();
-    pendingQuickAmounts = [300, 1000]; renderPendingQuickAmounts();
+    pendingQuickAmounts = [100, 1000]; renderPendingQuickAmounts();
     $('game-icon-file-name').textContent = '画像を選ぶ';
     $('game-icon-remove-field').hidden = true;
     $('game-form-title').textContent = 'ゲームを登録';
@@ -313,7 +313,7 @@
     $('game-icon-file-name').textContent = game.iconKey ? '現在の画像（変更する場合のみ選択）' : '画像を選ぶ';
     $('game-icon-remove').checked = false;
     $('game-icon-remove-field').hidden = !game.iconKey;
-    pendingQuickAmounts = (Array.isArray(game.stoneQuickButtons) ? game.stoneQuickButtons : [300, 1000]).map(num).filter((n) => n > 0);
+    pendingQuickAmounts = (Array.isArray(game.stoneQuickButtons) ? game.stoneQuickButtons : [100, 1000]).map(num).filter((n) => n > 0);
     renderPendingQuickAmounts();
     $('game-form-title').textContent = 'ゲームを編集';
     $('game-submit').textContent = '変更を保存';
@@ -342,7 +342,7 @@
     e.preventDefault(); const name = $('game-name').value.trim(); if (!name) return; if (editingGameId) { await saveGameEdit(name); return; } const id = uid(); const file = $('game-icon').files[0]; let iconKey = '';
     if (file && file.type.startsWith('image/')) { iconKey = `icon:${id}`; try { await LMGameDB.putImage(iconKey, file); } catch (err) { console.error(err); toast('画像を保存できませんでした', 'error'); return; } }
     const games = readGames(); games.push({ id, name, iconKey, lastLoginDate: '', loginHistory: [], currentStones: 0, stoneGoal: 0, stoneGoalDate: '', stoneLogs: [], stoneQuickButtons: [...pendingQuickAmounts], notes: [], notifyEnabled: false, reminderTimes: ['20:00'], reminderTime: '20:00', createdAt: Date.now() });
-    saveGames(games); selectedGameId = id; localStorage.setItem('lm_games_selected', id); e.currentTarget.reset(); pendingQuickAmounts = [300, 1000]; renderPendingQuickAmounts(); $('game-icon-file-name').textContent = '画像を選ぶ'; refreshGamePicker(); renderActivePanel(); toast('ゲームを登録しました');
+    saveGames(games); selectedGameId = id; localStorage.setItem('lm_games_selected', id); e.currentTarget.reset(); pendingQuickAmounts = [100, 1000]; renderPendingQuickAmounts(); $('game-icon-file-name').textContent = '画像を選ぶ'; refreshGamePicker(); renderActivePanel(); toast('ゲームを登録しました');
   });
 
   $('game-icon').addEventListener('change', () => { $('game-icon-file-name').textContent = $('game-icon').files[0]?.name || '画像を選ぶ'; });
