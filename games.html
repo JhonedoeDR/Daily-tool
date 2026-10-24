@@ -19,14 +19,13 @@
     <section class="lm-game-slider" aria-label="ゲーム情報スライダー">
       <div class="lm-game-slides">
         <section class="lm-game-slide is-active" data-slide="calendar" aria-label="ログイン・目標カレンダー">
-          <div class="lm-game-slide-heading"><h2>カレンダー</h2></div>
+          <div class="lm-game-slide-heading"><h2>カレンダー</h2><button type="button" class="lm-btn secondary lm-game-today-btn" id="game-calendar-today">今日</button></div>
           <div class="hs-calendar-nav">
             <button type="button" class="lm-btn secondary" id="game-calendar-prev" aria-label="前の月">‹</button>
             <strong id="game-calendar-title"></strong>
             <button type="button" class="lm-btn secondary" id="game-calendar-next" aria-label="次の月">›</button>
           </div>
           <div id="game-calendar-grid" class="hs-calendar-grid" aria-label="月間カレンダー"></div>
-          <div class="hs-calendar-controls sc-calendar-controls"><button type="button" class="lm-btn secondary" id="game-calendar-today">今日</button></div>
           <div class="lm-game-calendar-legend"><span><i class="login-dot"></i>ログイン</span><span><i class="goal-dot"></i>石の目標期日</span></div>
           <p id="game-calendar-selected" class="lm-game-calendar-selected">日付を選ぶと、その日の記録を確認できます。</p>
         </section>
@@ -63,7 +62,7 @@
             <label class="lm-game-file-control"><span id="game-icon-file-name">画像を選ぶ</span><span class="lm-game-file-button">ファイルを選択</span><input id="game-icon" type="file" accept="image/*" /></label>
           </div>
           <label class="lm-game-check" id="game-icon-remove-field" hidden><input type="checkbox" id="game-icon-remove" /> 現在のアイコン画像を削除する</label>
-          <fieldset class="lm-game-quick-config"><legend>石管理で使う追加ボタン</legend><p class="lm-game-status">よく使う入手数を登録できます。初期値は＋300、＋1000です。</p><div id="game-quick-values" class="lm-game-quick-values"></div><div class="lm-game-quick-add"><input id="game-quick-amount" type="number" min="1" step="1" inputmode="numeric" placeholder="追加する数（例：500）" aria-label="追加する石の数"><button type="button" class="lm-btn secondary" id="game-quick-add-button">追加</button></div></fieldset>
+          <fieldset class="lm-game-quick-config"><legend>石管理で使う追加ボタン</legend><p class="lm-game-status">よく使う入手数を登録できます。初期値は＋100、＋1000です。</p><div id="game-quick-values" class="lm-game-quick-values"></div><div class="lm-game-quick-add"><input id="game-quick-amount" type="number" min="1" step="1" inputmode="numeric" placeholder="追加する数（例：500）" aria-label="追加する石の数"><button type="button" class="lm-btn secondary" id="game-quick-add-button">追加</button></div></fieldset>
           <div class="lm-game-form-actions">
             <button class="lm-btn" type="submit" id="game-submit">ゲームを追加</button>
             <button type="button" class="lm-btn secondary" id="game-cancel-edit" style="display:none;">キャンセル</button>
