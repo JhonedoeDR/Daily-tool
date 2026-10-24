@@ -79,7 +79,7 @@
       list.appendChild(card);
     }
     list.querySelectorAll('[data-game-delete]').forEach((b) => b.addEventListener('click', () => deleteGame(b.dataset.gameDelete)));
-    list.querySelectorAll('[data-game-edit]').forEach((b) => b.addEventListener('click', () => startGameEdit(b.dataset.gameEdit)));
+    list.querySelectorAll('[data-game-edit]').forEach((b) => b.addEventListener('click', () => { if (b.dataset.gameEdit === editingGameId) cancelGameEdit(); else startGameEdit(b.dataset.gameEdit); }));
   }
 
   function renderActivePanel() {
@@ -182,7 +182,7 @@
       updateGame(game.id, (g) => { g.notes = [...(g.notes || []), note]; }); renderActivePanel(); toast('攻略メモを保存しました');
     });
     root.querySelectorAll('[data-note-pin]').forEach((b) => b.addEventListener('click', () => { updateGame(game.id, (g) => { g.notes = (g.notes || []).map((n) => n.id === b.dataset.notePin ? { ...n, pinned: !n.pinned, updatedAt: Date.now() } : n); }); renderActivePanel(); }));
-    root.querySelectorAll('[data-note-edit]').forEach((b) => b.addEventListener('click', () => { editingNoteId = b.dataset.noteEdit; renderActivePanel(); scrollToEl($('game-note-form-title')); }));
+    root.querySelectorAll('[data-note-edit]').forEach((b) => b.addEventListener('click', () => { if (editingNoteId === b.dataset.noteEdit) { editingNoteId = ''; renderActivePanel(); return; } editingNoteId = b.dataset.noteEdit; renderActivePanel(); scrollToEl($('game-note-form-title')); }));
     root.querySelectorAll('[data-note-delete]').forEach((b) => b.addEventListener('click', async () => { const note = (readGames().find((g) => g.id === game.id)?.notes || []).find((n) => n.id === b.dataset.noteDelete); if (!note || !confirm(`「${note.title}」を削除しますか？`)) return; if (note.imageKey) await LMGameDB.deleteImage(note.imageKey).catch(() => {}); updateGame(game.id, (g) => { g.notes = (g.notes || []).filter((n) => n.id !== note.id); }); if (editingNoteId === note.id) editingNoteId = ''; renderActivePanel(); }));
     await loadImages(root);
   }
@@ -336,7 +336,8 @@
     updateGame(id, (g) => { g.name = name; g.iconKey = iconKey; g.stoneQuickButtons = [...pendingQuickAmounts]; });
     syncReminders().catch((err) => console.warn(err)); resetGameForm(); refreshGamePicker(); renderActivePanel(); toast('ゲームを更新しました');
   }
-  $('game-cancel-edit').addEventListener('click', resetGameForm);
+  function cancelGameEdit() { resetGameForm(); renderGameList(); }
+  $('game-cancel-edit').addEventListener('click', cancelGameEdit);
 
   $('game-form').addEventListener('submit', async (e) => {
     e.preventDefault(); const name = $('game-name').value.trim(); if (!name) return; if (editingGameId) { await saveGameEdit(name); return; } const id = uid(); const file = $('game-icon').files[0]; let iconKey = '';
