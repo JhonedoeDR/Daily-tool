@@ -21,6 +21,14 @@
   const toast = (message, type) => (typeof LM !== 'undefined' && typeof LM.showToast === 'function') ? LM.showToast(message, type) : alert(message);
   const currentGame = () => readGames().find((g) => g.id === selectedGameId) || null;
 
+  /* 編集中のID・アイコン(絵文字は使わずSVGで描画)・入力欄へのスクロール */
+  let editingGameId = '';
+  let editingNoteId = '';
+  const ICON_PIN = (on) => `<svg class="lm-game-svg" viewBox="0 0 24 24" fill="${on ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4h6l-.8 5.2L17 12.5H7l2.8-3.3L9 4z"/><path d="M12 12.5V20"/></svg>`;
+  const ICON_GAME = '<svg class="lm-game-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7.5" width="18" height="9.5" rx="4.75"/><path d="M8 10.5v3.5M6.25 12.25h3.5"/><path d="M15.5 11.2h.01M17.5 13.2h.01"/></svg>';
+  function scrollToEl(el) { if (!el) return; requestAnimationFrame(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' })); }
+  function slideToInput(tab) { scrollToEl(tab === 'register' ? $('game-register-section') : $('game-current-picker')); }
+
   function revokeUrls() { objectUrls.forEach((url) => URL.revokeObjectURL(url)); objectUrls.clear(); }
   function newObjectUrl(blob) { const url = URL.createObjectURL(blob); objectUrls.add(url); return url; }
 
@@ -62,15 +70,16 @@
     if (!games.length) { list.innerHTML = '<p class="lm-empty">まだゲームが登録されていません。</p>'; return; }
     list.innerHTML = '';
     for (const game of games) {
-      let icon = '<span class="lm-game-icon lm-game-icon-placeholder" aria-hidden="true">🎮</span>';
+      let icon = `<span class="lm-game-icon lm-game-icon-placeholder" aria-hidden="true">${ICON_GAME}</span>`;
       if (game.iconKey && window.LMGameDB) {
         try { const blob = await LMGameDB.getImage(game.iconKey); if (blob) icon = `<img class="lm-game-icon" src="${newObjectUrl(blob)}" alt="">`; } catch (e) { console.warn(e); }
       }
-      const card = document.createElement('article'); card.className = 'lm-game-card';
-      card.innerHTML = `${icon}<div class="lm-game-card-main"><strong>${escapeHtml(game.name)}</strong><p class="lm-game-card-summary">石 ${num(game.currentStones).toLocaleString()}${num(game.stoneGoal) ? ` / 目標 ${num(game.stoneGoal).toLocaleString()}` : ''}</p><p class="lm-game-card-summary">最終ログイン：${escapeHtml(game.lastLoginDate || '未記録')}</p></div><button type="button" class="lm-text-btn" data-game-delete="${escapeHtml(game.id)}">削除</button>`;
+      const card = document.createElement('article'); card.className = `lm-game-card${game.id === editingGameId ? ' is-editing' : ''}`;
+      card.innerHTML = `${icon}<div class="lm-game-card-main"><strong>${escapeHtml(game.name)}</strong><p class="lm-game-card-summary">石 ${num(game.currentStones).toLocaleString()}${num(game.stoneGoal) ? ` / 目標 ${num(game.stoneGoal).toLocaleString()}` : ''}</p><p class="lm-game-card-summary">最終ログイン：${escapeHtml(game.lastLoginDate || '未記録')}</p></div><div class="lm-game-card-actions"><button type="button" class="lm-btn secondary" data-game-edit="${escapeHtml(game.id)}">編集</button><button type="button" class="lm-btn secondary" data-game-delete="${escapeHtml(game.id)}">削除</button></div>`;
       list.appendChild(card);
     }
     list.querySelectorAll('[data-game-delete]').forEach((b) => b.addEventListener('click', () => deleteGame(b.dataset.gameDelete)));
+    list.querySelectorAll('[data-game-edit]').forEach((b) => b.addEventListener('click', () => startGameEdit(b.dataset.gameEdit)));
   }
 
   function renderActivePanel() {
@@ -87,7 +96,7 @@
     const root = $('game-login-content'); const game = currentGame();
     if (!game) { root.innerHTML = '<p class="lm-empty">先にゲームを登録してください。</p>'; return; }
     const reminderTimes = Array.isArray(game.reminderTimes) && game.reminderTimes.length ? game.reminderTimes : [game.reminderTime || '20:00'];
-    root.innerHTML = `<div class="lm-game-subsection"><h3>${escapeHtml(game.name)}</h3><p class="lm-game-status">今日のログイン：${game.lastLoginDate === today() ? '記録済み' : '未記録'}</p><button type="button" class="lm-btn" id="game-login-today">今日ログインした</button><label class="lm-game-check"><input type="checkbox" id="game-notify-enabled" ${game.notifyEnabled ? 'checked' : ''}> ログイン通知を使う</label><fieldset class="lm-game-notify-times"><legend>通知時刻（複数設定可）</legend><div id="game-reminder-times-list">${reminderTimes.map((time, i) => `<div class="lm-game-reminder-row"><input type="time" data-reminder-time="${i}" value="${escapeHtml(time)}" aria-label="通知時刻 ${i + 1}"><button type="button" class="lm-text-btn" data-remove-reminder="${i}" aria-label="通知時刻を削除">削除</button></div>`).join('')}</div><button type="button" class="lm-btn secondary" id="game-add-reminder-time">＋ 時刻を追加</button></fieldset><p class="lm-game-status" id="game-notify-status">今日のログイン記録がない場合、設定時刻ごとに通知対象になります。</p></div>`;
+    root.innerHTML = `<div class="lm-game-subsection"><h3>${escapeHtml(game.name)}</h3><p class="lm-game-status">今日のログイン：${game.lastLoginDate === today() ? '記録済み' : '未記録'}</p><button type="button" class="lm-btn" id="game-login-today">今日ログインした</button><label class="lm-game-check"><input type="checkbox" id="game-notify-enabled" ${game.notifyEnabled ? 'checked' : ''}> ログイン通知を使う</label><fieldset class="lm-game-notify-times"><legend>通知時刻（複数設定可）</legend><div id="game-reminder-times-list">${reminderTimes.map((time, i) => `<div class="lm-game-reminder-row"><input type="time" data-reminder-time="${i}" value="${escapeHtml(time)}" aria-label="通知時刻 ${i + 1}"><button type="button" class="lm-btn secondary lm-game-small-btn" data-remove-reminder="${i}" aria-label="通知時刻を削除">削除</button></div>`).join('')}</div><button type="button" class="lm-btn secondary" id="game-add-reminder-time">＋ 時刻を追加</button></fieldset><p class="lm-game-status" id="game-notify-status">今日のログイン記録がない場合、設定時刻ごとに通知対象になります。</p></div>`;
     $('game-login-today').addEventListener('click', async () => {
       updateGame(game.id, (g) => { g.lastLoginDate = today(); g.lastLoginAt = Date.now(); g.loginHistory = [...new Set([...(g.loginHistory || []), today()])].sort(); });
       await syncReminders(); renderActivePanel(); toast('今日のログインを記録しました');
@@ -125,7 +134,7 @@
       const list = $('game-reminder-times-list'); const index = list.querySelectorAll('[data-reminder-time]').length;
       if (index >= 8) { toast('通知時刻は8件まで設定できます', 'error'); return; }
       const row = document.createElement('div'); row.className = 'lm-game-reminder-row';
-      row.innerHTML = `<input type="time" data-reminder-time="${index}" value="20:00" aria-label="通知時刻 ${index + 1}"><button type="button" class="lm-text-btn" data-remove-reminder="${index}" aria-label="通知時刻を削除">削除</button>`;
+      row.innerHTML = `<input type="time" data-reminder-time="${index}" value="20:00" aria-label="通知時刻 ${index + 1}"><button type="button" class="lm-btn secondary lm-game-small-btn" data-remove-reminder="${index}" aria-label="通知時刻を削除">削除</button>`;
       list.appendChild(row);
       row.querySelector('[data-reminder-time]').addEventListener('change', saveReminderTimes);
       row.querySelector('[data-remove-reminder]').addEventListener('click', async () => { const idx = Number(row.querySelector('[data-reminder-time]').dataset.reminderTime); updateGame(game.id, (g) => { const existing = Array.isArray(g.reminderTimes) && g.reminderTimes.length ? g.reminderTimes : [g.reminderTime || '20:00']; g.reminderTimes = existing.filter((_, i) => i !== idx); g.reminderTime = g.reminderTimes[0] || '20:00'; }); await syncReminders(); renderActivePanel(); });
@@ -137,7 +146,7 @@
     const root = $('game-stones-content'); const game = currentGame();
     if (!game) { root.innerHTML = '<p class="lm-empty">先にゲームを登録してください。</p>'; return; }
     const logs = Array.isArray(game.stoneLogs) ? game.stoneLogs : [];
-    root.innerHTML = `<div class="lm-game-subsection"><h3>${escapeHtml(game.name)}</h3><form id="game-stones-form" class="lm-game-form"><label>現在の所持数<input type="number" min="0" step="1" name="currentStones" value="${num(game.currentStones)}" required></label><label>目標数<input type="number" min="0" step="1" name="stoneGoal" value="${num(game.stoneGoal)}"></label><label>目標期日<input type="date" name="stoneGoalDate" value="${escapeHtml(game.stoneGoalDate || '')}"></label><button class="lm-btn secondary" type="submit">所持数・目標を保存</button></form><div class="lm-game-quick-stone-wrap"><div class="lm-game-status">登録したボタンで石を追加</div><div class="lm-game-quick-stone-buttons">${(Array.isArray(game.stoneQuickButtons) ? game.stoneQuickButtons : [300, 1000]).map((amount) => `<button type="button" class="lm-btn secondary lm-game-quick-stone" data-stone-add="${num(amount)}">＋${num(amount).toLocaleString()}</button>`).join('')}</div></div><form id="game-stone-delta" class="lm-game-form lm-game-delta-form"><label>入手した石<input type="number" min="0" step="1" name="earned" value="0"></label><label>使った石<input type="number" min="0" step="1" name="spent" value="0"></label><button class="lm-btn" type="submit">差分を反映</button></form><p class="lm-game-status">目標まであと ${Math.max(0, num(game.stoneGoal) - num(game.currentStones)).toLocaleString()} 個</p><details><summary>最近の石の履歴</summary>${logs.length ? `<ul class="lm-game-log-list">${logs.slice(-10).reverse().map((log) => `<li>${escapeHtml(log.date)}：${Number(log.delta) >= 0 ? '+' : ''}${Number(log.delta).toLocaleString()}（${escapeHtml(log.note || '手動記録')}）</li>`).join('')}</ul>` : '<p class="lm-empty">履歴はありません。</p>'}</details></div>`;
+    root.innerHTML = `<div class="lm-game-subsection"><h3>${escapeHtml(game.name)}</h3><form id="game-stones-form" class="lm-game-form"><div class="lm-field"><label for="game-stone-current">現在の所持数</label><input id="game-stone-current" type="number" min="0" step="1" inputmode="numeric" name="currentStones" value="${num(game.currentStones)}" required></div><div class="lm-field"><label for="game-stone-goal">目標数</label><input id="game-stone-goal" type="number" min="0" step="1" inputmode="numeric" name="stoneGoal" value="${num(game.stoneGoal)}"></div><div class="lm-field"><label for="game-stone-goal-date">目標期日</label><input id="game-stone-goal-date" type="date" name="stoneGoalDate" value="${escapeHtml(game.stoneGoalDate || '')}"></div><button class="lm-btn" type="submit">所持数・目標を保存</button></form><div class="lm-game-quick-stone-wrap"><div class="lm-game-status">登録したボタンで石を追加</div><div class="lm-game-quick-stone-buttons">${(Array.isArray(game.stoneQuickButtons) ? game.stoneQuickButtons : [300, 1000]).map((amount) => `<button type="button" class="lm-btn secondary lm-game-quick-stone" data-stone-add="${num(amount)}">＋${num(amount).toLocaleString()}</button>`).join('')}</div></div><form id="game-stone-delta" class="lm-game-form lm-game-delta-form"><div class="lm-field"><label for="game-stone-earned">入手した石</label><input id="game-stone-earned" type="number" min="0" step="1" inputmode="numeric" name="earned" value="0"></div><div class="lm-field"><label for="game-stone-spent">使った石</label><input id="game-stone-spent" type="number" min="0" step="1" inputmode="numeric" name="spent" value="0"></div><button class="lm-btn" type="submit">差分を反映</button></form><p class="lm-game-status">目標まであと ${Math.max(0, num(game.stoneGoal) - num(game.currentStones)).toLocaleString()} 個</p><details><summary>最近の石の履歴</summary>${logs.length ? `<ul class="lm-game-log-list">${logs.slice(-10).reverse().map((log) => `<li>${escapeHtml(log.date)}：${Number(log.delta) >= 0 ? '+' : ''}${Number(log.delta).toLocaleString()}（${escapeHtml(log.note || '手動記録')}）</li>`).join('')}</ul>` : '<p class="lm-empty">履歴はありません。</p>'}</details></div>`;
     $('game-stones-form').addEventListener('submit', (e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); updateGame(game.id, (g) => { g.currentStones = num(fd.get('currentStones')); g.stoneGoal = num(fd.get('stoneGoal')); g.stoneGoalDate = String(fd.get('stoneGoalDate') || ''); }); renderActivePanel(); toast('石の数と目標を保存しました'); });
     $('game-stone-delta').addEventListener('submit', (e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); const earned = num(fd.get('earned')); const spent = num(fd.get('spent')); if (spent > num(game.currentStones) + earned) { toast('所持数を超えて消費することはできません', 'error'); return; } updateGame(game.id, (g) => { const delta = earned - spent; g.currentStones = num(g.currentStones) + delta; g.stoneLogs = [...(g.stoneLogs || []), { id: uid(), date: today(), delta, note: `入手${earned}・消費${spent}` }]; }); renderActivePanel(); toast('石の差分を反映しました'); });
     root.querySelectorAll('[data-stone-add]').forEach((button) => button.addEventListener('click', () => {
@@ -151,18 +160,30 @@
     const root = $('game-notes-content'); const game = currentGame();
     if (!game) { root.innerHTML = '<p class="lm-empty">先にゲームを登録してください。</p>'; return; }
     const notes = Array.isArray(game.notes) ? game.notes.slice().sort((a,b) => Number(!!b.pinned)-Number(!!a.pinned) || Number(b.updatedAt || b.createdAt || 0)-Number(a.updatedAt || a.createdAt || 0)) : [];
-    root.innerHTML = `<div class="lm-game-subsection"><h3>${escapeHtml(game.name)}</h3><form id="game-note-form" class="lm-game-form"><label>メモのタイトル<input name="title" maxlength="120" placeholder="例：イベント攻略" required></label><label>URL<input name="url" type="url" placeholder="https://..."></label><label>テキスト<textarea name="text" rows="3" placeholder="攻略情報やメモ"></textarea></label><label class="lm-game-file-field"><span>画像（任意）</span><span class="lm-game-file-control"><span id="game-note-file-name">画像を選ぶ</span><span class="lm-game-file-button">ファイルを選択</span><input name="image" type="file" accept="image/*"></span></label><button class="lm-btn" type="submit">メモを保存</button></form><div class="lm-game-notes">${notes.length ? notes.map((note) => `<article class="lm-game-note"><div class="lm-game-note-head"><h4>${escapeHtml(note.title)}</h4><button type="button" class="lm-text-btn" data-note-pin="${escapeHtml(note.id)}">${note.pinned ? '📌 ピン留め解除' : '📌 ピン留め'}</button></div>${safeWebUrl(note.url) ? `<p><a href="${escapeHtml(safeWebUrl(note.url))}" target="_blank" rel="noopener noreferrer">${escapeHtml(note.url)}</a></p>` : ''}${note.text ? `<p class="lm-game-note-text">${escapeHtml(note.text).replace(/\n/g, '<br>')}</p>` : ''}${note.imageKey ? `<div class="lm-note-image" data-image-key="${escapeHtml(note.imageKey)}">画像を読み込み中…</div>` : ''}<button type="button" class="lm-text-btn" data-note-delete="${escapeHtml(note.id)}">このメモを削除</button></article>`).join('') : '<p class="lm-empty">攻略メモはありません。</p>'}</div></div>`;
-    const fileInput = root.querySelector('input[name="image"]'); fileInput.addEventListener('change', () => { $('game-note-file-name').textContent = fileInput.files[0]?.name || '画像を選ぶ'; });
+    const editing = editingNoteId ? (game.notes || []).find((n) => n.id === editingNoteId) || null : null;
+    if (!editing) editingNoteId = '';
+    const hasImage = !!(editing && editing.imageKey);
+    root.innerHTML = `<div class="lm-game-subsection"><h3>${escapeHtml(game.name)}</h3><div class="lm-game-form-label" id="game-note-form-title">${editing ? 'メモを編集' : 'メモを登録'}</div><form id="game-note-form" class="lm-game-form"><div class="lm-field"><label for="game-note-title">メモのタイトル</label><input id="game-note-title" name="title" maxlength="120" placeholder="例：イベント攻略" value="${editing ? escapeHtml(editing.title) : ''}" required></div><div class="lm-field"><label for="game-note-url">URL</label><input id="game-note-url" name="url" type="url" placeholder="https://..." value="${editing ? escapeHtml(editing.url || '') : ''}"></div><div class="lm-field"><label for="game-note-text">テキスト</label><textarea id="game-note-text" name="text" rows="3" placeholder="攻略情報やメモ">${editing ? escapeHtml(editing.text || '') : ''}</textarea></div><div class="lm-field lm-game-file-field"><label for="game-note-image">画像（任意）</label><label class="lm-game-file-control"><span id="game-note-file-name">${hasImage ? '現在の画像（変更する場合のみ選択）' : '画像を選ぶ'}</span><span class="lm-game-file-button">ファイルを選択</span><input id="game-note-image" name="image" type="file" accept="image/*"></label></div>${hasImage ? '<label class="lm-game-check"><input type="checkbox" name="removeImage"> 現在の画像を削除する</label>' : ''}<div class="lm-game-form-actions"><button class="lm-btn" type="submit">${editing ? 'メモを更新' : 'メモを保存'}</button>${editing ? '<button type="button" class="lm-btn secondary" id="game-note-cancel-edit">キャンセル</button>' : ''}</div></form><div class="lm-game-notes">${notes.length ? notes.map((note) => `<article class="lm-game-note${editing && editing.id === note.id ? ' is-editing' : ''}"><div class="lm-game-note-head"><h4>${escapeHtml(note.title)}</h4><button type="button" class="lm-game-pin-btn${note.pinned ? ' is-pinned' : ''}" data-note-pin="${escapeHtml(note.id)}" aria-pressed="${note.pinned ? 'true' : 'false'}" aria-label="${note.pinned ? 'ピン留めを解除' : 'ピン留め'}" title="${note.pinned ? 'ピン留めを解除' : 'ピン留め'}">${ICON_PIN(!!note.pinned)}</button></div>${safeWebUrl(note.url) ? `<p><a href="${escapeHtml(safeWebUrl(note.url))}" target="_blank" rel="noopener noreferrer">${escapeHtml(note.url)}</a></p>` : ''}${note.text ? `<p class="lm-game-note-text">${escapeHtml(note.text).replace(/\n/g, '<br>')}</p>` : ''}${note.imageKey ? `<div class="lm-note-image" data-image-key="${escapeHtml(note.imageKey)}">画像を読み込み中…</div>` : ''}<div class="lm-game-note-actions"><button type="button" class="lm-btn secondary" data-note-edit="${escapeHtml(note.id)}">編集</button><button type="button" class="lm-btn secondary" data-note-delete="${escapeHtml(note.id)}">削除</button></div></article>`).join('') : '<p class="lm-empty">攻略メモはありません。</p>'}</div></div>`;
+    const fileInput = root.querySelector('input[name="image"]'); fileInput.addEventListener('change', () => { $('game-note-file-name').textContent = fileInput.files[0]?.name || (hasImage ? '現在の画像（変更する場合のみ選択）' : '画像を選ぶ'); });
+    const cancelNoteEdit = $('game-note-cancel-edit'); if (cancelNoteEdit) cancelNoteEdit.addEventListener('click', () => { editingNoteId = ''; renderActivePanel(); });
     $('game-note-form').addEventListener('submit', async (e) => {
       e.preventDefault(); const fd = new FormData(e.currentTarget); const file = fd.get('image'); const rawUrl = String(fd.get('url') || '').trim();
       if (rawUrl && !safeWebUrl(rawUrl)) { toast('URLは http:// または https:// から始めてください', 'error'); return; }
+      if (editing) {
+        let editedImageKey = editing.imageKey || '';
+        if (file && file.size && file.type.startsWith('image/')) { const key = editedImageKey || `note:${game.id}:${uid()}`; try { await LMGameDB.putImage(key, file); } catch (err) { console.error(err); toast('画像を保存できませんでした', 'error'); return; } editedImageKey = key; }
+        else if (fd.get('removeImage') && editedImageKey) { await LMGameDB.deleteImage(editedImageKey).catch(() => {}); editedImageKey = ''; }
+        updateGame(game.id, (g) => { g.notes = (g.notes || []).map((n) => n.id === editing.id ? { ...n, title: String(fd.get('title') || '').trim(), url: safeWebUrl(rawUrl), text: String(fd.get('text') || ''), imageKey: editedImageKey, updatedAt: Date.now() } : n); });
+        editingNoteId = ''; renderActivePanel(); toast('攻略メモを更新しました'); return;
+      }
       let imageKey = '';
       if (file && file.size && file.type.startsWith('image/')) { imageKey = `note:${game.id}:${uid()}`; try { await LMGameDB.putImage(imageKey, file); } catch (err) { console.error(err); toast('画像を保存できませんでした', 'error'); return; } }
       const now = Date.now(); const note = { id: uid(), title: String(fd.get('title') || '').trim(), url: safeWebUrl(rawUrl), text: String(fd.get('text') || ''), imageKey, createdAt: now, updatedAt: now, pinned: false };
       updateGame(game.id, (g) => { g.notes = [...(g.notes || []), note]; }); renderActivePanel(); toast('攻略メモを保存しました');
     });
     root.querySelectorAll('[data-note-pin]').forEach((b) => b.addEventListener('click', () => { updateGame(game.id, (g) => { g.notes = (g.notes || []).map((n) => n.id === b.dataset.notePin ? { ...n, pinned: !n.pinned, updatedAt: Date.now() } : n); }); renderActivePanel(); }));
-    root.querySelectorAll('[data-note-delete]').forEach((b) => b.addEventListener('click', async () => { const note = (readGames().find((g) => g.id === game.id)?.notes || []).find((n) => n.id === b.dataset.noteDelete); if (!note || !confirm(`「${note.title}」を削除しますか？`)) return; if (note.imageKey) await LMGameDB.deleteImage(note.imageKey).catch(() => {}); updateGame(game.id, (g) => { g.notes = (g.notes || []).filter((n) => n.id !== note.id); }); renderActivePanel(); }));
+    root.querySelectorAll('[data-note-edit]').forEach((b) => b.addEventListener('click', () => { editingNoteId = b.dataset.noteEdit; renderActivePanel(); scrollToEl($('game-note-form-title')); }));
+    root.querySelectorAll('[data-note-delete]').forEach((b) => b.addEventListener('click', async () => { const note = (readGames().find((g) => g.id === game.id)?.notes || []).find((n) => n.id === b.dataset.noteDelete); if (!note || !confirm(`「${note.title}」を削除しますか？`)) return; if (note.imageKey) await LMGameDB.deleteImage(note.imageKey).catch(() => {}); updateGame(game.id, (g) => { g.notes = (g.notes || []).filter((n) => n.id !== note.id); }); if (editingNoteId === note.id) editingNoteId = ''; renderActivePanel(); }));
     await loadImages(root);
   }
 
@@ -247,15 +268,15 @@
     all.sort((a,b) => Number(!!b.pinned)-Number(!!a.pinned) || Number(b.updatedAt || b.createdAt || 0)-Number(a.updatedAt || a.createdAt || 0));
     const notes = all.slice(0, 4);
     if (!notes.length) { root.innerHTML = '<p class="lm-empty">攻略メモはまだありません。</p>'; return; }
-    root.innerHTML = notes.map((note, i) => `<article class="lm-game-sticky sticky-${i + 1}"><div class="lm-game-sticky-top"><span>${escapeHtml(note.gameName)}</span>${note.pinned ? '<span aria-label="ピン留め">📌</span>' : ''}</div><h3>${escapeHtml(note.title)}</h3>${safeWebUrl(note.url) ? `<a href="${escapeHtml(safeWebUrl(note.url))}" target="_blank" rel="noopener noreferrer">${escapeHtml(note.url)}</a>` : ''}<p>${escapeHtml(note.text || '').replace(/\n/g, ' ')}</p><button type="button" data-sticky-open="${escapeHtml(note.gameId)}">開く</button></article>`).join('');
-    root.querySelectorAll('[data-sticky-open]').forEach((b) => b.addEventListener('click', () => { selectedGameId = b.dataset.stickyOpen; localStorage.setItem('lm_games_selected', selectedGameId); setTab('notes'); }));
+    root.innerHTML = notes.map((note, i) => `<article class="lm-game-sticky sticky-${i + 1}"><div class="lm-game-sticky-top"><span>${escapeHtml(note.gameName)}</span>${note.pinned ? `<span class="lm-game-sticky-pin" aria-label="ピン留め">${ICON_PIN(true)}</span>` : ''}</div><h3>${escapeHtml(note.title)}</h3>${safeWebUrl(note.url) ? `<a href="${escapeHtml(safeWebUrl(note.url))}" target="_blank" rel="noopener noreferrer">${escapeHtml(note.url)}</a>` : ''}<p>${escapeHtml(note.text || '').replace(/\n/g, ' ')}</p><button type="button" data-sticky-open="${escapeHtml(note.gameId)}">開く</button></article>`).join('');
+    root.querySelectorAll('[data-sticky-open]').forEach((b) => b.addEventListener('click', () => { selectedGameId = b.dataset.stickyOpen; localStorage.setItem('lm_games_selected', selectedGameId); setTab('notes'); slideToInput('notes'); }));
   }
 
   async function deleteGame(id) {
     const games = readGames(); const game = games.find((g) => g.id === id); if (!game || !confirm(`「${game.name}」と関連データを削除しますか？`)) return;
     if (game.iconKey) await LMGameDB.deleteImage(game.iconKey).catch(() => {});
     for (const note of game.notes || []) if (note.imageKey) await LMGameDB.deleteImage(note.imageKey).catch(() => {});
-    saveGames(games.filter((g) => g.id !== id)); if (selectedGameId === id) selectedGameId = ''; await syncReminders(); renderActivePanel();
+    saveGames(games.filter((g) => g.id !== id)); if (editingGameId === id) resetGameForm(); if (selectedGameId === id) selectedGameId = ''; await syncReminders(); renderActivePanel();
   }
 
   let pendingQuickAmounts = [300, 1000];
@@ -273,8 +294,52 @@
   });
   renderPendingQuickAmounts();
 
+  function resetGameForm() {
+    editingGameId = '';
+    $('game-form').reset();
+    pendingQuickAmounts = [300, 1000]; renderPendingQuickAmounts();
+    $('game-icon-file-name').textContent = '画像を選ぶ';
+    $('game-icon-remove-field').hidden = true;
+    $('game-form-title').textContent = 'ゲームを登録';
+    $('game-submit').textContent = 'ゲームを追加';
+    $('game-cancel-edit').style.display = 'none';
+  }
+
+  function startGameEdit(id) {
+    const game = readGames().find((g) => g.id === id); if (!game) return;
+    editingGameId = id;
+    $('game-name').value = game.name;
+    $('game-icon').value = '';
+    $('game-icon-file-name').textContent = game.iconKey ? '現在の画像（変更する場合のみ選択）' : '画像を選ぶ';
+    $('game-icon-remove').checked = false;
+    $('game-icon-remove-field').hidden = !game.iconKey;
+    pendingQuickAmounts = (Array.isArray(game.stoneQuickButtons) ? game.stoneQuickButtons : [300, 1000]).map(num).filter((n) => n > 0);
+    renderPendingQuickAmounts();
+    $('game-form-title').textContent = 'ゲームを編集';
+    $('game-submit').textContent = '変更を保存';
+    $('game-cancel-edit').style.display = 'inline-block';
+    renderGameList();
+    scrollToEl($('game-register-section'));
+  }
+
+  async function saveGameEdit(name) {
+    const id = editingGameId; const current = readGames().find((g) => g.id === id);
+    if (!current) { resetGameForm(); return; }
+    const file = $('game-icon').files[0]; let iconKey = current.iconKey || '';
+    if (file && file.type.startsWith('image/')) {
+      const key = iconKey || `icon:${id}`;
+      try { await LMGameDB.putImage(key, file); } catch (err) { console.error(err); toast('画像を保存できませんでした', 'error'); return; }
+      iconKey = key;
+    } else if ($('game-icon-remove').checked && iconKey) {
+      await LMGameDB.deleteImage(iconKey).catch(() => {}); iconKey = '';
+    }
+    updateGame(id, (g) => { g.name = name; g.iconKey = iconKey; g.stoneQuickButtons = [...pendingQuickAmounts]; });
+    syncReminders().catch((err) => console.warn(err)); resetGameForm(); refreshGamePicker(); renderActivePanel(); toast('ゲームを更新しました');
+  }
+  $('game-cancel-edit').addEventListener('click', resetGameForm);
+
   $('game-form').addEventListener('submit', async (e) => {
-    e.preventDefault(); const name = $('game-name').value.trim(); if (!name) return; const id = uid(); const file = $('game-icon').files[0]; let iconKey = '';
+    e.preventDefault(); const name = $('game-name').value.trim(); if (!name) return; if (editingGameId) { await saveGameEdit(name); return; } const id = uid(); const file = $('game-icon').files[0]; let iconKey = '';
     if (file && file.type.startsWith('image/')) { iconKey = `icon:${id}`; try { await LMGameDB.putImage(iconKey, file); } catch (err) { console.error(err); toast('画像を保存できませんでした', 'error'); return; } }
     const games = readGames(); games.push({ id, name, iconKey, lastLoginDate: '', loginHistory: [], currentStones: 0, stoneGoal: 0, stoneGoalDate: '', stoneLogs: [], stoneQuickButtons: [...pendingQuickAmounts], notes: [], notifyEnabled: false, reminderTimes: ['20:00'], reminderTime: '20:00', createdAt: Date.now() });
     saveGames(games); selectedGameId = id; localStorage.setItem('lm_games_selected', id); e.currentTarget.reset(); pendingQuickAmounts = [300, 1000]; renderPendingQuickAmounts(); $('game-icon-file-name').textContent = '画像を選ぶ'; refreshGamePicker(); renderActivePanel(); toast('ゲームを登録しました');
@@ -282,8 +347,8 @@
 
   $('game-icon').addEventListener('change', () => { $('game-icon-file-name').textContent = $('game-icon').files[0]?.name || '画像を選ぶ'; });
   $('game-current-select').addEventListener('change', (e) => { selectedGameId = e.currentTarget.value; localStorage.setItem('lm_games_selected', selectedGameId); renderActivePanel(); });
-  document.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => setTab(b.dataset.tab)));
-  document.querySelectorAll('[data-open-tab]').forEach((b) => b.addEventListener('click', () => setTab(b.dataset.openTab)));
+  document.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { setTab(b.dataset.tab); slideToInput(b.dataset.tab); }));
+  document.querySelectorAll('[data-open-tab]').forEach((b) => b.addEventListener('click', () => { setTab(b.dataset.openTab); slideToInput(b.dataset.openTab); }));
   $('game-calendar-prev').addEventListener('click', () => { shownMonth = new Date(shownMonth.getFullYear(), shownMonth.getMonth() - 1, 1); renderCalendar(); });
   $('game-calendar-next').addEventListener('click', () => { shownMonth = new Date(shownMonth.getFullYear(), shownMonth.getMonth() + 1, 1); renderCalendar(); });
   $('game-calendar-today').addEventListener('click', () => { shownMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1); selectedCalendarDate = today(); renderCalendar(); });
