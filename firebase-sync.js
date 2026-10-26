@@ -33,6 +33,19 @@ window.LMFirebase = {
       } : null;
       // 締切タスクを空いている枠に入れて送る(外部通知が「未入力」と誤判定しないように)
       if (todo && window.LM && window.LM.mergeLinkedTasksForSync) window.LM.mergeLinkedTasksForSync(todo);
+      // 「明日のタスク」の自動入力待ち分も送る(AM4:00以降にアプリを開く前でも、外部通知が入力済みと判定できるように)
+      let tomorrowTasks = null;
+      try {
+        const pending = JSON.parse(localStorage.getItem('lm_tomorrowTasks') || 'null');
+        if (pending && pending.forDay && pending.tasks) {
+          const tasks = {};
+          Object.keys(pending.tasks).forEach((id) => {
+            const name = String(pending.tasks[id] || '').trim();
+            if (name) tasks[id] = name.slice(0, 120);
+          });
+          if (Object.keys(tasks).length > 0) tomorrowTasks = { forDay: String(pending.forDay), tasks };
+        }
+      } catch (e) { tomorrowTasks = null; }
       // ゲームの通知判定に必要な最小限の情報だけ同期する。攻略メモ・画像・石の履歴は送らない。
       const gameReminders = JSON.parse(localStorage.getItem('lm_gameReminders') || '[]')
         .filter((g) => g && g.notifyEnabled === true)
@@ -46,7 +59,7 @@ window.LMFirebase = {
           notifyEnabled: true,
         }))
         .filter((g) => g.id && g.name);
-      await setDoc(doc(db, ...STATE_REF_PATH), { schedules, events, todo, gameReminders, updatedAt: Date.now() }, { merge: true });
+      await setDoc(doc(db, ...STATE_REF_PATH), { schedules, events, todo, tomorrowTasks, gameReminders, updatedAt: Date.now() }, { merge: true });
       return true;
     } catch (e) {
       console.error('Firestore sync failed', e);
