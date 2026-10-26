@@ -111,6 +111,7 @@
       const has = Object.values(data.tasks).some((v) => String(v || '').trim());
       if (has) LM.set(KEY, data);
       else localStorage.removeItem(KEY);
+      LM.syncFirebaseDebounced(); // 外部通知にも明日のタスクの入力状況を伝える
     }
 
     const wrap = document.createElement('div');
