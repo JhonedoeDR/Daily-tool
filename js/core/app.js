@@ -222,7 +222,7 @@ LM.requestNotificationPermission = async function () {
 LM.notify = function (title, body) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   try {
-    new Notification(title, { body, icon: './icons/icon-192.png' });
+    new Notification(title, { body, icon: './image/icon-192.png' });
   } catch (e) {
     console.error('notify failed', e);
   }

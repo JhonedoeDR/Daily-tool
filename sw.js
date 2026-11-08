@@ -28,8 +28,8 @@ try {
     const body = d.body || '';
     return self.registration.showNotification(title, {
       body,
-      icon: './icons/icon-192.png',
-      badge: './icons/icon-192.png',
+      icon: './image/icon-192.png',
+      badge: './image/icon-192.png',
     });
   });
 } catch (e) {
@@ -78,14 +78,14 @@ const ASSETS = [
   './js/pages/games.js',
   './js/storage/games-db.js',
   './manifest.json',
-  './icons/icon-192.png',
-  './icons/icon-512.png',
-  './hm-dog.png',
-  './hm-dog-hands.png',
-  './hm-dog-existing.png',
-  './hm-dog-happy.png',
-  './hm-dog-sleep.png',
-  './hm-dog-stunned.png',
+  './image/icon-192.png',
+  './image/icon-512.png',
+  './image/hm-dog.png',
+  './image/hm-dog-hands.png',
+  './image/hm-dog-existing.png',
+  './image/hm-dog-happy.png',
+  './image/hm-dog-sleep.png',
+  './image/hm-dog-stunned.png',
 ];
 
 self.addEventListener('install', (e) => {
