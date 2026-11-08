@@ -6,6 +6,8 @@
   const form = $('todo-create-form');
   if (!form) return;
 
+  LM.renderNav(document.getElementById('nav-container'));
+
   let data = load();
   save();
   let createTab = 'main';
