@@ -944,6 +944,18 @@ body {
   font-size: 13px;
 }
 
+.todo-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.todo-select-toggle {
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
 .todo-filter-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1177,6 +1189,64 @@ body {
   font-size: 14px;
 }
 
+.todo-routine-schedule {
+  display: grid;
+  gap: 5px;
+}
+
+.todo-routine-schedule[hidden] {
+  display: none;
+}
+
+.todo-routine-schedule .todo-notification-options {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  max-height: none;
+}
+
+.todo-month-calendar {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 36px;
+  align-items: center;
+  text-align: center;
+}
+
+.todo-month-calendar button {
+  width: 32px;
+  height: 30px;
+  border: 1px solid var(--paper-line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+  font-size: 18px;
+}
+
+.todo-month-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 3px;
+  text-align: center;
+}
+
+.todo-month-weekday {
+  color: var(--text-soft);
+  font-size: 10px;
+}
+
+.todo-month-day {
+  min-width: 0;
+  min-height: 30px;
+  border: 1px solid var(--paper-line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+}
+
+.todo-month-day[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 700;
+}
+
 .todo-advanced {
   border-top: 1px solid var(--paper-line);
   padding-top: 7px;
@@ -1341,7 +1411,7 @@ body {
 
 .todo-linked-choice {
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr) 72px;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 6px;
   padding: 5px;
@@ -1354,8 +1424,61 @@ body {
   overflow-wrap: anywhere;
 }
 
-.todo-linked-choice .todo-group-number {
-  padding: 6px !important;
+.todo-linked-choice .lm-btn {
+  min-width: 52px;
+  padding: 5px 8px;
+  font-size: 11px;
+}
+
+.todo-linked-selected {
+  display: grid;
+  gap: 4px;
+}
+
+.todo-linked-selected-choice {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(100px, auto) 32px;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 5px;
+  border: 1px solid var(--paper-line);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.todo-linked-selected-choice > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.todo-linked-selected-choice .todo-group-number {
+  width: auto;
+  padding: 5px 6px;
+  font-size: 11px;
+}
+
+.todo-linked-picker {
+  display: grid;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--paper-line);
+  border-radius: 8px;
+  background: var(--paper);
+}
+
+.todo-linked-picker > input[type='search'] {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #fff;
+}
+
+.todo-linked-list {
+  max-height: 180px;
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 
 .todo-help {

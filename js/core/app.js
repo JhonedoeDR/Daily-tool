@@ -298,8 +298,22 @@ LM.checkAndNotify = function () {
   const allTasks = taskData && Array.isArray(taskData.tasks)
     ? taskData.tasks.filter((task) => task && typeof task === 'object')
     : [];
+  const routineScheduledToday = (task) => {
+    if (task.category !== 'routine') return true;
+    const period = task.routinePeriod === 'weekdays' ? 'weekly' : task.routinePeriod;
+    const days = Array.isArray(task.routineDays) ? task.routineDays
+      : task.routinePeriod === 'weekdays' ? [1, 2, 3, 4, 5] : [];
+    if (!days.length) return true;
+    const [year, month, day] = today.split('-').map(Number);
+    if (period === 'weekly') {
+      return days.includes(new Date(year, month - 1, day).getDay());
+    }
+    if (period === 'monthly') return days.includes(day);
+    return true;
+  };
   const activeTasks = allTasks.filter((task) => !task.archivedAt &&
-    (!task.startDate || task.startDate <= today) && (!task.endDate || task.endDate >= today));
+    (!task.startDate || task.startDate <= today) && (!task.endDate || task.endDate >= today) &&
+    routineScheduledToday(task));
   const isDone = (task) => task.category === 'routine'
     ? !!task.checked && task.checkedDay === (
       task.routinePeriod === 'weekly' ? LM.todoMondayKey() :
@@ -363,7 +377,8 @@ LM.checkAndNotify = function () {
   const weekday = now.getDay();
   allTasks.forEach((task) => {
     if (!task.id || !task.name || task.archivedAt || isDone(task) ||
-        (task.startDate && task.startDate > today) || (task.endDate && task.endDate < today)) return;
+        (task.startDate && task.startDate > today) || (task.endDate && task.endDate < today) ||
+        !routineScheduledToday(task)) return;
     const notifications = task.notifications || {};
     const weekdays = Array.isArray(notifications.weekdays) ? notifications.weekdays : [];
     const weeklyTimes = Array.isArray(notifications.times) ? notifications.times : [];

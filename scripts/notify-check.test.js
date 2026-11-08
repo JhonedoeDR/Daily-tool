@@ -74,6 +74,39 @@ test('non-main reminders list the soonest deadline first and include category', 
   }), { title: 'タスクが未達成です', body: '「ルーティン の Due」ほか1つ' });
 });
 
+test('weekly and monthly routine reminders follow their selected dates', () => {
+  const task = {
+    id: 'routine-1',
+    category: 'routine',
+    name: 'Scheduled routine',
+    routinePeriod: 'weekly',
+    routineDays: [1],
+    checked: false,
+  };
+  const fourHours = 4 * 60 * 60_000;
+  const sundayItems = buildItems({ todoManager: [task] }, jstMidnightEpoch('2026-11-08') + fourHours);
+  const sundayReminder = sundayItems.find((item) => item.key === 'task-other-unfinished:2026-11-08:12');
+  assert.equal(sundayReminder.build({ todoManager: [task] }), null);
+
+  const mondayItems = buildItems({ todoManager: [task] }, jstMidnightEpoch('2026-11-09') + fourHours);
+  const mondayReminder = mondayItems.find((item) => item.key === 'task-other-unfinished:2026-11-09:12');
+  assert.deepEqual(mondayReminder.build({ todoManager: [task] }), {
+    title: 'タスクが未達成です',
+    body: '「ルーティン の Scheduled routine」',
+  });
+
+  const monthlyTask = { ...task, routinePeriod: 'monthly', routineDays: [9] };
+  const monthlyItems = buildItems({ todoManager: [monthlyTask] }, jstMidnightEpoch('2026-11-08') + fourHours);
+  const monthlyReminder = monthlyItems.find((item) => item.key === 'task-other-unfinished:2026-11-08:12');
+  assert.equal(monthlyReminder.build({ todoManager: [monthlyTask] }), null);
+  const selectedMonthlyItems = buildItems({ todoManager: [monthlyTask] }, jstMidnightEpoch('2026-11-09') + fourHours);
+  const selectedMonthlyReminder = selectedMonthlyItems.find((item) => item.key === 'task-other-unfinished:2026-11-09:12');
+  assert.deepEqual(selectedMonthlyReminder.build({ todoManager: [monthlyTask] }), {
+    title: 'タスクが未達成です',
+    body: '「ルーティン の Scheduled routine」',
+  });
+});
+
 test('weekly and custom per-task notifications can coexist', () => {
   const items = buildItems({
     todoManager: [{

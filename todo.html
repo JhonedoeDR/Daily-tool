@@ -53,7 +53,10 @@
   <section class="lm-section todo-main-section">
     <div class="todo-manager">
       <div class="todo-toolbar">
-        <button type="button" id="todo-new-task" class="lm-btn todo-new-task">＋ 新規作成</button>
+        <div class="todo-toolbar-actions">
+          <button type="button" id="todo-new-task" class="lm-btn todo-new-task">＋ 新規作成</button>
+          <button type="button" id="todo-select-toggle" class="lm-btn secondary todo-select-toggle" aria-pressed="false">複数選択</button>
+        </div>
         <div class="todo-sort-row">
           <label>ソート
             <select id="todo-sort">
@@ -124,14 +127,27 @@
             <input id="todo-end-date" type="date" />
           </label>
         </div>
-        <label class="todo-field" id="todo-routine-period" hidden>期間
+        <div class="todo-field" id="todo-routine-period" hidden>
+          <label for="todo-routine-period-select">期間</label>
           <select id="todo-routine-period-select">
             <option value="daily">毎日</option>
-            <option value="weekdays">平日</option>
             <option value="weekly">毎週</option>
             <option value="monthly">毎月</option>
           </select>
-        </label>
+          <div id="todo-routine-weekly" class="todo-routine-schedule" hidden>
+            <span>曜日を選択</span>
+            <div id="todo-routine-weekly-days" class="todo-notification-options"></div>
+          </div>
+          <div id="todo-routine-monthly" class="todo-routine-schedule" hidden>
+            <span>毎月タスクを入れる日を選択</span>
+            <div class="todo-month-calendar">
+              <button type="button" id="todo-month-prev" aria-label="前の月">‹</button>
+              <strong id="todo-month-label"></strong>
+              <button type="button" id="todo-month-next" aria-label="次の月">›</button>
+            </div>
+            <div id="todo-month-days" class="todo-month-days"></div>
+          </div>
+        </div>
         <details class="todo-advanced" id="todo-advanced">
           <summary>詳細設定</summary>
           <div class="todo-advanced-content">
@@ -141,8 +157,8 @@
               <button type="button" id="todo-add-subtask" class="lm-btn secondary">＋ 項目を追加</button>
             </div>
             <div class="todo-field" id="todo-linked-field">
-              <span>紐付けタスクの選択（複数可）</span>
-              <div id="todo-linked-list" class="todo-linked-list"></div>
+              <span>紐付けタスク</span>
+              <div id="todo-linked-selected" class="todo-linked-selected"></div>
               <label>表示方法
                 <select id="todo-link-mode">
                   <option value="all">すべて表示</option>
@@ -151,6 +167,10 @@
                 </select>
               </label>
               <p class="todo-help">カスタム表示では、同時に表示するタスクに同じグループ番号を設定します。</p>
+              <div class="todo-linked-picker">
+                <input id="todo-linked-search" type="search" placeholder="タスクを検索" aria-label="紐付けるタスクを検索" />
+                <div id="todo-linked-list" class="todo-linked-list"></div>
+              </div>
             </div>
             <div class="todo-field">
               <span>リンク（複数可）</span>

@@ -80,7 +80,16 @@ function todoManagerTasks(state) {
 }
 
 function isTaskActive(task, today) {
-  return task && !task.archivedAt && String(task.name || '').trim() &&
+  if (!task || task.archivedAt || !String(task.name || '').trim() ||
+      (task.startDate && task.startDate > today) || (task.endDate && task.endDate < today)) return false;
+  const routineDays = Array.isArray(task.routineDays) ? task.routineDays : [];
+  if (routineDays.length && task.routinePeriod === 'weekly') {
+    const weekday = new Date(`${today}T00:00:00Z`).getUTCDay();
+    if (!routineDays.includes(weekday)) return false;
+  }
+  if (routineDays.length && task.routinePeriod === 'monthly' &&
+      !routineDays.includes(Number(today.slice(8, 10)))) return false;
+  return task &&
     (!task.startDate || task.startDate <= today) &&
     (!task.endDate || task.endDate >= today);
 }

@@ -23,31 +23,49 @@ function readLocalJson(key, fallback) {
   return raw === null ? fallback : JSON.parse(raw);
 }
 
+function omitUndefined(value) {
+  if (Array.isArray(value)) return value.filter((item) => item !== undefined).map(omitUndefined);
+  if (!value || typeof value !== 'object') return value;
+  return Object.fromEntries(Object.entries(value)
+    .filter(([, item]) => item !== undefined)
+    .map(([key, item]) => [key, omitUndefined(item)]));
+}
+
 function buildTodoManagerSnapshot() {
   const raw = readLocalJson('lm_todoManager', null);
   if (!raw || !Array.isArray(raw.tasks)) return [];
-  return raw.tasks.filter((task) => task && typeof task === 'object').map((task) => ({
-    id: String(task.id || ''),
-    category: ['main', 'routine', 'other'].includes(task.category) ? task.category : 'other',
-    name: String(task.name || '').slice(0, 200),
-    checked: !!task.checked,
-    checkedDay: String(task.checkedDay || ''),
-    routinePeriod: ['daily', 'weekdays', 'weekly', 'monthly'].includes(task.routinePeriod) ? task.routinePeriod : 'daily',
-    startDate: /^\d{4}-\d{2}-\d{2}$/.test(task.startDate || '') ? task.startDate : '',
-    endDate: /^\d{4}-\d{2}-\d{2}$/.test(task.endDate || '') ? task.endDate : '',
-    createdAt: Number(task.createdAt) || 0,
-    archivedAt: Number(task.archivedAt) || 0,
-    notifications: {
-      weekdays: (Array.isArray(task.notifications?.weekdays) ? task.notifications.weekdays : [])
-        .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6),
-      times: (Array.isArray(task.notifications?.times) ? task.notifications.times : [])
-        .filter((time) => /^([01]\d|2[0-3]):00$/.test(time)),
-      custom: (Array.isArray(task.notifications?.custom) ? task.notifications.custom : [])
-        .filter((item) => item && /^\d{4}-\d{2}-\d{2}$/.test(item.date || '') &&
-          /^([01]\d|2[0-3]):[0-5]\d$/.test(item.time || ''))
-        .map((item) => ({ date: item.date, time: item.time })),
-    },
-  })).filter((task) => task.id && task.name);
+  return raw.tasks.filter((task) => task && typeof task === 'object').map((task) => {
+    const routinePeriod = task.routinePeriod === 'weekdays' ? 'weekly'
+      : ['daily', 'weekly', 'monthly'].includes(task.routinePeriod) ? task.routinePeriod : 'daily';
+    const routineDays = Array.isArray(task.routineDays) ? task.routineDays
+      : task.routinePeriod === 'weekdays' ? [1, 2, 3, 4, 5]
+        : task.routinePeriod === 'weekly' ? [0, 1, 2, 3, 4, 5, 6]
+          : task.routinePeriod === 'monthly' ? Array.from({ length: 31 }, (_, index) => index + 1) : [];
+    return {
+      id: String(task.id || ''),
+      category: ['main', 'routine', 'other'].includes(task.category) ? task.category : 'other',
+      name: String(task.name || '').slice(0, 200),
+      checked: !!task.checked,
+      checkedDay: String(task.checkedDay || ''),
+      routinePeriod,
+      routineDays: routineDays.filter((day) => Number.isInteger(day) &&
+        (routinePeriod === 'weekly' ? day >= 0 && day <= 6 : day >= 1 && day <= 31)),
+      startDate: /^\d{4}-\d{2}-\d{2}$/.test(task.startDate || '') ? task.startDate : '',
+      endDate: /^\d{4}-\d{2}-\d{2}$/.test(task.endDate || '') ? task.endDate : '',
+      createdAt: Number(task.createdAt) || 0,
+      archivedAt: Number(task.archivedAt) || 0,
+      notifications: {
+        weekdays: (Array.isArray(task.notifications?.weekdays) ? task.notifications.weekdays : [])
+          .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6),
+        times: (Array.isArray(task.notifications?.times) ? task.notifications.times : [])
+          .filter((time) => /^([01]\d|2[0-3]):00$/.test(time)),
+        custom: (Array.isArray(task.notifications?.custom) ? task.notifications.custom : [])
+          .filter((item) => item && /^\d{4}-\d{2}-\d{2}$/.test(item.date || '') &&
+            /^([01]\d|2[0-3]):[0-5]\d$/.test(item.time || ''))
+          .map((item) => ({ date: item.date, time: item.time })),
+      },
+    };
+  }).filter((task) => task.id && task.name);
 }
 
 function buildGameReminders() {
@@ -68,7 +86,7 @@ function buildGameReminders() {
 function buildSyncPayload() {
   const schedules = readLocalJson('lm_schedules', []);
   const events = readLocalJson('lm_events', []);
-  return {
+  return omitUndefined({
     schedules: (Array.isArray(schedules) ? schedules : []).filter(Boolean).map((schedule) => ({
       id: schedule.id,
       kind: schedule.kind,
@@ -88,7 +106,7 @@ function buildSyncPayload() {
     todoManager: buildTodoManagerSnapshot(),
     gameReminders: buildGameReminders(),
     updatedAt: Date.now(),
-  };
+  });
 }
 
 // Firebase保存層と、アプリから呼び出す公開API。

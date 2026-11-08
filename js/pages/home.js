@@ -637,8 +637,20 @@
       if (manager) manager.tasks = [];
     }
     const taskData = manager && Array.isArray(manager.tasks) ? manager.tasks : [];
+    const routineScheduledToday = (task) => {
+      if (task.category !== 'routine') return true;
+      const period = task.routinePeriod === 'weekdays' ? 'weekly' : task.routinePeriod;
+      const days = Array.isArray(task.routineDays) ? task.routineDays
+        : task.routinePeriod === 'weekdays' ? [1, 2, 3, 4, 5] : [];
+      if (!days.length) return true;
+      const [year, month, day] = today.split('-').map(Number);
+      if (period === 'weekly') return days.includes(new Date(year, month - 1, day).getDay());
+      if (period === 'monthly') return days.includes(day);
+      return true;
+    };
     const managerTasks = taskData.filter((task) => task && !task.archivedAt &&
-      (!task.startDate || task.startDate <= today) && (!task.endDate || task.endDate >= today));
+      (!task.startDate || task.startDate <= today) && (!task.endDate || task.endDate >= today) &&
+      routineScheduledToday(task));
     const routineKey = (task) => task.routinePeriod === 'weekly'
       ? LM.todoMondayKey()
       : task.routinePeriod === 'monthly' ? LM.routineMonthKey() : LM.todoDayKey();
@@ -696,10 +708,6 @@
       checkbox.type = 'checkbox';
       checkbox.checked = item.checked;
       checkbox.dataset[item.manager ? 'managerTaskId' : 'dlTaskId'] = item.id;
-      if (item.manager && item.category === 'routine' && item.routinePeriod === 'weekdays') {
-        const weekday = new Date(`${today}T00:00:00`).getDay();
-        checkbox.disabled = weekday === 0 || weekday === 6;
-      }
       const name = document.createElement('span');
       name.textContent = item.name;
       li.append(checkbox, name);

@@ -16,6 +16,11 @@
   let archiveMode = false;
   const selectedTaskIds = new Set();
   let customNotifications = [];
+  let linkedTaskIds = [];
+  let linkedTaskGroups = {};
+  let routineDays = [];
+  let calendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  let bulkSelectionMode = false;
   const pageSize = 5;
   const dayMs = 24 * 60 * 60 * 1000;
   data = load();
@@ -28,6 +33,16 @@
     if (period === 'weekly') return LM.todoMondayKey(date);
     if (period === 'monthly') return LM.routineMonthKey(date);
     return LM.todoDayKey(date);
+  }
+  function calendarTodayKey() {
+    return LM.todayStr ? LM.todayStr() : new Date().toISOString().slice(0, 10);
+  }
+  function routineScheduledOn(period, days, date = calendarTodayKey()) {
+    if (period === 'daily') return true;
+    const [year, month, day] = date.split('-').map(Number);
+    if (period === 'weekly') return days.includes(new Date(year, month - 1, day).getDay());
+    if (period === 'monthly') return days.includes(day);
+    return true;
   }
   function normalizeNotifications(value) {
     const notify = value && typeof value === 'object' ? value : {};
@@ -94,8 +109,17 @@
   function normalizeTask(t) {
     const task = t && typeof t === 'object' ? t : {};
     const category = ['main', 'routine', 'other'].includes(task.category) ? task.category : 'other';
-    const routinePeriod = ['daily', 'weekdays', 'weekly', 'monthly'].includes(task.routinePeriod)
-      ? task.routinePeriod : 'daily';
+    const oldRoutinePeriod = task.routinePeriod;
+    const routinePeriod = oldRoutinePeriod === 'weekdays' ? 'weekly'
+      : ['daily', 'weekly', 'monthly'].includes(oldRoutinePeriod) ? oldRoutinePeriod : 'daily';
+    const routineDays = Array.isArray(task.routineDays)
+      ? [...new Set(task.routineDays.filter(day => Number.isInteger(day) &&
+        (routinePeriod === 'weekly' ? day >= 0 && day <= 6 : day >= 1 && day <= 31)))]
+      : oldRoutinePeriod === 'weekdays' ? [1, 2, 3, 4, 5]
+        : oldRoutinePeriod === 'weekly' || oldRoutinePeriod === 'monthly'
+          ? Array.from({ length: oldRoutinePeriod === 'weekly' ? 7 : 31 }, (_, index) =>
+            oldRoutinePeriod === 'weekly' ? index : index + 1)
+          : [];
     const checkedAt = Number(task.checkedAt) || 0;
     const checkedDay = String(task.checkedDay || (checkedAt && category === 'routine'
       ? routinePeriodKey(routinePeriod, new Date(checkedAt)) : ''));
@@ -108,6 +132,7 @@
       archivedAt: Number(task.archivedAt) || 0,
       notifications: normalizeNotifications(task.notifications),
       routinePeriod,
+      routineDays,
       subtasks: Array.isArray(task.subtasks) ? task.subtasks.map(s => ({
         id: String(s && s.id || uid()), name: String(s && s.name || ''), checked: !!(s && s.checked)
       })) : [],
@@ -140,8 +165,15 @@
     return window.LM && LM.todoMondayKey ? LM.todoMondayKey() : todayKey();
   }
   function categoryLabel(c) { return c === 'main' ? 'メイン' : c === 'routine' ? 'ルーティン' : 'その他'; }
-  function routinePeriodLabel(period) {
-    return ({ daily: '毎日', weekdays: '平日', weekly: '毎週', monthly: '毎月' })[period] || '毎日';
+  function routineScheduleLabel(task) {
+    if (task.routinePeriod === 'weekly') {
+      const names = ['日', '月', '火', '水', '木', '金', '土'];
+      return `毎週（${task.routineDays.map(day => names[day]).join('・') || '曜日未設定'}）`;
+    }
+    if (task.routinePeriod === 'monthly') {
+      return `毎月（${task.routineDays.map(day => `${day}日`).join('・') || '日付未設定'}）`;
+    }
+    return '毎日';
   }
   function visibleLinkedIds(parent, byId) {
     const ids = parent.linkedTaskIds.filter(id => byId.has(id));
@@ -242,8 +274,13 @@
     $('todo-end-date').setCustomValidity('');
     $('todo-link-mode').value = 'all';
     $('todo-routine-period-select').value = 'daily';
+    routineDays = [];
+    renderRoutineSchedule();
     $('todo-subtasks').innerHTML = '';
     $('todo-links').innerHTML = '';
+    $('todo-linked-search').value = '';
+    linkedTaskIds = [];
+    linkedTaskGroups = {};
     setNotificationEditor({});
     $('todo-advanced').open = false;
     $('todo-save-button').textContent = 'タスクを追加';
@@ -265,6 +302,79 @@
     $('todo-linked-field').hidden = tab === 'routine';
     $('todo-end-date-field').hidden = false;
     resetForm();
+  }
+  function renderRoutineSchedule() {
+    const period = $('todo-routine-period-select').value;
+    $('todo-routine-weekly').hidden = period !== 'weekly';
+    $('todo-routine-monthly').hidden = period !== 'monthly';
+    document.querySelectorAll('[name="todo-routine-weekday"]').forEach(input => {
+      input.checked = routineDays.includes(Number(input.value));
+    });
+    renderMonthlyCalendar();
+  }
+  function renderMonthlyCalendar() {
+    const grid = $('todo-month-days');
+    if (!grid) return;
+    grid.replaceChildren();
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    $('todo-month-label').textContent = `${year}年${month + 1}月`;
+    ['日', '月', '火', '水', '木', '金', '土'].forEach(day => {
+      const heading = document.createElement('span');
+      heading.className = 'todo-month-weekday';
+      heading.textContent = day;
+      grid.appendChild(heading);
+    });
+    const offset = new Date(year, month, 1).getDay();
+    const total = new Date(year, month + 1, 0).getDate();
+    for (let blank = 0; blank < offset; blank += 1) {
+      const spacer = document.createElement('span');
+      spacer.setAttribute('aria-hidden', 'true');
+      grid.appendChild(spacer);
+    }
+    for (let day = 1; day <= total; day += 1) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'todo-month-day';
+      button.textContent = String(day);
+      button.setAttribute('aria-pressed', String(routineDays.includes(day)));
+      button.setAttribute('aria-label', `${month + 1}月${day}日`);
+      button.addEventListener('click', () => {
+        routineDays = routineDays.includes(day)
+          ? routineDays.filter(selected => selected !== day)
+          : [...routineDays, day].sort((a, b) => a - b);
+        $('todo-routine-period-select').setCustomValidity('');
+        renderMonthlyCalendar();
+      });
+      grid.appendChild(button);
+    }
+  }
+  function setupRoutineEditor() {
+    ['日', '月', '火', '水', '木', '金', '土'].forEach((name, day) => {
+      const label = document.createElement('label');
+      label.innerHTML = `<input type="checkbox" name="todo-routine-weekday" value="${day}"><span>${name}</span>`;
+      label.querySelector('input').addEventListener('change', event => {
+        const value = Number(event.currentTarget.value);
+        routineDays = event.currentTarget.checked
+          ? [...new Set([...routineDays, value])].sort((a, b) => a - b)
+          : routineDays.filter(selected => selected !== value);
+        $('todo-routine-period-select').setCustomValidity('');
+      });
+      $('todo-routine-weekly-days').appendChild(label);
+    });
+    $('todo-routine-period-select').addEventListener('change', () => {
+      $('todo-routine-period-select').setCustomValidity('');
+      routineDays = [];
+      renderRoutineSchedule();
+    });
+    $('todo-month-prev').addEventListener('click', () => {
+      calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1);
+      renderMonthlyCalendar();
+    });
+    $('todo-month-next').addEventListener('click', () => {
+      calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1);
+      renderMonthlyCalendar();
+    });
   }
   function addSubtask(name = '', checked = false, id = uid()) {
     const row = document.createElement('div');
@@ -334,35 +444,87 @@
       custom: customNotifications
     });
   }
-  function renderLinkedChoices(selected = [], groups = {}) {
+  function renderLinkedChoices(selected = linkedTaskIds, groups = linkedTaskGroups) {
+    linkedTaskIds = [...selected];
+    linkedTaskGroups = { ...groups };
     const box = $('todo-linked-list');
-    box.innerHTML = '';
+    const selectedBox = $('todo-linked-selected');
+    box.replaceChildren();
+    selectedBox.replaceChildren();
     const ancestors = editingId ? linkedAncestors(editingId) : new Set();
-    const candidates = data.tasks.filter(t => t.category !== 'routine' && t.id !== editingId && !ancestors.has(t.id));
+    const chosen = new Set(linkedTaskIds);
+    linkedTaskIds.forEach(id => {
+      const task = data.tasks.find(item => item.id === id);
+      if (!task) return;
+      const row = document.createElement('div');
+      row.className = 'todo-linked-selected-choice';
+      const name = document.createElement('span');
+      name.textContent = task.name;
+      row.appendChild(name);
+      if ($('todo-link-mode').value === 'custom') {
+        linkedTaskGroups[id] = Math.min(Math.max(1, Number(linkedTaskGroups[id]) || 1), linkedTaskIds.length);
+        const group = document.createElement('select');
+        group.className = 'todo-group-number';
+        group.setAttribute('aria-label', `${task.name}の表示グループ`);
+        for (let number = 1; number <= Math.max(1, linkedTaskIds.length); number += 1) {
+          const option = document.createElement('option');
+          option.value = String(number);
+          option.textContent = `グループ ${number}`;
+          group.appendChild(option);
+        }
+        group.value = String(Math.min(Math.max(1, Number(linkedTaskGroups[id]) || 1), linkedTaskIds.length));
+        group.addEventListener('change', () => { linkedTaskGroups[id] = Number(group.value); });
+        row.appendChild(group);
+      }
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'lm-todo-slot-remove';
+      remove.textContent = '−';
+      remove.setAttribute('aria-label', `${task.name}の紐付けを解除`);
+      remove.addEventListener('click', () => {
+        linkedTaskIds = linkedTaskIds.filter(selectedId => selectedId !== id);
+        delete linkedTaskGroups[id];
+        renderLinkedChoices();
+      });
+      row.appendChild(remove);
+      selectedBox.appendChild(row);
+    });
+    if (!linkedTaskIds.length) {
+      const empty = document.createElement('p');
+      empty.className = 'todo-help';
+      empty.textContent = '紐付けタスクはまだありません。下の一覧から追加できます。';
+      selectedBox.appendChild(empty);
+    }
+
+    const query = $('todo-linked-search').value.trim().toLocaleLowerCase();
+    const candidates = data.tasks.filter(t => t.category !== 'routine' && t.id !== editingId &&
+      !ancestors.has(t.id) && !chosen.has(t.id) && t.name.toLocaleLowerCase().includes(query));
     if (!candidates.length) {
-      box.innerHTML = '<p class="todo-help">紐付けできるメイン・その他タスクがありません。</p>';
+      const empty = document.createElement('p');
+      empty.className = 'todo-help';
+      empty.textContent = query ? '検索結果がありません。' : '追加できるメイン・その他タスクがありません。';
+      box.appendChild(empty);
       return;
     }
     candidates.forEach(t => {
-      const row = document.createElement('label');
+      const row = document.createElement('div');
       row.className = 'todo-linked-choice';
-      const cb = document.createElement('input');
-      cb.type = 'checkbox'; cb.value = t.id; cb.checked = selected.includes(t.id);
       const name = document.createElement('span'); name.textContent = t.name;
-      const num = document.createElement('input');
-      num.type = 'number'; num.min = '1'; num.step = '1'; num.value = groups[t.id] || 1;
-      num.className = 'todo-group-number'; num.setAttribute('aria-label', t.name + 'の表示グループ');
-      num.hidden = $('todo-link-mode').value !== 'custom';
-      cb.addEventListener('change', renderCustomGroups);
-      row.append(cb, name, num); box.appendChild(row);
+      const add = document.createElement('button');
+      add.type = 'button';
+      add.className = 'lm-btn secondary';
+      add.textContent = '追加';
+      add.addEventListener('click', () => {
+        linkedTaskIds.push(t.id);
+        linkedTaskGroups[t.id] = 1;
+        renderLinkedChoices();
+      });
+      row.append(name, add);
+      box.appendChild(row);
     });
   }
   function renderCustomGroups() {
-    const mode = $('todo-link-mode').value;
-    document.querySelectorAll('.todo-linked-choice').forEach(row => {
-      const selected = row.querySelector('input[type=checkbox]').checked;
-      row.querySelector('.todo-group-number').hidden = mode !== 'custom' || !selected;
-    });
+    renderLinkedChoices();
   }
   function editTask(task) {
     editingId = task.id;
@@ -383,6 +545,8 @@
     $('todo-start-date').value = task.startDate;
     $('todo-end-date').value = task.endDate;
     $('todo-routine-period-select').value = task.routinePeriod;
+    routineDays = [...task.routineDays];
+    renderRoutineSchedule();
     $('todo-subtasks').innerHTML = '';
     task.subtasks.forEach(s => addSubtask(s.name, s.checked, s.id));
     $('todo-links').innerHTML = '';
@@ -426,12 +590,16 @@
       url: row.querySelector('input[type=url]').value.trim(),
       label: row.querySelectorAll('input')[1].value.trim()
     })).map(link => ({ ...link, url: safeLinkUrl(link.url) })).filter(l => l.url);
-    const selected = [...$('todo-linked-list').querySelectorAll('input[type=checkbox]:checked')].map(x => x.value);
-    const linkGroups = {};
-    $('todo-linked-list').querySelectorAll('.todo-linked-choice').forEach(row => {
-      const id = row.querySelector('input[type=checkbox]').value;
-      linkGroups[id] = Math.max(1, Number(row.querySelector('.todo-group-number').value) || 1);
-    });
+    const routinePeriod = createTab === 'routine' ? $('todo-routine-period-select').value : 'daily';
+    $('todo-routine-period-select').setCustomValidity('');
+    if (createTab === 'routine' && routinePeriod !== 'daily' && !routineDays.length) {
+      $('todo-routine-period-select').setCustomValidity('曜日または日付を1つ以上選択してください。');
+      $('todo-routine-period-select').reportValidity();
+      return null;
+    }
+    const linkGroups = Object.fromEntries(linkedTaskIds.map(id => [
+      id, Math.max(1, Number(linkedTaskGroups[id]) || 1)
+    ]));
     return {
       id: editingId || uid(), category: createTab, name,
       createdAt: editingId
@@ -439,10 +607,11 @@
         : Date.now(),
       startDate: $('todo-start-date').value,
       endDate: $('todo-end-date').value,
-      routinePeriod: createTab === 'routine' ? $('todo-routine-period-select').value : 'daily',
+      routinePeriod,
+      routineDays: createTab === 'routine' ? [...routineDays] : [],
       subtasks, links,
       notifications: readNotificationEditor(),
-      linkedTaskIds: createTab === 'routine' ? [] : selected,
+      linkedTaskIds: createTab === 'routine' ? [] : [...linkedTaskIds],
       linkMode: $('todo-link-mode').value, linkGroups,
       checked: editingId
         ? !!data.tasks.find(t => t.id === editingId)?.checked &&
@@ -454,10 +623,9 @@
   }
   function toggleTask(task, checked) {
     if (task.checked === checked) return;
-    if (checked && task.category === 'routine' && task.routinePeriod === 'weekdays') {
-      const [year, month, day] = todayKey().split('-').map(Number);
-      const weekday = new Date(year, month - 1, day).getDay();
-      if (weekday === 0 || weekday === 6) return render();
+    if (checked && task.category === 'routine' &&
+        !routineScheduledOn(task.routinePeriod, task.routineDays)) {
+      return render();
     }
     task.checked = checked;
     task.checkedAt = checked ? Date.now() : 0;
@@ -513,10 +681,11 @@
     const visible = new Set(allVisibleIds());
     let list = data.tasks.filter(task => archiveMode
       ? !!task.archivedAt
-      : !task.archivedAt && visible.has(task.id) && categories.has(task.category));
+      : !task.archivedAt && visible.has(task.id) && categories.has(task.category) &&
+        (task.category !== 'routine' || routineScheduledOn(task.routinePeriod, task.routineDays)));
     if (!archiveMode && deadline === 'yes') list = list.filter(task => !!task.endDate);
     if (!archiveMode && deadline === 'no') list = list.filter(task => !task.endDate);
-    const started = task => !task.startDate || task.startDate <= todayKey();
+    const started = task => !task.startDate || task.startDate <= calendarTodayKey();
     list.sort((a, b) => {
       if (started(a) !== started(b)) return started(a) ? -1 : 1;
       if (sort === 'deadline') {
@@ -589,7 +758,7 @@
     heading.appendChild(category);
     content.appendChild(heading);
 
-    const period = task.category === 'routine' ? routinePeriodLabel(task.routinePeriod) : '';
+    const period = task.category === 'routine' ? routineScheduleLabel(task) : '';
     const metadata = document.createElement('p');
     metadata.className = 'todo-detail-meta';
     metadata.textContent = task.endDate
@@ -599,13 +768,9 @@
     content.appendChild(metadata);
 
     complete.addEventListener('change', () => toggleTask(task, complete.checked));
-    if (task.category === 'routine' && task.routinePeriod === 'weekdays') {
-      const [year, month, day] = todayKey().split('-').map(Number);
-      const weekday = new Date(year, month - 1, day).getDay();
-      if (weekday === 0 || weekday === 6) {
-        complete.disabled = true;
-        complete.title = '平日に実施できます';
-      }
+    if (task.category === 'routine' && !routineScheduledOn(task.routinePeriod, task.routineDays)) {
+      complete.disabled = true;
+      complete.title = '設定された曜日・日付に実施できます';
     }
 
     if (task.subtasks.length) {
@@ -718,11 +883,14 @@
     });
     const panel = $('todo-bulk-actions');
     const count = selectedTaskIds.size;
-    panel.hidden = list.length === 0;
+    panel.hidden = !bulkSelectionMode || list.length === 0;
     $('todo-selection-count').textContent = `${count}件選択中`;
     $('todo-bulk-delete').disabled = count === 0;
     $('todo-bulk-delete').textContent = archiveMode ? '選択したタスクをストレージから削除' : '選択したタスクを削除';
     $('todo-new-task').hidden = archiveMode;
+    $('todo-select-toggle').hidden = archiveMode;
+    $('todo-select-toggle').setAttribute('aria-pressed', String(bulkSelectionMode));
+    $('todo-select-toggle').textContent = bulkSelectionMode ? '選択を終了' : '複数選択';
     $('todo-archive-toggle').setAttribute('aria-pressed', String(archiveMode));
     $('todo-archive-toggle').setAttribute('aria-label', archiveMode ? 'タスク一覧に戻る' : 'ストレージを表示');
     $('todo-archive-toggle').title = archiveMode ? 'タスク一覧' : 'ストレージ';
@@ -742,13 +910,14 @@
     }
     list.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize).forEach(task => {
       const card = document.createElement('article');
-      const notStarted = !archiveMode && task.startDate && task.startDate > todayKey();
+      const notStarted = !archiveMode && task.startDate && task.startDate > calendarTodayKey();
       card.className = 'todo-task-card' + (task.checked ? ' is-checked' : '') + (notStarted ? ' is-not-started' : '');
       const top = document.createElement('div');
       top.className = 'todo-task-top';
       const select = document.createElement('input');
       select.type = 'checkbox';
       select.className = 'todo-select-checkbox';
+      select.hidden = !bulkSelectionMode;
       select.checked = selectedTaskIds.has(task.id);
       select.setAttribute('aria-label', `${task.name}を選択`);
       select.addEventListener('change', () => {
@@ -761,11 +930,9 @@
       cb.type = 'checkbox';
       cb.checked = task.checked;
       cb.disabled = archiveMode;
-      const [year, month, day] = todayKey().split('-').map(Number);
-      const weekday = new Date(year, month - 1, day).getDay();
-      if (task.category === 'routine' && task.routinePeriod === 'weekdays' && (weekday === 0 || weekday === 6)) {
+      if (task.category === 'routine' && !routineScheduledOn(task.routinePeriod, task.routineDays)) {
         cb.disabled = true;
-        cb.title = '平日に実施できます';
+        cb.title = '設定された曜日・日付に実施できます';
       }
       cb.setAttribute('aria-label', task.name + 'を完了');
       cb.addEventListener('change', () => toggleTask(task, cb.checked));
@@ -795,7 +962,7 @@
       deadline.className = 'todo-task-deadline';
       deadline.textContent = task.endDate
         ? `期限・終了日 ${task.endDate}`
-        : task.category === 'routine' ? routinePeriodLabel(task.routinePeriod) : '期限なし';
+        : task.category === 'routine' ? routineScheduleLabel(task) : '期限なし';
       meta.appendChild(deadline);
       if (task.linkedTaskIds.length) {
         const progress = linkedTaskProgress(task);
@@ -834,6 +1001,21 @@
   $('todo-add-subtask').addEventListener('click', () => addSubtask());
   $('todo-add-link').addEventListener('click', () => addLink());
   $('todo-link-mode').addEventListener('change', renderCustomGroups);
+  $('todo-linked-search').addEventListener('input', () => renderLinkedChoices());
+  $('todo-select-toggle').addEventListener('click', () => {
+    bulkSelectionMode = !bulkSelectionMode;
+    if (!bulkSelectionMode) selectedTaskIds.clear();
+    render();
+  });
+  $('todo-create-dialog').addEventListener('click', event => {
+    if (event.target !== $('todo-create-dialog')) return;
+    const bounds = $('todo-create-dialog').getBoundingClientRect();
+    if (event.clientX >= bounds.left && event.clientX <= bounds.right &&
+        event.clientY >= bounds.top && event.clientY <= bounds.bottom) return;
+    resetForm();
+    $('todo-create-dialog').close();
+  });
+  $('todo-create-dialog').addEventListener('cancel', () => resetForm());
   $('todo-add-custom-notification').addEventListener('click', () => {
     const date = $('todo-custom-date').value;
     const time = $('todo-custom-time').value;
@@ -886,6 +1068,7 @@
   });
   $('todo-archive-toggle').addEventListener('click', () => {
     archiveMode = !archiveMode;
+    bulkSelectionMode = false;
     selectedTaskIds.clear();
     pageIndex = 0;
     render();
@@ -916,6 +1099,7 @@
     });
   });
   setupNotificationOptions();
+  setupRoutineEditor();
   archiveExpiredTasks();
   setCreateTab('main');
   render();
