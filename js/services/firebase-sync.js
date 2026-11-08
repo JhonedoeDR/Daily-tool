@@ -23,40 +23,31 @@ function readLocalJson(key, fallback) {
   return raw === null ? fallback : JSON.parse(raw);
 }
 
-function buildTodoSnapshot() {
-  const raw = readLocalJson('lm_todoState', null);
-  if (!raw) return null;
-
-  const todo = {
-    dayKey: raw.dayKey || '',
-    dailyTasks: Object.fromEntries(Object.entries(raw.dailyTasks || {}).map(([id, task]) => [
-      id,
-      { name: String((task && task.name) || ''), checked: !!(task && task.checked) },
-    ])),
-    taskEnteredAt: Number(raw.taskEnteredAt) || 0,
-  };
-  if (window.LM && typeof window.LM.mergeLinkedTasksForSync === 'function') {
-    window.LM.mergeLinkedTasksForSync(todo);
-  }
-  return todo;
-}
-
-function buildTomorrowTasks() {
-  let pending;
-  try {
-    pending = readLocalJson('lm_tomorrowTasks', null);
-  } catch (error) {
-    console.warn('明日のタスクを同期データに変換できませんでした', error);
-    return null;
-  }
-  if (!pending || !pending.forDay || !pending.tasks) return null;
-
-  const tasks = {};
-  Object.entries(pending.tasks).forEach(([id, value]) => {
-    const name = String(value || '').trim();
-    if (name) tasks[id] = name.slice(0, 120);
-  });
-  return Object.keys(tasks).length ? { forDay: String(pending.forDay), tasks } : null;
+function buildTodoManagerSnapshot() {
+  const raw = readLocalJson('lm_todoManager', null);
+  if (!raw || !Array.isArray(raw.tasks)) return [];
+  return raw.tasks.filter((task) => task && typeof task === 'object').map((task) => ({
+    id: String(task.id || ''),
+    category: ['main', 'routine', 'other'].includes(task.category) ? task.category : 'other',
+    name: String(task.name || '').slice(0, 200),
+    checked: !!task.checked,
+    checkedDay: String(task.checkedDay || ''),
+    routinePeriod: ['daily', 'weekdays', 'weekly', 'monthly'].includes(task.routinePeriod) ? task.routinePeriod : 'daily',
+    startDate: /^\d{4}-\d{2}-\d{2}$/.test(task.startDate || '') ? task.startDate : '',
+    endDate: /^\d{4}-\d{2}-\d{2}$/.test(task.endDate || '') ? task.endDate : '',
+    createdAt: Number(task.createdAt) || 0,
+    archivedAt: Number(task.archivedAt) || 0,
+    notifications: {
+      weekdays: (Array.isArray(task.notifications?.weekdays) ? task.notifications.weekdays : [])
+        .filter((day) => Number.isInteger(day) && day >= 0 && day <= 6),
+      times: (Array.isArray(task.notifications?.times) ? task.notifications.times : [])
+        .filter((time) => /^([01]\d|2[0-3]):00$/.test(time)),
+      custom: (Array.isArray(task.notifications?.custom) ? task.notifications.custom : [])
+        .filter((item) => item && /^\d{4}-\d{2}-\d{2}$/.test(item.date || '') &&
+          /^([01]\d|2[0-3]):[0-5]\d$/.test(item.time || ''))
+        .map((item) => ({ date: item.date, time: item.time })),
+    },
+  })).filter((task) => task.id && task.name);
 }
 
 function buildGameReminders() {
@@ -94,8 +85,7 @@ function buildSyncPayload() {
       name: event.name,
       end: event.end,
     })),
-    todo: buildTodoSnapshot(),
-    tomorrowTasks: buildTomorrowTasks(),
+    todoManager: buildTodoManagerSnapshot(),
     gameReminders: buildGameReminders(),
     updatedAt: Date.now(),
   };

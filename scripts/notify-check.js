@@ -69,96 +69,46 @@ function minutesToClock(totalMin) {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
-/* ---------- タスクの集計(タスクの「1日」はAM4:00区切り) ---------- */
-// 端末が今日(4時以降)にまだ開かれていなくても、「明日のタスク」で入力済みの分があれば
-// それを今日のタスクとして扱う(アプリを開いた時の自動入力と同じ結果になる)
-function effectiveTodo(state, dayKey) {
-  const todo = state.todo;
-  if (todo && todo.dayKey === dayKey) {
-    const pending = state.tomorrowTasks;
-    // 端末側で自動入力が済む前に同期された場合も、空いている枠には明日のタスクを入れる
-    if (pending && pending.forDay === dayKey && pending.tasks) {
-      const tasks = Object.assign({}, todo.dailyTasks || {});
-      let added = false;
-      Object.keys(pending.tasks).forEach((id) => {
-        const name = String(pending.tasks[id] || '').trim();
-        if (!name || (tasks[id] && String(tasks[id].name || '').trim())) return;
-        tasks[id] = { name, checked: false };
-        added = true;
-      });
-      if (added) {
-        const enteredAt = Number(todo.taskEnteredAt) > 0 ? Number(todo.taskEnteredAt) : jstMidnightEpoch(dayKey) + 4 * HOUR_MS;
-        return Object.assign({}, todo, { dailyTasks: tasks, taskEnteredAt: enteredAt });
-      }
-    }
-    return todo;
-  }
-  const pending = state.tomorrowTasks;
-  const tasks = {};
-  // ルーティンは名前が翌日に引き継がれる(同じ月の間だけ)ので、前日の端末の名前を持ってくる
-  const old = state.todo && state.todo.dailyTasks;
-  if (old && String(state.todo.dayKey || '').slice(0, 7) === dayKey.slice(0, 7)) {
-    ['rt1', 'rt2', 'rt3'].forEach((id) => {
-      const name = String((old[id] && old[id].name) || '').trim();
-      if (name) tasks[id] = { name, checked: false };
-    });
-  }
-  if (pending && pending.forDay === dayKey && pending.tasks) {
-    Object.keys(pending.tasks).forEach((id) => {
-      const name = String(pending.tasks[id] || '').trim();
-      if (name) tasks[id] = { name, checked: false };
-    });
-  }
-  if (Object.keys(tasks).length === 0) return null;
-  return { dayKey, dailyTasks: tasks, taskEnteredAt: jstMidnightEpoch(dayKey) + 4 * HOUR_MS };
-}
-
-function summarizeTasks(state, dayKey) {
-  const todo = effectiveTodo(state, dayKey);
-  if (!todo) {
-    return { entered: 0, mainEntered: 0, mainUnfinished: 0, mainComplete: false, otherUnfinished: 0, unfinished: 0 };
-  }
-  const tasks = todo.dailyTasks || {};
-  const entered = Object.values(tasks).filter((task) => task && String(task.name || '').trim()).length;
-  const mainTasks = ['main1', 'main2', 'main3']
-    .map((id) => tasks[id])
-    .filter((task) => task && String(task.name || '').trim());
-  const mainEntered = mainTasks.length;
-  const mainUnfinished = mainTasks.filter((task) => !task.checked).length;
-  const otherUnfinished = Object.entries(tasks)
-    .filter(([id, task]) => !/^main\d+$/.test(id) && task && String(task.name || '').trim() && !task.checked)
-    .length;
-  return {
-    entered,
-    mainEntered,
-    mainUnfinished,
-    mainComplete: mainEntered > 0 && mainUnfinished === 0,
-    otherUnfinished,
-    unfinished: mainUnfinished + otherUnfinished,
-  };
-}
-
-/* ---------- 未達成のタスク通知に添える、締切の文(近い順に最大2件) ----------
-   アプリ側が同期する todo.unfinishedDeadlineIds(未達成の締切タスクがある締切のid)を使う */
-function buildDeadlineNoteLines(st, nowMs) {
-  const ids = (st.todo && Array.isArray(st.todo.unfinishedDeadlineIds)) ? st.todo.unfinishedDeadlineIds : [];
-  if (ids.length === 0) return [];
-  const today = jstDateStr(nowMs);
-  const list = ids
-    .map((id) => (st.schedules || []).find((s) => s.id === id && s.kind === 'deadline'))
-    .filter((s) => s && s.date && s.date >= today);
-  const lines = list.slice(0, 2).map((s) => {
-    const d = daysBetween(today, s.date);
-    if (d <= 0) return `「${s.name}」の締切は今日の${s.start}です`;
-    if (d === 1) return `「${s.name}」の締切は明日の${s.start}です`;
-    return `「${s.name}」の締切まで、あと${d}日です`;
-  });
-  if (list.length > 2) lines.push(`ほか${list.length - 2}件の締切にも、未達成のタスクがあります`);
-  return lines;
-}
-
 function roundHour(epochMs) {
   return Math.round(epochMs / HOUR_MS) * HOUR_MS;
+}
+
+function todoManagerTasks(state) {
+  return Array.isArray(state.todoManager)
+    ? state.todoManager.filter((task) => task && typeof task === 'object')
+    : [];
+}
+
+function isTaskActive(task, today) {
+  return task && !task.archivedAt && String(task.name || '').trim() &&
+    (!task.startDate || task.startDate <= today) &&
+    (!task.endDate || task.endDate >= today);
+}
+
+function isTaskDone(task, today, dayKey) {
+  if (!task || !task.checked) return false;
+  if (task.category !== 'routine') return true;
+  if (task.routinePeriod === 'monthly') return task.checkedDay === today.slice(0, 7);
+  if (task.routinePeriod === 'weekly') {
+    const date = new Date(`${today}T00:00:00Z`);
+    const monday = new Date(date.getTime() - ((date.getUTCDay() + 6) % 7) * 86400000);
+    return task.checkedDay === monday.toISOString().slice(0, 10);
+  }
+  return task.checkedDay === dayKey;
+}
+
+function taskReminderBody(tasks, includeCategory) {
+  const sorted = [...tasks].sort((a, b) => {
+    if (a.endDate && !b.endDate) return -1;
+    if (!a.endDate && b.endDate) return 1;
+    if (a.endDate && b.endDate && a.endDate !== b.endDate) return a.endDate.localeCompare(b.endDate);
+    return String(a.name || '').localeCompare(String(b.name || ''), 'ja');
+  });
+  const first = sorted[0];
+  if (!first) return '';
+  const category = ({ main: 'メイン', routine: 'ルーティン', other: 'その他' })[first.category] || 'その他';
+  const label = includeCategory ? `${category} の ${first.name}` : first.name;
+  return `「${label}」${sorted.length > 1 ? `ほか${sorted.length - 1}つ` : ''}`;
 }
 
 /* ---------- 通知予定の一覧を作る ----------
@@ -212,56 +162,110 @@ function buildItems(state, nowMs) {
       });
     });
 
-  // メインタスク未入力: 7時から21時まで3時間ごと(7, 10, 13, 16, 19時)
+  const managerTasks = todoManagerTasks(state);
+  const currentManagerTasks = managerTasks.filter((task) => isTaskActive(task, today));
+  const mainTasks = currentManagerTasks.filter((task) => task.category === 'main');
+  const unfinishedMain = mainTasks.filter((task) => !isTaskDone(task, today, dayKey));
+
+  // メインタスクがひとつもない間だけ、未入力通知を続ける。
   [7, 10, 13, 16, 19].forEach((h) => {
     items.push({
       key: `task-empty:${dayKey}:${h}`,
       at: midnight + h * HOUR_MS,
       build: (st) => {
-        // メイン以外(ルーティン含む)だけでも入力済みなら、未入力扱いにしない(未達成の通知に任せる)
-        return summarizeTasks(st, dayKey).entered === 0
+        const tasks = todoManagerTasks(st);
+        const hasMain = tasks.some((task) => task.category === 'main' && !task.archivedAt &&
+          (!task.endDate || task.endDate >= today));
+        return !hasMain
           ? { title: 'メインタスクが入力されていません', body: '今日のメインタスクを入力しましょう' }
           : null;
       },
     });
   });
 
-  const todo = effectiveTodo(state, dayKey);
-  const summary = summarizeTasks(state, dayKey);
-  if (todo && summary.entered > 0 && !summary.mainComplete && summary.unfinished > 0) {
-    // 入力時刻の記録がない(ルーティンの自動引き継ぎだけ等)日は、その日のAM4:00を起点にする
-    const enteredAt = Number(todo.taskEnteredAt) > 0
-      ? roundHour(Number(todo.taskEnteredAt))
-      : jstMidnightEpoch(dayKey) + 4 * HOUR_MS;
-    const resetAt = jstMidnightEpoch(dayKey) + 24 * HOUR_MS + 4 * HOUR_MS;
-    for (let at = enteredAt + 3 * HOUR_MS; at < resetAt; at += 3 * HOUR_MS) {
+  if (unfinishedMain.length) {
+    const taskDayStart = jstMidnightEpoch(dayKey) + 4 * HOUR_MS;
+    const resetAt = taskDayStart + 24 * HOUR_MS;
+    const createdAt = unfinishedMain.map((task) => Number(task.createdAt) || 0).filter(Boolean);
+    const reminderBase = Math.max(taskDayStart, createdAt.length ? roundHour(Math.min(...createdAt)) : taskDayStart);
+    for (let at = reminderBase + 3 * HOUR_MS; at < resetAt; at += 3 * HOUR_MS) {
       const reminderAt = at;
       items.push({
         key: `task-unfinished:${dayKey}:${reminderAt}`,
         at: reminderAt,
         build: (st) => {
-          const current = summarizeTasks(st, dayKey);
-          if (current.entered === 0 || current.mainComplete || current.unfinished === 0) return null;
-          const lines = [`未達成 ${current.unfinished}件`];
-          if (current.mainEntered === 0) lines.push('メインタスクは未入力です');
-          return { title: '未達成のタスクがあります', body: [...lines, ...buildDeadlineNoteLines(st, Date.now())].join('\n') };
+          const current = todoManagerTasks(st).filter((task) => isTaskActive(task, today) &&
+            task.category === 'main' && !isTaskDone(task, today, dayKey));
+          if (!current.length) return null;
+          return { title: 'メインタスクが未達成です', body: taskReminderBody(current, false) };
         },
       });
     }
   }
 
-  // メインタスクを全て達成した後、その他に残っているタスクを19時と22時に通知
-  [19, 22].forEach((h) => {
+  // メインが完了済み、またはメイン以外だけが登録されている場合は1日3回通知する。
+  [7, 12, 19].forEach((h) => {
     items.push({
       key: `task-other-unfinished:${dayKey}:${h}`,
       at: midnight + h * HOUR_MS,
       build: (st) => {
-        const current = summarizeTasks(st, dayKey);
-        return current.mainComplete && current.otherUnfinished > 0
-          ? { title: 'その他に未達成のタスクがあります', body: [`未達成 ${current.otherUnfinished}件`, ...buildDeadlineNoteLines(st, Date.now())].join('\n') }
+        const tasks = todoManagerTasks(st).filter((task) => isTaskActive(task, today));
+        const unfinishedPrimary = tasks.some((task) => task.category === 'main' &&
+          !isTaskDone(task, today, dayKey));
+        const unfinished = tasks.filter((task) => task.category !== 'main' &&
+          !isTaskDone(task, today, dayKey));
+        return !unfinishedPrimary && unfinished.length
+          ? { title: 'タスクが未達成です', body: taskReminderBody(unfinished, true) }
           : null;
       },
     });
+  });
+
+  managerTasks.forEach((task) => {
+    if (!task || !task.id || !task.name || isTaskDone(task, today, dayKey) ||
+        !isTaskActive(task, today)) return;
+    const notifications = task.notifications || {};
+    const weekdays = Array.isArray(notifications.weekdays) ? notifications.weekdays : [];
+    const times = Array.isArray(notifications.times) ? notifications.times : [];
+    const weekday = new Date(nowMs + JST_OFFSET_MS).getUTCDay();
+    if (weekdays.includes(weekday)) {
+      times.forEach((time) => {
+        if (!/^([01]\d|2[0-3]):00$/.test(time)) return;
+        const at = midnight + clockToMinutes(time) * MIN_MS;
+        items.push({
+          key: `todo-task-weekly:${task.id}:${today}:${time}`,
+          at,
+          build: (st) => {
+            const current = todoManagerTasks(st).find((item) => item.id === task.id);
+            const currentNotifications = current && current.notifications || {};
+            const currentWeekdays = Array.isArray(currentNotifications.weekdays) ? currentNotifications.weekdays : [];
+            const currentTimes = Array.isArray(currentNotifications.times) ? currentNotifications.times : [];
+            return current && isTaskActive(current, today) && !isTaskDone(current, today, dayKey) &&
+              currentWeekdays.includes(weekday) && currentTimes.includes(time)
+              ? { title: 'タスクの通知', body: current.name }
+              : null;
+          },
+        });
+      });
+    }
+    (Array.isArray(notifications.custom) ? notifications.custom : [])
+      .filter((item) => item && item.date === today && /^([01]\d|2[0-3]):[0-5]\d$/.test(item.time || ''))
+      .forEach((item) => {
+        const at = midnight + clockToMinutes(item.time) * MIN_MS;
+        items.push({
+          key: `todo-task-custom:${task.id}:${item.date}:${item.time}`,
+          at,
+          build: (st) => {
+            const current = todoManagerTasks(st).find((entry) => entry.id === task.id);
+            const currentCustom = current && current.notifications && current.notifications.custom;
+            return current && isTaskActive(current, today) && !isTaskDone(current, today, dayKey) &&
+              Array.isArray(currentCustom) && currentCustom.some((notification) =>
+                notification && notification.date === item.date && notification.time === item.time)
+              ? { title: 'タスクの通知', body: current.name }
+              : null;
+          },
+        });
+      });
   });
   
     // 締切: 通知設定で選んだ「◯分前」に通知(未来の日付の締切も対象)
@@ -411,7 +415,7 @@ async function main() {
   }
 }
 
-module.exports = { effectiveTodo, jstDateStr, jstMidnightEpoch, summarizeTasks, roundHour, buildItems, selectDue, calcPrepStartMin, buildDeadlineNoteLines };
+module.exports = { jstDateStr, jstMidnightEpoch, roundHour, buildItems, selectDue, calcPrepStartMin };
 
 if (require.main === module) {
   main().catch((e) => {

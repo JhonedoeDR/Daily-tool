@@ -927,7 +927,21 @@ body {
 
 .todo-toolbar {
   display: grid;
-  gap: 10px;
+  gap: 6px;
+}
+
+.todo-list-mode {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.todo-new-task {
+  justify-self: start;
+  min-height: 32px;
+  padding: 6px 12px;
+  font-size: 13px;
 }
 
 .todo-filter-row {
@@ -963,14 +977,22 @@ body {
 .todo-sort-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
+  align-items: center;
   gap: 8px;
 }
 
 .todo-sort-row > label {
   display: grid;
-  gap: 4px;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 6px;
   color: var(--text-soft);
+  font-size: 12px;
+}
+
+.todo-sort-row > label select {
+  height: 32px;
+  padding: 5px 8px;
   font-size: 12px;
 }
 
@@ -1073,11 +1095,21 @@ body {
   text-align: center;
 }
 
-.todo-input-section {
-  display: grid;
-  gap: 8px;
-  padding-top: 16px;
-  border-top: 1px solid var(--paper-line);
+.todo-create-dialog {
+  box-sizing: border-box;
+  width: min(640px, calc(100% - 24px));
+  max-width: 640px;
+  max-height: min(90dvh, 900px);
+  padding: 12px;
+  border: 1px solid var(--paper-line);
+  border-radius: 14px;
+  background: var(--paper);
+  color: var(--text);
+  overflow: auto;
+}
+
+.todo-create-dialog::backdrop {
+  background: rgba(25, 30, 34, 0.48);
 }
 
 .todo-create-tabs {
@@ -1113,6 +1145,10 @@ body {
   background: #fff;
 }
 
+.todo-create-dialog .todo-create-form {
+  margin-top: 9px;
+}
+
 .todo-form-heading {
   font-family: var(--font-display);
   font-size: 15px;
@@ -1146,8 +1182,7 @@ body {
   padding-top: 10px;
 }
 
-.todo-advanced summary,
-.todo-legacy-area summary {
+.todo-advanced summary {
   color: var(--text);
   font-size: 13px;
   font-weight: 700;
@@ -1158,6 +1193,92 @@ body {
   display: grid;
   gap: 16px;
   padding-top: 12px;
+}
+
+.todo-notification-settings {
+  gap: 10px;
+}
+
+.todo-notification-settings fieldset {
+  min-width: 0;
+  margin: 0;
+  padding: 8px;
+  border: 1px solid var(--paper-line);
+  border-radius: 8px;
+}
+
+.todo-notification-settings legend {
+  padding: 0 4px;
+}
+
+.todo-notification-label {
+  display: block;
+  margin-top: 6px;
+  color: var(--text-soft);
+  font-size: 11px;
+}
+
+.todo-notification-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  max-height: min(50vh, 220px);
+  margin-top: 5px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.todo-notification-options label {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--paper-line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+  font-size: 11px;
+}
+
+.todo-notification-options input {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.todo-custom-notification-add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, .8fr) auto;
+  align-items: center;
+  gap: 5px;
+}
+
+.todo-custom-notification-add .lm-btn,
+.todo-custom-notification-list .lm-btn {
+  padding: 6px 8px;
+  font-size: 11px;
+}
+
+.todo-custom-notification-list {
+  display: grid;
+  gap: 5px;
+  max-height: 150px;
+  margin: 8px 0 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.todo-custom-notification-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text);
+  font-size: 12px;
 }
 
 .todo-subtask-editor,
@@ -1239,6 +1360,18 @@ body {
   background: #f9fcfd;
 }
 
+.todo-task-card.is-not-started {
+  border-color: #dedede;
+  background: #f1f1f1;
+  color: #777;
+}
+
+.todo-task-card.is-not-started .todo-task-summary,
+.todo-task-card.is-not-started .todo-task-title,
+.todo-task-card.is-not-started .todo-task-meta {
+  color: #888;
+}
+
 .todo-task-top {
   display: flex;
   align-items: center;
@@ -1249,6 +1382,31 @@ body {
 .todo-task-top > input[type='checkbox'] {
   flex: 0 0 18px;
   margin: 0;
+}
+
+.todo-task-top > .todo-select-checkbox {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  margin-right: 2px;
+}
+
+.todo-bulk-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+.todo-bulk-actions[hidden] {
+  display: none;
+}
+
+.todo-bulk-actions .lm-btn {
+  padding: 6px 9px;
+  font-size: 11px;
 }
 
 .todo-task-summary {
@@ -1437,16 +1595,6 @@ body {
 
 .todo-main-section {
   padding-top: 8px !important;
-}
-
-.todo-legacy-area {
-  margin-top: 18px;
-  padding-top: 12px;
-  border-top: 1px solid var(--paper-line);
-}
-
-.todo-legacy-area > .todo-help {
-  margin: 8px 0 14px;
 }
 
 @media (max-width: 380px) {
@@ -3367,13 +3515,6 @@ body {
   min-width: 0;
   font-size: 14px;
   overflow-wrap: anywhere;
-}
-
-/* 明日のタスクで締切タスクが使っている枠 */
-.lm-todo-row input[type='text'].dl-locked {
-  border-style: dashed;
-  background: var(--paper);
-  color: var(--text-soft);
 }
 
 /* 登録済みの締切: 1週間以内は日付を赤にする */

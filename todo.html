@@ -15,14 +15,8 @@
 <div class="lm-page todo-page">
   <a class="lm-back-link" href="./index.html">← 今日のページに戻る</a>
 
-  <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px;">
-    <h1 class="lm-date-header">タスク</h1>
-    <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
-      <button type="button" id="tomorrow-task-btn" class="lm-btn secondary" style="font-size:12px; padding:6px 12px; white-space:nowrap;">明日のタスク</button>
-      <button type="button" id="daily-reset-btn" class="lm-btn secondary" style="font-size:12px; padding:6px 12px; white-space:nowrap;">デイリーリセット</button>
-    </div>
-  </div>
-  <p class="lm-sub-header">既存デイリー枠は毎日AM4:00にリセットされます。</p>
+  <h1 class="lm-date-header">タスク</h1>
+  <p class="lm-sub-header">開始日前のタスクは開始日になるまでグレーで表示されます。期限終了後1週間はストレージで確認できます。</p>
 
   <div class="todo-progress-accordions" aria-label="達成状況">
     <details class="todo-progress-accordion">
@@ -59,6 +53,7 @@
   <section class="lm-section todo-main-section">
     <div class="todo-manager">
       <div class="todo-toolbar">
+        <button type="button" id="todo-new-task" class="lm-btn todo-new-task">＋ 新規作成</button>
         <div class="todo-sort-row">
           <label>ソート
             <select id="todo-sort">
@@ -70,11 +65,11 @@
             <button type="button" id="todo-filter-toggle" class="todo-icon-button" aria-label="フィルターを表示" aria-controls="todo-filter-panel" aria-expanded="false">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6.2 7.1v5.1l-3.6 1.8v-6.9L4 5Z" /></svg>
             </button>
-            <button type="button" id="todo-sort-asc" class="todo-icon-button" aria-label="昇順" aria-pressed="true" title="昇順">
+            <button type="button" id="todo-sort-direction" class="todo-icon-button" aria-label="昇順" aria-pressed="false" title="昇順">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" /></svg>
             </button>
-            <button type="button" id="todo-sort-desc" class="todo-icon-button" aria-label="降順" aria-pressed="false" title="降順">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14m-6-6 6 6 6-6" /></svg>
+            <button type="button" id="todo-archive-toggle" class="todo-icon-button" aria-label="ストレージを表示" aria-pressed="false" title="ストレージ">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18m-15 0 1 14h10l1-14M9 6V4h6v2m-5 4v7m4-7v7" /></svg>
             </button>
           </div>
         </div>
@@ -93,18 +88,23 @@
           </fieldset>
         </div>
       </div>
+      <h2 id="todo-list-mode" class="todo-list-mode">タスク一覧</h2>
       <div class="todo-pager" aria-label="タスク一覧ページ">
         <button type="button" id="todo-page-prev" class="todo-page-button" data-page-delta="-1" aria-label="前のページ">前へ</button>
         <span id="todo-page-status" aria-live="polite"></span>
         <button type="button" id="todo-page-next" class="todo-page-button" data-page-delta="1" aria-label="次のページ">次へ</button>
       </div>
       <div id="todo-task-list" class="todo-task-list" aria-live="polite"></div>
+      <div id="todo-bulk-actions" class="todo-bulk-actions" hidden>
+        <span id="todo-selection-count"></span>
+        <button type="button" id="todo-bulk-delete" class="lm-btn secondary">選択したタスクを削除</button>
+      </div>
       <div class="todo-pager" aria-label="タスク一覧ページ">
         <button type="button" class="todo-page-button" data-page-delta="-1" aria-label="前のページ">前へ</button>
         <span class="todo-page-status-copy" aria-hidden="true"></span>
         <button type="button" class="todo-page-button" data-page-delta="1" aria-label="次のページ">次へ</button>
       </div>
-      <div class="todo-input-section">
+      <dialog id="todo-create-dialog" class="todo-create-dialog" aria-labelledby="todo-form-heading">
         <div class="todo-create-tabs" role="tablist" aria-label="タスクの種類">
           <button type="button" id="todo-tab-main" role="tab" aria-controls="todo-create-form" aria-selected="true" class="todo-create-tab is-active" data-create-tab="main">メイン</button>
           <button type="button" id="todo-tab-routine" role="tab" aria-controls="todo-create-form" aria-selected="false" class="todo-create-tab" data-create-tab="routine">ルーティン</button>
@@ -157,20 +157,34 @@
               <div id="todo-links" class="todo-link-editor"></div>
               <button type="button" id="todo-add-link" class="lm-btn secondary">＋ リンクを追加</button>
             </div>
+            <section class="todo-field todo-notification-settings" aria-label="個別通知">
+              <span>個別通知</span>
+              <fieldset>
+                <legend>定期通知（毎週）</legend>
+                <span class="todo-notification-label">曜日</span>
+                <div id="todo-weekly-days" class="todo-notification-options"></div>
+                <span class="todo-notification-label">時刻</span>
+                <div id="todo-weekly-times" class="todo-notification-options"></div>
+              </fieldset>
+              <fieldset>
+                <legend>カスタム通知</legend>
+                <div class="todo-custom-notification-add">
+                  <input id="todo-custom-date" type="date" aria-label="通知日" />
+                  <input id="todo-custom-time" type="time" aria-label="通知時刻" />
+                  <button type="button" id="todo-add-custom-notification" class="lm-btn secondary">追加</button>
+                </div>
+                <ul id="todo-custom-notifications" class="todo-custom-notification-list"></ul>
+              </fieldset>
+            </section>
           </div>
         </details>
         <div class="todo-form-actions">
           <button type="submit" class="lm-btn" id="todo-save-button">タスクを追加</button>
-          <button type="button" class="lm-btn secondary" id="todo-cancel-edit" hidden>編集をやめる</button>
+          <button type="button" class="lm-btn secondary" id="todo-cancel-edit">閉じる</button>
         </div>
         </form>
-      </div>
+      </dialog>
     </div>
-    <details class="todo-legacy-area">
-      <summary>既存のデイリー枠・締切連携タスク（互換機能）</summary>
-      <p class="todo-help">以前の固定枠タスクと、予定ページから連携された締切タスクを表示します。週間・月間の既存記録や通知との互換性を保つため残しています。</p>
-      <div id="todo-groups"></div>
-    </details>
   </section>
 
 

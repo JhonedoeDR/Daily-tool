@@ -283,11 +283,13 @@
       ${note2 ? `<span class="hm-note">${escapeHtml(note2)}</span>` : ''}`;
   }
 
-  // タスク: メインタスクの達成数(既存のメインタスク基準)
+  // タスク: 新規作成されたメインタスクの達成数
   function modeTask() {
-    const state = LM.getTodoState();
-    const main = LM.TODO_MAIN_IDS.map((id) => state.dailyTasks[id]).filter((t) => t.name.trim());
-    const done = main.filter((t) => t.checked).length;
+    const stored = LM.get('lm_todoManager', { tasks: [] });
+    const tasks = stored && Array.isArray(stored.tasks) ? stored.tasks : [];
+    const main = tasks.filter((task) => task && task.category === 'main' && !task.archivedAt &&
+      (!task.startDate || task.startDate <= today) && (!task.endDate || task.endDate >= today));
+    const done = main.filter((task) => task.checked).length;
     if (main.length === 0) return { inner: innerHtml('メイン', '—', '未登録') };
     return {
      ...progressRing(done / main.length),
@@ -628,19 +630,29 @@
   }
 
   /* ---------- 今日のタスク(メインタスク+ほかの件数) ---------- */
-    function renderTasks() {
+  function renderTasks() {
     const el = document.getElementById('tasks-list');
-    const state = LM.getTodoState();
-
-    const mainTasks = LM.TODO_MAIN_IDS.map((id) => ({ id, ...state.dailyTasks[id] })).filter((t) => t.name.trim());
-    const otherIds = LM.TODO_GROUPS.filter((g) => !g.isMain).flatMap((g) => g.ids);
-    const otherCount = otherIds.filter((id) => (state.dailyTasks[id].name || '').trim()).length;
+    const manager = LM.get('lm_todoManager', { tasks: [] });
+    if (!manager || !Array.isArray(manager.tasks)) {
+      if (manager) manager.tasks = [];
+    }
+    const taskData = manager && Array.isArray(manager.tasks) ? manager.tasks : [];
+    const managerTasks = taskData.filter((task) => task && !task.archivedAt &&
+      (!task.startDate || task.startDate <= today) && (!task.endDate || task.endDate >= today));
+    const routineKey = (task) => task.routinePeriod === 'weekly'
+      ? LM.todoMondayKey()
+      : task.routinePeriod === 'monthly' ? LM.routineMonthKey() : LM.todoDayKey();
+    const taskIsChecked = (task) => task.category === 'routine'
+      ? !!task.checked && task.checkedDay === routineKey(task)
+      : !!task.checked;
+    const mainTasks = managerTasks.filter((task) => task.category === 'main');
+    const otherTasks = managerTasks.filter((task) => task.category !== 'main');
     // 締切に紐付いたタスク: メイン分はメインの先頭に合流、それ以外はメインの下に並べる
     const linkedMain = LM.getLinkedMainPlan ? LM.getLinkedMainPlan().shown : [];
     const linkedOther = LM.getActiveDeadlineTasks
       ? LM.getActiveDeadlineTasks().filter((t) => t.category !== 'main') : [];
 
-    if (mainTasks.length === 0 && otherCount === 0 && linkedMain.length === 0 && linkedOther.length === 0) {
+    if (mainTasks.length === 0 && otherTasks.length === 0 && linkedMain.length === 0 && linkedOther.length === 0) {
       el.innerHTML = '<p class="lm-empty">今日のタスクはまだ登録されていません</p>';
       return false;
     }
@@ -649,12 +661,30 @@
     const onChange = (e) => {
       const checkbox = e.target;
       if (checkbox.type !== 'checkbox') return;
-      if (checkbox.dataset.dlTaskId) {
+      if (checkbox.dataset.managerTaskId) {
+        const task = taskData.find((item) => item.id === checkbox.dataset.managerTaskId);
+        if (!task) return;
+        task.checked = checkbox.checked;
+        task.checkedAt = checkbox.checked ? Date.now() : 0;
+        if (task.category === 'routine' && checkbox.checked) task.checkedDay = routineKey(task);
+        if (checkbox.checked && task.category === 'main') {
+          const week = LM.todoMondayKey();
+          if (!manager.weeklyCounted || typeof manager.weeklyCounted !== 'object') manager.weeklyCounted = {};
+          if (!manager.weeklyCounted[week] || typeof manager.weeklyCounted[week] !== 'object') manager.weeklyCounted[week] = {};
+          manager.weeklyCounted[week][task.id] = true;
+        }
+        if (checkbox.checked && task.category === 'routine') {
+          const period = routineKey(task);
+          if (!manager.routineCounted || typeof manager.routineCounted !== 'object') manager.routineCounted = {};
+          if (!manager.routineCounted[period] || typeof manager.routineCounted[period] !== 'object') manager.routineCounted[period] = {};
+          manager.routineCounted[period][task.id] = true;
+        }
+        if (LM.set('lm_todoManager', manager)) LM.syncFirebaseDebounced();
+      } else if (checkbox.dataset.dlTaskId) {
         LM.toggleDeadlineTask(checkbox.dataset.dlTaskId, checkbox.checked);
         renderDeadlineOverview(); // 締切の進行バーも進める
       } else {
-        const s = LM.getTodoState();
-        LM.toggleTodoCheck(s, checkbox.dataset.todoId, checkbox.checked);
+        return;
       }
       hasContent.task = renderTasks();
       refreshCircle();
@@ -662,16 +692,23 @@
     const buildItem = (item) => {
       const li = document.createElement('li');
       li.className = 'lm-check-item' + (item.checked ? ' done' : '');
-      li.innerHTML = `
-        <input type="checkbox" ${item.checked ? 'checked' : ''} ${item.linked ? 'data-dl-task-id' : 'data-todo-id'}="${item.id}" />
-        <span>${escapeHtml(item.name)}</span>
-      `;
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.checked = item.checked;
+      checkbox.dataset[item.manager ? 'managerTaskId' : 'dlTaskId'] = item.id;
+      if (item.manager && item.category === 'routine' && item.routinePeriod === 'weekdays') {
+        const weekday = new Date(`${today}T00:00:00`).getDay();
+        checkbox.disabled = weekday === 0 || weekday === 6;
+      }
+      const name = document.createElement('span');
+      name.textContent = item.name;
+      li.append(checkbox, name);
       return li;
     };
 
     const mainItems = [
       ...linkedMain.map((t) => ({ linked: true, id: t.id, name: t.title, checked: t.done })),
-      ...mainTasks.map((t) => ({ linked: false, id: t.id, name: t.name, checked: t.checked })),
+      ...mainTasks.map((task) => ({ manager: true, id: task.id, category: task.category, routinePeriod: task.routinePeriod, name: task.name, checked: taskIsChecked(task) })),
     ];
     if (mainItems.length > 0) {
       const ul = document.createElement('ul');
@@ -681,27 +718,22 @@
       el.appendChild(ul);
     }
 
-    if (linkedOther.length > 0) {
+    if (otherTasks.length > 0 || linkedOther.length > 0) {
       LM.TODO_GROUPS.filter((g) => g.key !== 'main').forEach((g) => {
-        const list = linkedOther.filter((t) => t.category === g.key);
-        if (list.length === 0) return;
+        const linkedList = linkedOther.filter((t) => t.category === g.key);
+        const managedList = otherTasks.filter((task) => task.category === g.key);
+        if (linkedList.length === 0 && managedList.length === 0) return;
         const head = document.createElement('div');
         head.className = 'dl-home-cat';
         head.textContent = g.label;
         el.appendChild(head);
         const ul2 = document.createElement('ul');
         ul2.className = 'lm-check-list';
-        list.forEach((t) => ul2.appendChild(buildItem({ linked: true, id: t.id, name: t.title, checked: t.done })));
+        linkedList.forEach((t) => ul2.appendChild(buildItem({ linked: true, id: t.id, name: t.title, checked: t.done })));
+        managedList.forEach((task) => ul2.appendChild(buildItem({ manager: true, id: task.id, category: task.category, routinePeriod: task.routinePeriod, name: task.name, checked: taskIsChecked(task) })));
         ul2.addEventListener('change', onChange);
         el.appendChild(ul2);
       });
-    }
-
-    if (otherCount > 0) {
-      const otherEl = document.createElement('div');
-      otherEl.style.cssText = 'text-align:right; font-size:12px; color:var(--text-soft); margin-top:6px;';
-      otherEl.textContent = `ほか${otherCount}`;
-      el.appendChild(otherEl);
     }
 
     return true;
