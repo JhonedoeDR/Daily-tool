@@ -1179,7 +1179,7 @@ body {
 
 .todo-advanced {
   border-top: 1px solid var(--paper-line);
-  padding-top: 10px;
+  padding-top: 7px;
 }
 
 .todo-advanced summary {
@@ -1191,29 +1191,42 @@ body {
 
 .todo-advanced-content {
   display: grid;
-  gap: 16px;
-  padding-top: 12px;
+  gap: 9px;
+  padding-top: 8px;
+}
+
+.todo-advanced-content input:not([type='checkbox']),
+.todo-advanced-content select {
+  box-sizing: border-box;
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
+.todo-advanced-content .todo-field {
+  gap: 3px;
 }
 
 .todo-notification-settings {
-  gap: 10px;
+  gap: 6px;
 }
 
 .todo-notification-settings fieldset {
+  box-sizing: border-box;
   min-width: 0;
   margin: 0;
-  padding: 8px;
+  padding: 6px;
   border: 1px solid var(--paper-line);
   border-radius: 8px;
 }
 
 .todo-notification-settings legend {
   padding: 0 4px;
+  font-size: 12px;
 }
 
 .todo-notification-label {
   display: block;
-  margin-top: 6px;
+  margin-top: 4px;
   color: var(--text-soft);
   font-size: 11px;
 }
@@ -1232,68 +1245,85 @@ body {
   display: flex;
   min-width: 0;
   align-items: center;
-  gap: 4px;
-  padding: 4px;
+  gap: 3px;
+  padding: 3px;
   border: 1px solid var(--paper-line);
   border-radius: 6px;
   background: #fff;
   color: var(--text);
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .todo-notification-options input {
   flex: 0 0 auto;
-  width: 15px;
-  height: 15px;
+  width: 13px;
+  height: 13px;
   margin: 0;
   accent-color: var(--accent);
 }
 
 .todo-custom-notification-add {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, .8fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, .7fr) auto;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
+  min-width: 0;
+}
+
+.todo-custom-notification-add > * {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .todo-custom-notification-add .lm-btn,
 .todo-custom-notification-list .lm-btn {
-  padding: 6px 8px;
+  min-width: 0;
+  padding: 4px 6px;
   font-size: 11px;
 }
 
 .todo-custom-notification-list {
   display: grid;
-  gap: 5px;
-  max-height: 150px;
-  margin: 8px 0 0;
+  gap: 3px;
+  max-height: 110px;
+  margin: 5px 0 0;
   padding: 0;
   overflow: auto;
   list-style: none;
 }
 
 .todo-custom-notification-list li {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 5px;
+  min-width: 0;
+  padding: 3px 5px;
+  border: 1px solid var(--paper-line);
+  border-radius: 6px;
   color: var(--text);
-  font-size: 12px;
+  font-size: 11px;
+}
+
+.todo-custom-notification-list li > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .todo-subtask-editor,
 .todo-link-editor,
 .todo-linked-list {
   display: grid;
-  gap: 7px;
-  margin: 7px 0;
+  gap: 4px;
+  margin: 4px 0;
 }
 
 .todo-editor-row {
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr) 32px;
   align-items: center;
-  gap: 7px;
+  gap: 4px;
 }
 
 .todo-editor-row input[type='checkbox'],
@@ -1313,8 +1343,8 @@ body {
   display: grid;
   grid-template-columns: 20px minmax(0, 1fr) 72px;
   align-items: center;
-  gap: 8px;
-  padding: 7px;
+  gap: 6px;
+  padding: 5px;
   border: 1px solid var(--paper-line);
   border-radius: 8px;
   color: var(--text);
