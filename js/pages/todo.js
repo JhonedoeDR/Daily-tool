@@ -413,7 +413,7 @@
     const row = document.createElement('div');
     row.className = 'todo-editor-row';
     row.dataset.id = id;
-    row.innerHTML = `<input type="checkbox" aria-label="小要素の達成" ${checked ? 'checked' : ''}><input type="text" maxlength="200" placeholder="小要素の名前" value="${esc(name)}"><button type="button" class="lm-todo-slot-remove" aria-label="小要素を削除">−</button>`;
+    row.innerHTML = `<input type="checkbox" aria-label="項目の達成" ${checked ? 'checked' : ''}><input type="text" maxlength="200" placeholder="項目の名前" value="${esc(name)}"><button type="button" class="lm-todo-slot-remove" aria-label="項目を削除">−</button>`;
     row.querySelector('button').addEventListener('click', () => row.remove());
     $('todo-subtasks').appendChild(row);
   }
