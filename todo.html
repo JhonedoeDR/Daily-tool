@@ -66,9 +66,19 @@
               <option value="deadline">期限順</option>
             </select>
           </label>
-          <button type="button" id="todo-sort-direction" class="todo-sort-direction" aria-label="昇順">昇順 ↑</button>
+          <div class="todo-sort-actions" aria-label="表示設定">
+            <button type="button" id="todo-filter-toggle" class="todo-icon-button" aria-label="フィルターを表示" aria-controls="todo-filter-panel" aria-expanded="false">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6.2 7.1v5.1l-3.6 1.8v-6.9L4 5Z" /></svg>
+            </button>
+            <button type="button" id="todo-sort-asc" class="todo-icon-button" aria-label="昇順" aria-pressed="true" title="昇順">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" /></svg>
+            </button>
+            <button type="button" id="todo-sort-desc" class="todo-icon-button" aria-label="降順" aria-pressed="false" title="降順">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14m-6-6 6 6 6-6" /></svg>
+            </button>
+          </div>
         </div>
-        <div class="todo-filter-row">
+        <div class="todo-filter-row" id="todo-filter-panel" hidden>
           <fieldset class="todo-filter-group">
             <legend>タブ</legend>
             <label><input type="checkbox" name="todo-category-filter" value="main" checked /> メイン</label>

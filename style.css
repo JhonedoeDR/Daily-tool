@@ -974,15 +974,40 @@ body {
   font-size: 12px;
 }
 
-.todo-sort-direction {
-  min-width: 82px;
-  padding: 8px 10px;
+.todo-sort-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.todo-icon-button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 6px;
   border: 1px solid var(--paper-line);
-  border-radius: 8px;
+  border-radius: 7px;
   background: #fff;
+  color: var(--text-soft);
+  cursor: pointer;
+}
+
+.todo-icon-button[aria-pressed='true'],
+.todo-icon-button[aria-expanded='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
   color: var(--text);
-  font: inherit;
-  font-size: 13px;
+}
+
+.todo-icon-button svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .todo-filter-group {
@@ -1096,8 +1121,8 @@ body {
 
 .todo-date-fields {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 9px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
 }
 
 .todo-date-fields > .todo-field {
@@ -1110,8 +1135,9 @@ body {
   min-width: 0;
   width: 100%;
   max-width: 100%;
-  padding: 9px 10px;
-  font-size: 13px;
+  height: 34px;
+  padding: 4px 5px;
+  font-size: 12px;
 }
 
 .todo-advanced {
@@ -1422,8 +1448,12 @@ body {
   margin: 8px 0 14px;
 }
 
-@media (max-width: 360px) {
+@media (max-width: 380px) {
   .todo-filter-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .todo-date-fields {
     grid-template-columns: minmax(0, 1fr);
   }
 }

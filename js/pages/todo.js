@@ -887,13 +887,23 @@
     pageIndex = 0;
     render();
   });
-  $('todo-sort-direction').addEventListener('click', () => {
-    sortDescending = !sortDescending;
-    const button = $('todo-sort-direction');
-    button.textContent = sortDescending ? '降順 ↓' : '昇順 ↑';
-    button.setAttribute('aria-label', sortDescending ? '降順' : '昇順');
-    pageIndex = 0;
-    render();
+  $('todo-filter-toggle').addEventListener('click', () => {
+    const button = $('todo-filter-toggle');
+    const expanded = button.getAttribute('aria-expanded') !== 'true';
+    button.setAttribute('aria-expanded', String(expanded));
+    button.setAttribute('aria-label', expanded ? 'フィルターを隠す' : 'フィルターを表示');
+    $('todo-filter-panel').hidden = !expanded;
+  });
+  [['todo-sort-asc', false], ['todo-sort-desc', true]].forEach(([id, descending]) => {
+    $(id).addEventListener('click', () => {
+      sortDescending = descending;
+      $('todo-sort-asc').setAttribute('aria-pressed', String(!descending));
+      $('todo-sort-desc').setAttribute('aria-pressed', String(descending));
+      $('todo-sort-asc').classList.toggle('is-active', !descending);
+      $('todo-sort-desc').classList.toggle('is-active', descending);
+      pageIndex = 0;
+      render();
+    });
   });
   document.querySelectorAll('.todo-page-button[data-page-delta]').forEach(button => {
     button.addEventListener('click', () => {
