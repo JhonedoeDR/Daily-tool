@@ -22,7 +22,7 @@
       <button type="button" id="daily-reset-btn" class="lm-btn secondary" style="font-size:12px; padding:6px 12px; white-space:nowrap;">デイリーリセット</button>
     </div>
   </div>
-  <p class="lm-sub-header">タスクは毎日AM4:00に自動でリセットされます。予定・イベントは0:00で切り替わります(ルーティンの内容と「その他」の枠数は引き継がれます)</p>
+  <p class="lm-sub-header">既存デイリー枠は毎日AM4:00にリセットされます。新しいタスクは登録内容を保持し、期間・期限とルーティン設定に応じて表示されます。</p>
 
     <section class="lm-section" style="border-top:none;">
     <div class="lm-section-title">今週のメインタスククリア</div>
@@ -32,7 +32,7 @@
     </div>
     <div id="weekly-grid" class="lm-week-grid"></div>
     <div id="weekly-count" style="margin-top:8px; font-size:13px; color:var(--text-soft);"></div>
-    <div id="reward-box" style="display:none; margin-top:10px; padding:10px 12px; background:var(--accent-soft); border-radius:8px; font-size:13px;">
+    <div id="reward-box" style="display:none; margin-top:10px; padding:10px 12px; background:var(--accent-soft); border-radius:0; font-size:13px;">
       <div style="font-weight:500;">今週のメインタスクを14回クリアしました</div>
       <div style="color:var(--text-soft); margin-top:2px;">ご褒美を受け取れます</div>
     </div>
@@ -45,14 +45,106 @@
      <input id="f-routine-reward" class="lm-reward-input" type="text" placeholder="ここにご褒美を入力" />
     </div>
     <div id="routine-progress" class="lm-event" style="margin-top:0;"></div>
-    <div id="routine-reward-box" style="display:none; margin-top:10px; padding:10px 12px; background:var(--accent-soft); border-radius:8px; font-size:13px;">
+    <div id="routine-reward-box" style="display:none; margin-top:10px; padding:10px 12px; background:var(--accent-soft); border-radius:0; font-size:13px;">
       <div id="routine-reward-title" style="font-weight:500;"></div>
       <div style="color:var(--text-soft); margin-top:2px;">ご褒美を受け取れます</div>
     </div>
   </section>
 
   <section class="lm-section">
-    <div id="todo-groups"></div>
+    <div class="todo-manager">
+      <div class="todo-toolbar">
+        <div class="todo-filter-row">
+          <label>タブ
+            <select id="todo-tab-filter">
+              <option value="all">すべて</option>
+              <option value="main">メイン</option>
+              <option value="routine">ルーティン</option>
+              <option value="other">その他</option>
+            </select>
+          </label>
+          <label>期限
+            <select id="todo-deadline-filter">
+              <option value="all">すべて</option>
+              <option value="yes">あり</option>
+              <option value="no">なし</option>
+            </select>
+          </label>
+          <label>並び順
+            <select id="todo-sort">
+              <option value="name">名前順</option>
+              <option value="deadline">期限順</option>
+            </select>
+          </label>
+        </div>
+        <div class="todo-create-tabs" role="tablist" aria-label="タスクの種類">
+          <button type="button" class="todo-create-tab is-active" data-create-tab="main">メイン</button>
+          <button type="button" class="todo-create-tab" data-create-tab="routine">ルーティン</button>
+          <button type="button" class="todo-create-tab" data-create-tab="other">その他</button>
+        </div>
+      </div>
+      <form id="todo-create-form" class="todo-create-form">
+        <input type="hidden" id="todo-edit-id" />
+        <div class="todo-form-heading" id="todo-form-heading">メインタスクを追加</div>
+        <label class="todo-field">タスク名
+          <input id="todo-task-name" type="text" maxlength="200" required placeholder="タスク名を入力" />
+        </label>
+        <div class="todo-date-fields" id="todo-date-fields">
+          <label class="todo-field" id="todo-start-date-label">開始日（任意）
+            <input id="todo-start-date" type="date" />
+          </label>
+          <label class="todo-field" id="todo-end-date-field">期限・終了日（任意）
+            <input id="todo-end-date" type="date" />
+          </label>
+        </div>
+        <label class="todo-field" id="todo-routine-period" hidden>期間
+          <select id="todo-routine-period-select">
+            <option value="daily">毎日</option>
+            <option value="weekdays">平日</option>
+            <option value="weekly">毎週</option>
+            <option value="monthly">毎月</option>
+          </select>
+        </label>
+        <details class="todo-advanced" id="todo-advanced">
+          <summary>詳細設定</summary>
+          <div class="todo-advanced-content">
+            <div class="todo-field">
+              <span>チェックボックス小要素作成</span>
+              <div id="todo-subtasks" class="todo-subtask-editor"></div>
+              <button type="button" id="todo-add-subtask" class="lm-btn secondary">＋ 小要素を追加</button>
+            </div>
+            <div class="todo-field" id="todo-linked-field">
+              <span>紐付けタスクの選択（複数可）</span>
+              <div id="todo-linked-list" class="todo-linked-list"></div>
+              <label>表示方法
+                <select id="todo-link-mode">
+                  <option value="all">すべて表示</option>
+                  <option value="sequence">順次表示</option>
+                  <option value="custom">カスタム表示</option>
+                </select>
+              </label>
+              <div id="todo-custom-groups" class="todo-custom-groups" hidden></div>
+              <p class="todo-help">カスタム表示では、同時に表示するタスクに同じグループ番号を設定します。</p>
+            </div>
+            <div class="todo-field">
+              <span>リンク（複数可）</span>
+              <div id="todo-links" class="todo-link-editor"></div>
+              <button type="button" id="todo-add-link" class="lm-btn secondary">＋ リンクを追加</button>
+            </div>
+          </div>
+        </details>
+        <div class="todo-form-actions">
+          <button type="submit" class="lm-btn" id="todo-save-button">タスクを追加</button>
+          <button type="button" class="lm-btn secondary" id="todo-cancel-edit" hidden>編集をやめる</button>
+        </div>
+      </form>
+      <div id="todo-task-list" class="todo-task-list" aria-live="polite"></div>
+    </div>
+    <details class="todo-legacy-area">
+      <summary>既存のデイリー枠・締切連携タスク（互換機能）</summary>
+      <p class="todo-help">以前の固定枠タスクと、予定ページから連携された締切タスクを表示します。週間・月間の既存記録や通知との互換性を保つため残しています。</p>
+      <div id="todo-groups"></div>
+    </details>
   </section>
 
 
@@ -61,6 +153,7 @@
 
 <script src="./app.js"></script>
 <script src="./renderNav-menu.js"></script>
+<script src="./base-core.js"></script>
 <script>
 (function () {
   const KEY = 'lm_tomorrowTasks';
@@ -200,6 +293,7 @@
   });
 })();
 </script>
+<script src="./todo-legacy.js"></script>
 <script src="./todo.js"></script>
 
 </body>
