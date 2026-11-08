@@ -24,66 +24,83 @@
   </div>
   <p class="lm-sub-header">既存デイリー枠は毎日AM4:00にリセットされます。</p>
 
-    <section class="lm-section" style="border-top:none;">
-    <div class="lm-section-title">今週のメインタスククリア</div>
-    <div class="lm-reward-row">
-     <span class="lm-reward-label">ごほうび：</span>
-     <input id="f-reward" class="lm-reward-input" type="text" placeholder="ここにご褒美を入力" />
-    </div>
-    <div id="weekly-grid" class="lm-week-grid"></div>
-    <div id="weekly-count" style="margin-top:8px; font-size:13px; color:var(--text-soft);"></div>
-    <div id="reward-box" style="display:none; margin-top:10px; padding:10px 12px; background:var(--accent-soft); border-radius:0; font-size:13px;">
-      <div style="font-weight:500;">今週のメインタスクを14回クリアしました</div>
-      <div style="color:var(--text-soft); margin-top:2px;">ご褒美を受け取れます</div>
-    </div>
-  </section>
+  <div class="todo-progress-accordions" aria-label="達成状況">
+    <details class="todo-progress-accordion">
+      <summary>今週のメインタスククリア</summary>
+      <div class="todo-progress-content">
+        <div class="lm-reward-row">
+          <span class="lm-reward-label">ごほうび：</span>
+          <input id="f-reward" class="lm-reward-input" type="text" placeholder="ここにご褒美を入力" />
+        </div>
+        <div id="weekly-grid" class="lm-week-grid"></div>
+        <div id="weekly-count" class="todo-progress-count"></div>
+        <div id="reward-box" class="todo-reward-box" style="display:none;">
+          <div style="font-weight:500;">今週のメインタスクを14回クリアしました</div>
+          <div class="todo-reward-caption">ご褒美を受け取れます</div>
+        </div>
+      </div>
+    </details>
+    <details class="todo-progress-accordion">
+      <summary>今月のルーティンクリア</summary>
+      <div class="todo-progress-content">
+        <div class="lm-reward-row">
+          <span class="lm-reward-label">ごほうび：</span>
+          <input id="f-routine-reward" class="lm-reward-input" type="text" placeholder="ここにご褒美を入力" />
+        </div>
+        <div id="routine-progress" class="lm-event"></div>
+        <div id="routine-reward-box" class="todo-reward-box" style="display:none;">
+          <div id="routine-reward-title" style="font-weight:500;"></div>
+          <div class="todo-reward-caption">ご褒美を受け取れます</div>
+        </div>
+      </div>
+    </details>
+  </div>
 
-  <section class="lm-section">
-    <div class="lm-section-title">今月のルーティンクリア</div>
-    <div class="lm-reward-row">
-     <span class="lm-reward-label">ごほうび：</span>
-     <input id="f-routine-reward" class="lm-reward-input" type="text" placeholder="ここにご褒美を入力" />
-    </div>
-    <div id="routine-progress" class="lm-event" style="margin-top:0;"></div>
-    <div id="routine-reward-box" style="display:none; margin-top:10px; padding:10px 12px; background:var(--accent-soft); border-radius:0; font-size:13px;">
-      <div id="routine-reward-title" style="font-weight:500;"></div>
-      <div style="color:var(--text-soft); margin-top:2px;">ご褒美を受け取れます</div>
-    </div>
-  </section>
-
-  <section class="lm-section">
+  <section class="lm-section todo-main-section">
     <div class="todo-manager">
       <div class="todo-toolbar">
-        <div class="todo-filter-row">
-          <label>タブ
-            <select id="todo-tab-filter">
-              <option value="all">すべて</option>
-              <option value="main">メイン</option>
-              <option value="routine">ルーティン</option>
-              <option value="other">その他</option>
-            </select>
-          </label>
-          <label>期限
-            <select id="todo-deadline-filter">
-              <option value="all">すべて</option>
-              <option value="yes">あり</option>
-              <option value="no">なし</option>
-            </select>
-          </label>
-          <label>並び順
+        <div class="todo-sort-row">
+          <label>ソート
             <select id="todo-sort">
               <option value="name">名前順</option>
               <option value="deadline">期限順</option>
             </select>
           </label>
+          <button type="button" id="todo-sort-direction" class="todo-sort-direction" aria-label="昇順">昇順 ↑</button>
         </div>
+        <div class="todo-filter-row">
+          <fieldset class="todo-filter-group">
+            <legend>タブ</legend>
+            <label><input type="checkbox" name="todo-category-filter" value="main" checked /> メイン</label>
+            <label><input type="checkbox" name="todo-category-filter" value="routine" checked /> ルーティン</label>
+            <label><input type="checkbox" name="todo-category-filter" value="other" checked /> その他</label>
+          </fieldset>
+          <fieldset class="todo-filter-group">
+            <legend>期限</legend>
+            <label><input type="radio" name="todo-deadline-filter" value="all" checked /> すべて</label>
+            <label><input type="radio" name="todo-deadline-filter" value="yes" /> あり</label>
+            <label><input type="radio" name="todo-deadline-filter" value="no" /> なし</label>
+          </fieldset>
+        </div>
+      </div>
+      <div class="todo-pager" aria-label="タスク一覧ページ">
+        <button type="button" id="todo-page-prev" class="todo-page-button" data-page-delta="-1" aria-label="前のページ">前へ</button>
+        <span id="todo-page-status" aria-live="polite"></span>
+        <button type="button" id="todo-page-next" class="todo-page-button" data-page-delta="1" aria-label="次のページ">次へ</button>
+      </div>
+      <div id="todo-task-list" class="todo-task-list" aria-live="polite"></div>
+      <div class="todo-pager" aria-label="タスク一覧ページ">
+        <button type="button" class="todo-page-button" data-page-delta="-1" aria-label="前のページ">前へ</button>
+        <span class="todo-page-status-copy" aria-hidden="true"></span>
+        <button type="button" class="todo-page-button" data-page-delta="1" aria-label="次のページ">次へ</button>
+      </div>
+      <div class="todo-input-section">
         <div class="todo-create-tabs" role="tablist" aria-label="タスクの種類">
           <button type="button" id="todo-tab-main" role="tab" aria-controls="todo-create-form" aria-selected="true" class="todo-create-tab is-active" data-create-tab="main">メイン</button>
           <button type="button" id="todo-tab-routine" role="tab" aria-controls="todo-create-form" aria-selected="false" class="todo-create-tab" data-create-tab="routine">ルーティン</button>
           <button type="button" id="todo-tab-other" role="tab" aria-controls="todo-create-form" aria-selected="false" class="todo-create-tab" data-create-tab="other">その他</button>
         </div>
-      </div>
-      <form id="todo-create-form" class="todo-create-form" role="tabpanel" aria-labelledby="todo-tab-main">
+        <form id="todo-create-form" class="todo-create-form" role="tabpanel" aria-labelledby="todo-tab-main">
         <input type="hidden" id="todo-edit-id" />
         <div class="todo-form-heading" id="todo-form-heading">メインタスクを追加</div>
         <label class="todo-field">タスク名
@@ -136,8 +153,8 @@
           <button type="submit" class="lm-btn" id="todo-save-button">タスクを追加</button>
           <button type="button" class="lm-btn secondary" id="todo-cancel-edit" hidden>編集をやめる</button>
         </div>
-      </form>
-      <div id="todo-task-list" class="todo-task-list" aria-live="polite"></div>
+        </form>
+      </div>
     </div>
     <details class="todo-legacy-area">
       <summary>既存のデイリー枠・締切連携タスク（互換機能）</summary>

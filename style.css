@@ -918,7 +918,7 @@ body {
 
 .todo-manager {
   display: grid;
-  gap: 10px;
+  gap: 14px;
 }
 
 .todo-manager [hidden] {
@@ -927,22 +927,20 @@ body {
 
 .todo-toolbar {
   display: grid;
-  gap: 9px;
+  gap: 10px;
 }
 
 .todo-filter-row {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
-.todo-filter-row label,
 .todo-field {
   color: var(--text-soft);
   font-size: 12px;
 }
 
-.todo-filter-row label,
 .todo-field {
   display: flex;
   flex-direction: column;
@@ -960,6 +958,101 @@ body {
   color: var(--text);
   font: inherit;
   font-size: 14px;
+}
+
+.todo-sort-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+}
+
+.todo-sort-row > label {
+  display: grid;
+  gap: 4px;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+.todo-sort-direction {
+  min-width: 82px;
+  padding: 8px 10px;
+  border: 1px solid var(--paper-line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.todo-filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 6px 8px 8px;
+  border: 1px solid var(--paper-line);
+  border-radius: 8px;
+}
+
+.todo-filter-group legend {
+  padding: 0 4px;
+  color: var(--text-soft);
+  font-size: 11px;
+}
+
+.todo-filter-group label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.todo-filter-group input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.todo-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  min-height: 34px;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+.todo-page-button {
+  min-width: 56px;
+  padding: 6px 10px;
+  border: 1px solid var(--paper-line);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+}
+
+.todo-page-button:disabled {
+  opacity: .45;
+}
+
+.todo-page-status-copy {
+  min-width: 118px;
+  text-align: center;
+}
+
+.todo-input-section {
+  display: grid;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--paper-line);
 }
 
 .todo-create-tabs {
@@ -1003,8 +1096,8 @@ body {
 
 .todo-date-fields {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 9px;
 }
 
 .todo-date-fields > .todo-field {
@@ -1013,9 +1106,11 @@ body {
 
 .todo-date-fields input[type='date'] {
   display: block;
+  box-sizing: border-box;
   min-width: 0;
+  width: 100%;
   max-width: 100%;
-  padding: 8px 6px;
+  padding: 9px 10px;
   font-size: 13px;
 }
 
@@ -1101,13 +1196,13 @@ body {
 
 .todo-task-list {
   display: grid;
-  gap: 10px;
+  gap: 7px;
 }
 
 .todo-task-card {
   display: grid;
-  gap: 9px;
-  padding: 12px;
+  gap: 5px;
+  padding: 9px 10px;
   border: 1px solid var(--paper-line);
   border-radius: 10px;
   background: #fff;
@@ -1118,15 +1213,33 @@ body {
 }
 
 .todo-task-top {
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) auto;
+  display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+}
+
+.todo-task-top > input[type='checkbox'] {
+  flex: 0 0 18px;
+  margin: 0;
+}
+
+.todo-task-summary {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
 }
 
 .todo-task-title {
   overflow-wrap: anywhere;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
 }
 
@@ -1145,8 +1258,28 @@ body {
 }
 
 .todo-task-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 3px 12px;
   color: var(--text-soft);
-  font-size: 11px;
+  font-size: 10px;
+  padding-left: 26px;
+}
+
+.todo-task-linked-progress {
+  color: var(--text);
+}
+
+.todo-task-link-indicator {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: var(--text-soft);
+}
+
+.todo-link-icon {
+  width: 16px;
+  height: 16px;
 }
 
 .todo-card-subtasks {
@@ -1163,16 +1296,120 @@ body {
   font-size: 12px;
 }
 
-.todo-card-links {
+.todo-detail-modal {
+  max-height: 85vh;
+}
+
+.todo-detail {
+  display: grid;
+  gap: 14px;
+}
+
+.todo-detail-heading {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.todo-detail-complete {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  min-width: 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.todo-detail-complete input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  margin: 2px 0 0;
+  accent-color: var(--accent);
+}
+
+.todo-detail-meta {
+  margin: 0;
+  color: var(--text-soft);
   font-size: 12px;
 }
 
-.todo-card-links a {
+.todo-detail-section {
+  display: grid;
+  gap: 7px;
+  padding-top: 10px;
+  border-top: 1px solid var(--paper-line);
+}
+
+.todo-detail-section h3 {
+  margin: 0;
+  font-size: 13px;
+}
+
+.todo-detail-section a {
   color: #247f9f;
+  font-size: 13px;
   overflow-wrap: anywhere;
+}
+
+.todo-detail-linked-task {
+  font-size: 12px;
+}
+
+.todo-progress-accordions {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 8px;
+}
+
+.todo-progress-accordion {
+  border: 1px solid var(--paper-line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.todo-progress-accordion > summary {
+  padding: 8px 10px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.todo-progress-content {
+  display: grid;
+  gap: 8px;
+  padding: 0 10px 10px;
+}
+
+.todo-progress-content .lm-reward-row {
+  margin: 0;
+}
+
+.todo-progress-content .lm-event {
+  margin: 0;
+}
+
+.todo-progress-count {
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+.todo-reward-box {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  font-size: 12px;
+}
+
+.todo-reward-caption {
+  margin-top: 2px;
+  color: var(--text-soft);
+}
+
+.todo-main-section {
+  padding-top: 8px !important;
 }
 
 .todo-legacy-area {
@@ -1185,8 +1422,8 @@ body {
   margin: 8px 0 14px;
 }
 
-@media (max-width: 380px) {
-  .todo-date-fields {
+@media (max-width: 360px) {
+  .todo-filter-row {
     grid-template-columns: minmax(0, 1fr);
   }
 }

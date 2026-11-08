@@ -10,6 +10,9 @@
   save();
   let createTab = 'main';
   let editingId = null;
+  let pageIndex = 0;
+  let sortDescending = false;
+  const pageSize = 5;
 
   function uid() {
     return 'tm_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 9);
@@ -596,37 +599,217 @@
     if ($('routine-reward-box')) $('routine-reward-box').style.display = p.count >= required ? 'block' : 'none';
   }
   function filteredTasks() {
-    const tab = $('todo-tab-filter').value;
-    const deadline = $('todo-deadline-filter').value;
+    const categories = new Set([...document.querySelectorAll('[name="todo-category-filter"]:checked')].map(input => input.value));
+    const deadline = document.querySelector('[name="todo-deadline-filter"]:checked')?.value || 'all';
     const sort = $('todo-sort').value;
     const visible = new Set(allVisibleIds());
-    let list = data.tasks.filter(t => visible.has(t.id));
-    if (tab !== 'all') list = list.filter(t => t.category === tab);
+    let list = data.tasks.filter(t => visible.has(t.id) && categories.has(t.category));
     if (deadline === 'yes') list = list.filter(t => !!t.endDate);
     if (deadline === 'no') list = list.filter(t => !t.endDate);
     list.sort((a, b) => {
       if (sort === 'deadline') {
         if (!a.endDate && b.endDate) return 1;
         if (a.endDate && !b.endDate) return -1;
-        if (a.endDate && b.endDate && a.endDate !== b.endDate) return a.endDate.localeCompare(b.endDate);
+        if (a.endDate && b.endDate && a.endDate !== b.endDate) {
+          return a.endDate.localeCompare(b.endDate) * (sortDescending ? -1 : 1);
+        }
+        return a.name.localeCompare(b.name, 'ja');
       }
-      return a.name.localeCompare(b.name, 'ja');
+      return a.name.localeCompare(b.name, 'ja') * (sortDescending ? -1 : 1);
     });
     return list;
+  }
+  function linkedTaskProgress(task) {
+    const linkedIds = new Set(task.linkedTaskIds);
+    const linkedTasks = new Map(data.tasks.filter(item => linkedIds.has(item.id)).map(item => [item.id, item]));
+    return {
+      completed: [...linkedIds].filter(id => linkedTasks.get(id)?.checked).length,
+      total: linkedIds.size
+    };
+  }
+  function appendLinkIcon(container) {
+    const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    icon.setAttribute('viewBox', '0 0 24 24');
+    icon.setAttribute('class', 'todo-link-icon');
+    icon.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M10.6 13.4a1 1 0 0 0 1.4 1.4l4.6-4.6a3 3 0 0 0-4.2-4.2l-2.6 2.6m4.2 2a1 1 0 0 0-1.4-1.4L8 13.8a3 3 0 0 0 4.2 4.2l2.6-2.6');
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', 'currentColor');
+    path.setAttribute('stroke-width', '1.8');
+    path.setAttribute('stroke-linecap', 'round');
+    path.setAttribute('stroke-linejoin', 'round');
+    icon.appendChild(path);
+    container.appendChild(icon);
+  }
+  function deleteTask(task) {
+    data.tasks = data.tasks.filter(item => item.id !== task.id);
+    data.tasks.forEach(item => {
+      item.linkedTaskIds = item.linkedTaskIds.filter(id => id !== task.id);
+      delete item.linkGroups[task.id];
+    });
+    if (editingId === task.id) resetForm();
+    save();
+    render();
+    updateProgressDisplays();
+  }
+  function openTaskDetails(task) {
+    const content = document.createElement('div');
+    content.className = 'todo-detail';
+
+    const heading = document.createElement('div');
+    heading.className = 'todo-detail-heading';
+    const completeLabel = document.createElement('label');
+    completeLabel.className = 'todo-detail-complete';
+    const complete = document.createElement('input');
+    complete.type = 'checkbox';
+    complete.checked = task.checked;
+    complete.setAttribute('aria-label', `${task.name}を完了`);
+    const title = document.createElement('span');
+    title.textContent = task.name;
+    completeLabel.append(complete, title);
+    heading.appendChild(completeLabel);
+    const category = document.createElement('span');
+    category.className = 'todo-category';
+    category.textContent = categoryLabel(task.category);
+    heading.appendChild(category);
+    content.appendChild(heading);
+
+    const period = task.category === 'routine' ? routinePeriodLabel(task.routinePeriod) : '';
+    const metadata = document.createElement('p');
+    metadata.className = 'todo-detail-meta';
+    metadata.textContent = task.endDate
+      ? `期限・終了日 ${task.endDate}${task.startDate ? ` ・ 開始日 ${task.startDate}` : ''}`
+      : task.startDate ? `開始日 ${task.startDate}${period ? ` ・ ${period}` : ''}`
+        : period || '期限なし';
+    content.appendChild(metadata);
+
+    complete.addEventListener('change', () => toggleTask(task, complete.checked));
+    if (task.category === 'routine' && task.routinePeriod === 'weekdays') {
+      const [year, month, day] = todayKey().split('-').map(Number);
+      const weekday = new Date(year, month - 1, day).getDay();
+      if (weekday === 0 || weekday === 6) {
+        complete.disabled = true;
+        complete.title = '平日に実施できます';
+      }
+    }
+
+    if (task.subtasks.length) {
+      const subtasks = document.createElement('section');
+      subtasks.className = 'todo-detail-section';
+      const subheading = document.createElement('h3');
+      subheading.textContent = 'チェックボックス小要素';
+      subtasks.appendChild(subheading);
+      task.subtasks.forEach(subtask => {
+        const label = document.createElement('label');
+        label.className = 'todo-card-subtask';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = subtask.checked;
+        checkbox.addEventListener('change', () => {
+          subtask.checked = checkbox.checked;
+          save();
+        });
+        const name = document.createElement('span');
+        name.textContent = subtask.name;
+        label.append(checkbox, name);
+        subtasks.appendChild(label);
+      });
+      content.appendChild(subtasks);
+    }
+
+    if (task.links.length) {
+      const links = document.createElement('section');
+      links.className = 'todo-detail-section';
+      const linkHeading = document.createElement('h3');
+      linkHeading.textContent = 'リンク';
+      links.appendChild(linkHeading);
+      task.links.forEach(link => {
+        const anchor = document.createElement('a');
+        anchor.href = link.url;
+        anchor.target = '_blank';
+        anchor.rel = 'noopener noreferrer';
+        anchor.textContent = link.label || link.url;
+        links.appendChild(anchor);
+      });
+      content.appendChild(links);
+    }
+
+    if (task.linkedTaskIds.length) {
+      const linked = document.createElement('section');
+      linked.className = 'todo-detail-section';
+      const linkedHeading = document.createElement('h3');
+      const progress = linkedTaskProgress(task);
+      linkedHeading.textContent = `紐付けタスク ${progress.completed}/${progress.total}`;
+      linked.appendChild(linkedHeading);
+      const mode = document.createElement('p');
+      mode.className = 'todo-detail-meta';
+      mode.textContent = `表示方法：${({ all: 'すべて表示', sequence: '順次表示', custom: 'カスタム表示' })[task.linkMode]}`;
+      linked.appendChild(mode);
+      task.linkedTaskIds.forEach(id => {
+        const linkedTask = data.tasks.find(item => item.id === id);
+        if (!linkedTask) return;
+        const row = document.createElement('div');
+        row.className = 'todo-detail-linked-task';
+        row.textContent = `${linkedTask.checked ? '✓' : '○'} ${linkedTask.name}`;
+        linked.appendChild(row);
+      });
+      content.appendChild(linked);
+    }
+
+    const actions = document.createElement('div');
+    actions.className = 'todo-card-actions';
+    const edit = document.createElement('button');
+    edit.type = 'button';
+    edit.className = 'lm-btn secondary';
+    edit.textContent = '編集';
+    edit.addEventListener('click', () => {
+      LM.closeModal();
+      editTask(task);
+      form.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'lm-btn secondary';
+    remove.textContent = '削除';
+    remove.addEventListener('click', () => {
+      if (!confirm(`「${task.name}」を削除しますか？紐付け先からも選択対象がなくなります。`)) return;
+      LM.closeModal();
+      deleteTask(task);
+    });
+    actions.append(edit, remove);
+    content.appendChild(actions);
+    LM.openModal(task.name, content);
+    document.querySelector('.lm-modal')?.classList.add('todo-detail-modal');
+  }
+  function renderPager(total) {
+    const pageCount = Math.ceil(total / pageSize);
+    pageIndex = Math.min(pageIndex, Math.max(0, pageCount - 1));
+    const status = pageCount ? `${pageIndex + 1} / ${pageCount} ページ・${total}件` : '0件';
+    const currentStatus = $('todo-page-status');
+    currentStatus.textContent = status;
+    document.querySelectorAll('.todo-page-status-copy').forEach(element => { element.textContent = status; });
+    document.querySelectorAll('.todo-page-button[data-page-delta]').forEach(button => {
+      button.disabled = Number(button.dataset.pageDelta) < 0 ? pageIndex === 0 : pageIndex >= pageCount - 1;
+    });
   }
   function render() {
     const box = $('todo-task-list');
     box.innerHTML = '';
     const list = filteredTasks();
+    renderPager(list.length);
     if (!list.length) {
       box.innerHTML = '<p class="todo-help">表示できるタスクがありません。タスクを追加するか、フィルターを変更してください。</p>';
       return;
     }
-    list.forEach(task => {
+    list.slice(pageIndex * pageSize, (pageIndex + 1) * pageSize).forEach(task => {
       const card = document.createElement('article');
       card.className = 'todo-task-card' + (task.checked ? ' is-checked' : '');
-      const top = document.createElement('div'); top.className = 'todo-task-top';
-      const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = task.checked;
+      const top = document.createElement('div');
+      top.className = 'todo-task-top';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = task.checked;
       const [year, month, day] = todayKey().split('-').map(Number);
       const weekday = new Date(year, month - 1, day).getDay();
       if (task.category === 'routine' && task.routinePeriod === 'weekdays' && (weekday === 0 || weekday === 6)) {
@@ -635,47 +818,42 @@
       }
       cb.setAttribute('aria-label', task.name + 'を完了');
       cb.addEventListener('change', () => toggleTask(task, cb.checked));
-      const title = document.createElement('div'); title.className = 'todo-task-title'; title.textContent = task.name;
-      const category = document.createElement('span'); category.className = 'todo-category'; category.textContent = categoryLabel(task.category);
-      top.append(cb, title, category); card.appendChild(top);
-      const meta = [];
-      if (task.startDate) meta.push('開始 ' + task.startDate);
-      if (task.endDate) meta.push('期限 ' + task.endDate);
-      if (task.category === 'routine') meta.push(routinePeriodLabel(task.routinePeriod));
-      if (meta.length) { const m = document.createElement('div'); m.className = 'todo-task-meta'; m.textContent = meta.join('　'); card.appendChild(m); }
-      if (task.subtasks.length) {
-        const sub = document.createElement('div'); sub.className = 'todo-card-subtasks';
-        task.subtasks.forEach(s => {
-          const label = document.createElement('label'); label.className = 'todo-card-subtask';
-          const scb = document.createElement('input'); scb.type = 'checkbox'; scb.checked = s.checked;
-          scb.addEventListener('change', () => { s.checked = scb.checked; save(); });
-          const st = document.createElement('span'); st.textContent = s.name;
-          label.append(scb, st); sub.appendChild(label);
-        });
-        card.appendChild(sub);
-      }
+      const summary = document.createElement('button');
+      summary.type = 'button';
+      summary.className = 'todo-task-summary';
+      summary.setAttribute('aria-label', `${task.name}の詳細を表示`);
+      const title = document.createElement('span');
+      title.className = 'todo-task-title';
+      title.textContent = task.name;
+      summary.appendChild(title);
       if (task.links.length) {
-        const links = document.createElement('div'); links.className = 'todo-card-links';
-        task.links.forEach(l => {
-          const a = document.createElement('a'); a.href = l.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
-          a.textContent = l.label || l.url; links.appendChild(a);
-        });
-        card.appendChild(links);
+        const linkIcon = document.createElement('span');
+        linkIcon.className = 'todo-task-link-indicator';
+        linkIcon.setAttribute('aria-label', 'リンクあり');
+        linkIcon.title = 'リンクあり';
+        appendLinkIcon(linkIcon);
+        summary.appendChild(linkIcon);
       }
+      summary.addEventListener('click', () => openTaskDetails(task));
+      top.append(cb, summary);
+      card.appendChild(top);
+
+      const meta = document.createElement('div');
+      meta.className = 'todo-task-meta';
+      const deadline = document.createElement('span');
+      deadline.className = 'todo-task-deadline';
+      deadline.textContent = task.endDate
+        ? `期限・終了日 ${task.endDate}`
+        : task.category === 'routine' ? routinePeriodLabel(task.routinePeriod) : '期限なし';
+      meta.appendChild(deadline);
       if (task.linkedTaskIds.length) {
-        const info = document.createElement('div'); info.className = 'todo-task-meta';
-        info.textContent = `紐付け ${task.linkedTaskIds.length}件・${({all:'すべて表示',sequence:'順次表示',custom:'カスタム表示'})[task.linkMode]}`;
-        card.appendChild(info);
+        const progress = linkedTaskProgress(task);
+        const linked = document.createElement('span');
+        linked.className = 'todo-task-linked-progress';
+        linked.textContent = `紐付けタスク ${progress.completed}/${progress.total}`;
+        meta.appendChild(linked);
       }
-      const actions = document.createElement('div'); actions.className = 'todo-card-actions';
-      const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'lm-btn secondary'; edit.textContent = '編集'; edit.addEventListener('click', () => editTask(task));
-      const del = document.createElement('button'); del.type = 'button'; del.className = 'lm-btn secondary'; del.textContent = '削除'; del.addEventListener('click', () => {
-        if (!confirm(`「${task.name}」を削除しますか？紐付け先からも選択対象がなくなります。`)) return;
-        data.tasks = data.tasks.filter(t => t.id !== task.id);
-        data.tasks.forEach(t => { t.linkedTaskIds = t.linkedTaskIds.filter(id => id !== task.id); delete t.linkGroups[task.id]; });
-        save(); render();
-      });
-      actions.append(edit, del); card.appendChild(actions);
+      card.appendChild(meta);
       box.appendChild(card);
     });
   }
@@ -686,8 +864,11 @@
     if (!task) return;
     const index = data.tasks.findIndex(t => t.id === task.id);
     if (index >= 0) data.tasks[index] = task;
-    else data.tasks.push(task);
-    save(); resetForm(); render();
+    else {
+      data.tasks.push(task);
+      pageIndex = 0;
+    }
+    save(); resetForm(); render(); updateProgressDisplays();
   });
   document.querySelectorAll('[data-create-tab]').forEach(b => b.addEventListener('click', () => setCreateTab(b.dataset.createTab)));
   $('todo-cancel-edit').addEventListener('click', () => resetForm());
@@ -696,7 +877,30 @@
   $('todo-link-mode').addEventListener('change', renderCustomGroups);
   $('todo-start-date').addEventListener('input', () => $('todo-end-date').setCustomValidity(''));
   $('todo-end-date').addEventListener('input', () => $('todo-end-date').setCustomValidity(''));
-  ['todo-tab-filter', 'todo-deadline-filter', 'todo-sort'].forEach(id => $(id).addEventListener('change', render));
+  document.querySelectorAll('[name="todo-category-filter"], [name="todo-deadline-filter"]').forEach(input => {
+    input.addEventListener('change', () => {
+      pageIndex = 0;
+      render();
+    });
+  });
+  $('todo-sort').addEventListener('change', () => {
+    pageIndex = 0;
+    render();
+  });
+  $('todo-sort-direction').addEventListener('click', () => {
+    sortDescending = !sortDescending;
+    const button = $('todo-sort-direction');
+    button.textContent = sortDescending ? '降順 ↓' : '昇順 ↑';
+    button.setAttribute('aria-label', sortDescending ? '降順' : '昇順');
+    pageIndex = 0;
+    render();
+  });
+  document.querySelectorAll('.todo-page-button[data-page-delta]').forEach(button => {
+    button.addEventListener('click', () => {
+      pageIndex = Math.max(0, pageIndex + Number(button.dataset.pageDelta));
+      render();
+    });
+  });
   setupTomorrowTasks();
   resetDailyTasks();
   setCreateTab('main');
