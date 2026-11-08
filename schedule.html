@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <title>予定・逆算</title>
+  <title>予定・締切</title>
   <link rel="stylesheet" href="./style.css" />
   <link rel="manifest" href="./manifest.json" />
   <link rel="apple-touch-icon" href="./icons/icon-192.png" />
@@ -13,7 +13,7 @@
 <body>
   <div class="lm-page">
     <a class="lm-back-link" href="./index.html">← 今日のページに戻る</a>
-    <h1 class="lm-date-header">予定・逆算</h1>
+    <h1 class="lm-date-header">予定・締切</h1>
 
     <section class="lm-section" style="border-top:none;" aria-label="カレンダー">
       <div class="hs-calendar-nav">
@@ -27,9 +27,14 @@
       </div>
     </section>
 
-    <p class="lm-sub-header" id="form-title">予定を登録(<span id="step-indicator">1</span>/3)</p>
-    <button type="button" id="cancel-edit" class="lm-btn secondary" style="display:none; margin-bottom:12px;">編集をキャンセル</button>
-    <section class="lm-section">
+    <div class="sc-entry-tabs" role="tablist" aria-label="登録する内容">
+      <button type="button" class="lm-btn secondary is-active" id="schedule-entry-tab" role="tab" aria-selected="true" aria-controls="schedule-entry-panel">予定を登録</button>
+      <button type="button" class="lm-btn secondary" id="deadline-entry-tab" role="tab" aria-selected="false" aria-controls="deadline-entry-panel">期限・締切を登録</button>
+    </div>
+    <div id="schedule-entry-panel" role="tabpanel" aria-labelledby="schedule-entry-tab">
+      <p class="lm-sub-header" id="form-title">予定を登録(<span id="step-indicator">1</span>/3)</p>
+      <button type="button" id="cancel-edit" class="lm-btn secondary" style="display:none; margin-bottom:12px;">編集をキャンセル</button>
+      <section class="lm-section">
       <form id="schedule-form">
         <!-- 1段階目 -->
         <div class="lm-step" data-step="1">
@@ -92,6 +97,27 @@
           </div>
         </div>
       </form>
+      </section>
+    </div>
+    <section class="lm-section sc-deadline-panel" id="deadline-entry-panel" role="tabpanel" aria-labelledby="deadline-entry-tab" hidden>
+      <form id="deadline-form">
+        <div class="lm-field">
+          <label for="deadline-name">名前</label>
+          <input id="deadline-name" type="text" maxlength="100" required />
+        </div>
+        <div class="lm-field">
+          <label for="deadline-date">締切日</label>
+          <input id="deadline-date" type="date" required />
+        </div>
+        <div class="lm-field">
+          <label for="deadline-time">締切時刻</label>
+          <input id="deadline-time" type="time" required />
+        </div>
+        <div class="sc-deadline-actions">
+          <button type="button" class="lm-btn secondary" id="cancel-deadline-edit" hidden>編集をキャンセル</button>
+          <button type="submit" class="lm-btn" id="deadline-save">締切を保存</button>
+        </div>
+      </form>
     </section>
 
     <section class="lm-section">
@@ -101,6 +127,7 @@
         <button type="button" class="lm-btn secondary" data-schedule-filter="school" aria-pressed="false">学校</button>
         <button type="button" class="lm-btn secondary" data-schedule-filter="work" aria-pressed="false">バイト</button>
         <button type="button" class="lm-btn secondary" data-schedule-filter="other" aria-pressed="false">その他(手入力)</button>
+        <button type="button" class="lm-btn secondary" data-schedule-filter="deadline" aria-pressed="false">期限・締切</button>
       </div>
       <div id="schedule-list"></div>
     </section>
