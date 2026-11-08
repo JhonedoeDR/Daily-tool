@@ -17,32 +17,22 @@
 
   <div style="display:flex; justify-content:space-between; align-items:baseline; gap:8px;">
     <h1 class="lm-date-header">タスク</h1>
-    <button type="button" id="daily-reset-btn" class="lm-btn secondary" style="font-size:12px; padding:6px 12px; white-space:nowrap;">デイリーリセット</button>
+    <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
+      <button type="button" id="tomorrow-task-btn" class="lm-btn secondary" style="font-size:12px; padding:6px 12px; white-space:nowrap;">明日のタスク</button>
+      <button type="button" id="daily-reset-btn" class="lm-btn secondary" style="font-size:12px; padding:6px 12px; white-space:nowrap;">デイリーリセット</button>
+    </div>
   </div>
-  <p class="lm-sub-header">タスクは毎日AM4:00に自動でリセットされます。予定・イベントは0:00で切り替わります(ルーティンの内容と「その他」の枠数は引き継がれます)</p>
+  <p class="lm-sub-header">既存デイリー枠は毎日AM4:00にリセットされます。新しいタスクは登録内容を保持し、期間・期限とルーティン設定に応じて表示されます。</p>
 
-  <section class="lm-section" style="border-top:none;">
-    <div class="lm-section-title">週間達成のごほうび</div>
-    <input id="f-reward" placeholder="100%達成した時のご褒美を入力" style="width:100%; font-family:var(--font-body); font-size:16px; padding:10px 12px; border:1px solid var(--paper-line); border-radius:8px; background:#fff; color:var(--text);" />
-    <p class="lm-empty" style="margin-top:6px;">毎週月曜AM4:00にリセットされます</p>
-  </section>
-
-  <section class="lm-section" style="border-top:none;">
-    <div class="lm-section-title">月間ルーティン達成のごほうび</div>
-    <input id="f-routine-reward" placeholder="ルーティンを達成した時のご褒美を入力" style="width:100%; font-family:var(--font-body); font-size:16px; padding:10px 12px; border:1px solid var(--paper-line); border-radius:8px; background:#fff; color:var(--text);" />
-    <p class="lm-empty" style="margin-top:6px;">毎月1日AM4:00にリセットされます</p>
-  </section>
-
-  <section class="lm-section" style="border-top:none;">
-    <div id="todo-groups"></div>
-  </section>
-
-  <section class="lm-section">
+    <section class="lm-section" style="border-top:none;">
     <div class="lm-section-title">今週のメインタスククリア</div>
-    <p class="lm-empty" style="margin-bottom:10px;">メインタスクをクリアするたび、次のマスが埋まります</p>
+    <div class="lm-reward-row">
+     <span class="lm-reward-label">ごほうび：</span>
+     <input id="f-reward" class="lm-reward-input" type="text" placeholder="ここにご褒美を入力" />
+    </div>
     <div id="weekly-grid" class="lm-week-grid"></div>
     <div id="weekly-count" style="margin-top:8px; font-size:13px; color:var(--text-soft);"></div>
-    <div id="reward-box" style="display:none; margin-top:10px; padding:10px 12px; background:var(--accent-soft); border-radius:8px; font-size:13px;">
+    <div id="reward-box" style="display:none; margin-top:10px; padding:10px 12px; background:var(--accent-soft); border-radius:0; font-size:13px;">
       <div style="font-weight:500;">今週のメインタスクを14回クリアしました</div>
       <div style="color:var(--text-soft); margin-top:2px;">ご褒美を受け取れます</div>
     </div>
@@ -50,18 +40,261 @@
 
   <section class="lm-section">
     <div class="lm-section-title">今月のルーティンクリア</div>
+    <div class="lm-reward-row">
+     <span class="lm-reward-label">ごほうび：</span>
+     <input id="f-routine-reward" class="lm-reward-input" type="text" placeholder="ここにご褒美を入力" />
+    </div>
     <div id="routine-progress" class="lm-event" style="margin-top:0;"></div>
-    <div id="routine-reward-box" style="display:none; margin-top:10px; padding:10px 12px; background:var(--accent-soft); border-radius:8px; font-size:13px;">
+    <div id="routine-reward-box" style="display:none; margin-top:10px; padding:10px 12px; background:var(--accent-soft); border-radius:0; font-size:13px;">
       <div id="routine-reward-title" style="font-weight:500;"></div>
       <div style="color:var(--text-soft); margin-top:2px;">ご褒美を受け取れます</div>
     </div>
   </section>
+
+  <section class="lm-section">
+    <div class="todo-manager">
+      <div class="todo-toolbar">
+        <div class="todo-filter-row">
+          <label>タブ
+            <select id="todo-tab-filter">
+              <option value="all">すべて</option>
+              <option value="main">メイン</option>
+              <option value="routine">ルーティン</option>
+              <option value="other">その他</option>
+            </select>
+          </label>
+          <label>期限
+            <select id="todo-deadline-filter">
+              <option value="all">すべて</option>
+              <option value="yes">あり</option>
+              <option value="no">なし</option>
+            </select>
+          </label>
+          <label>並び順
+            <select id="todo-sort">
+              <option value="name">名前順</option>
+              <option value="deadline">期限順</option>
+            </select>
+          </label>
+        </div>
+        <div class="todo-create-tabs" role="tablist" aria-label="タスクの種類">
+          <button type="button" class="todo-create-tab is-active" data-create-tab="main">メイン</button>
+          <button type="button" class="todo-create-tab" data-create-tab="routine">ルーティン</button>
+          <button type="button" class="todo-create-tab" data-create-tab="other">その他</button>
+        </div>
+      </div>
+      <form id="todo-create-form" class="todo-create-form">
+        <input type="hidden" id="todo-edit-id" />
+        <div class="todo-form-heading" id="todo-form-heading">メインタスクを追加</div>
+        <label class="todo-field">タスク名
+          <input id="todo-task-name" type="text" maxlength="200" required placeholder="タスク名を入力" />
+        </label>
+        <div class="todo-date-fields" id="todo-date-fields">
+          <label class="todo-field" id="todo-start-date-label">開始日（任意）
+            <input id="todo-start-date" type="date" />
+          </label>
+          <label class="todo-field" id="todo-end-date-field">期限・終了日（任意）
+            <input id="todo-end-date" type="date" />
+          </label>
+        </div>
+        <label class="todo-field" id="todo-routine-period" hidden>期間
+          <select id="todo-routine-period-select">
+            <option value="daily">毎日</option>
+            <option value="weekdays">平日</option>
+            <option value="weekly">毎週</option>
+            <option value="monthly">毎月</option>
+          </select>
+        </label>
+        <details class="todo-advanced" id="todo-advanced">
+          <summary>詳細設定</summary>
+          <div class="todo-advanced-content">
+            <div class="todo-field">
+              <span>チェックボックス小要素作成</span>
+              <div id="todo-subtasks" class="todo-subtask-editor"></div>
+              <button type="button" id="todo-add-subtask" class="lm-btn secondary">＋ 小要素を追加</button>
+            </div>
+            <div class="todo-field" id="todo-linked-field">
+              <span>紐付けタスクの選択（複数可）</span>
+              <div id="todo-linked-list" class="todo-linked-list"></div>
+              <label>表示方法
+                <select id="todo-link-mode">
+                  <option value="all">すべて表示</option>
+                  <option value="sequence">順次表示</option>
+                  <option value="custom">カスタム表示</option>
+                </select>
+              </label>
+              <div id="todo-custom-groups" class="todo-custom-groups" hidden></div>
+              <p class="todo-help">カスタム表示では、同時に表示するタスクに同じグループ番号を設定します。</p>
+            </div>
+            <div class="todo-field">
+              <span>リンク（複数可）</span>
+              <div id="todo-links" class="todo-link-editor"></div>
+              <button type="button" id="todo-add-link" class="lm-btn secondary">＋ リンクを追加</button>
+            </div>
+          </div>
+        </details>
+        <div class="todo-form-actions">
+          <button type="submit" class="lm-btn" id="todo-save-button">タスクを追加</button>
+          <button type="button" class="lm-btn secondary" id="todo-cancel-edit" hidden>編集をやめる</button>
+        </div>
+      </form>
+      <div id="todo-task-list" class="todo-task-list" aria-live="polite"></div>
+    </div>
+    <details class="todo-legacy-area">
+      <summary>既存のデイリー枠・締切連携タスク（互換機能）</summary>
+      <p class="todo-help">以前の固定枠タスクと、予定ページから連携された締切タスクを表示します。週間・月間の既存記録や通知との互換性を保つため残しています。</p>
+      <div id="todo-groups"></div>
+    </details>
+  </section>
+
 
   <div id="nav-container"></div>
 </div>
 
 <script src="./app.js"></script>
 <script src="./renderNav-menu.js"></script>
+<script src="./base-core.js"></script>
+<script>
+(function () {
+  const KEY = 'lm_tomorrowTasks';
+
+  // 「次のタスク日」(AM4:00基準の明日)のキー
+  function nextDayKey() {
+    const [y, m, d] = LM.todoDayKey().split('-').map(Number);
+    return LM.scheduleDateKey(new Date(y, m - 1, d + 1));
+  }
+
+  // ---- 反映: todo.js より前に実行し、リセット後の今日のタスク名に流し込む ----
+  (function applyPending() {
+    const pending = LM.get(KEY, null);
+    if (!pending || !pending.forDay) return;
+    const state = LM.getTodoState(); // AM4:00のリセット判定を先に済ませる
+    if (pending.forDay > state.dayKey) return; // まだ先の日の分は残す
+    if (pending.forDay === state.dayKey) {
+      const slots = Math.max(1, Number(pending.otherSlotCount) || 1);
+      if (slots > state.otherSlotCount) {
+        state.otherSlotCount = LM.configureOtherTodoSlots(slots);
+      }
+      LM.TODO_GROUPS.forEach((g) => g.ids.forEach((id) => {
+        if (!state.dailyTasks[id]) state.dailyTasks[id] = { name: '', checked: false };
+      }));
+            const locked = new Set(LM.TODO_MAIN_IDS.slice(0, LM.getMainLockTitles ? LM.getMainLockTitles('today').length : 0));
+      const tasks = pending.tasks || {};
+      Object.keys(tasks).forEach((id) => {
+        if (locked.has(id)) return; // 締切タスクが占める枠には反映しない
+        const name = String(tasks[id] || '').trim();
+        if (!name || !state.dailyTasks[id]) return;
+        if (String(state.dailyTasks[id].name || '').trim()) return; // 既にある内容は上書きしない
+        LM.setTodoTaskName(state, id, name);
+      });
+      LM.saveTodoState(state);
+    }
+    localStorage.removeItem(KEY); // 反映済み・期限切れはここで消す
+  })();
+
+  // ---- 入力レイヤー ----
+  document.getElementById('tomorrow-task-btn').addEventListener('click', () => {
+    const forDay = nextDayKey();
+    const saved = LM.get(KEY, null);
+    const data = (saved && saved.forDay === forDay)
+      ? { forDay, tasks: saved.tasks || {}, otherSlotCount: Math.max(1, Number(saved.otherSlotCount) || 1) }
+      : { forDay, tasks: {}, otherSlotCount: 1 };
+
+    function persist() {
+      const has = Object.values(data.tasks).some((v) => String(v || '').trim());
+      if (has) LM.set(KEY, data);
+      else localStorage.removeItem(KEY);
+      LM.syncFirebaseDebounced(); // 外部通知にも明日のタスクの入力状況を伝える
+    }
+
+    const wrap = document.createElement('div');
+
+    function render() {
+      wrap.innerHTML = '';
+      const locks = LM.getMainLockTitles ? LM.getMainLockTitles('tomorrow') : [];
+      const note = document.createElement('p');
+      note.className = 'lm-empty';
+      note.style.marginBottom = '12px';
+      note.textContent = 'AM4:00以降に最初にこのページを開いたとき、今日のタスクに反映されます(ルーティンは毎日引き継がれるため対象外です)';
+      wrap.appendChild(note);
+
+      LM.TODO_GROUPS.filter((g) => g.key !== 'routine').forEach((g) => {
+        const ids = g.key === 'other'
+          ? Array.from({ length: data.otherSlotCount }, (_, i) => `other${i + 1}`)
+          : g.ids;
+
+        const groupEl = document.createElement('div');
+        groupEl.className = 'lm-todo-group';
+        const label = document.createElement('div');
+        label.className = 'lm-todo-group-label' + (g.isMain ? ' is-main' : '');
+        label.textContent = g.label;
+        groupEl.appendChild(label);
+
+        ids.forEach((id, idx) => {
+          const row = document.createElement('div');
+          row.className = 'lm-todo-row';
+          const input = document.createElement('input');
+          input.type = 'text';
+          const num = ids.length > 1 ? '①②③'[idx] || String(idx + 1) : '';
+          input.placeholder = `${g.label}${num} のタスク`;
+          input.value = data.tasks[id] || '';
+          const lockTitle = g.isMain ? locks[idx] : undefined;
+          if (lockTitle) {
+            input.value = lockTitle;
+            input.disabled = true;
+            input.classList.add('dl-locked');
+            input.title = '締切のタスクが使用中です';
+          }
+          input.addEventListener('input', () => {
+            data.tasks[id] = input.value;
+            persist();
+          });
+          row.appendChild(input);
+
+          if (g.key === 'other' && idx > 0) {
+            const rm = document.createElement('button');
+            rm.type = 'button';
+            rm.className = 'lm-todo-slot-remove';
+            rm.textContent = '-';
+            rm.setAttribute('aria-label', 'この追加枠を削除');
+            rm.addEventListener('click', () => {
+              for (let slot = idx + 1; slot < data.otherSlotCount; slot += 1) {
+                data.tasks[`other${slot}`] = data.tasks[`other${slot + 1}`] || '';
+              }
+              delete data.tasks[`other${data.otherSlotCount}`];
+              data.otherSlotCount -= 1;
+              persist();
+              render();
+            });
+            row.appendChild(rm);
+          }
+          groupEl.appendChild(row);
+        });
+
+        if (g.key === 'other') {
+          const add = document.createElement('button');
+          add.type = 'button';
+          add.className = 'lm-btn secondary';
+          add.style.cssText = 'margin-top:8px; font-size:12px; padding:6px 12px;';
+          add.textContent = '＋ 枠を追加';
+          add.addEventListener('click', () => {
+            data.otherSlotCount += 1;
+            persist();
+            render();
+          });
+          groupEl.appendChild(add);
+        }
+        wrap.appendChild(groupEl);
+      });
+    }
+
+    render();
+    LM.openModal('明日のタスク', wrap);
+  });
+})();
+</script>
+<script src="./todo-legacy.js"></script>
 <script src="./todo.js"></script>
+
 </body>
 </html>

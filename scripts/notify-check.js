@@ -11,6 +11,21 @@ const MIN_MS = 60 * 1000;
 const LOOKAHEAD_MS = 8 * MIN_MS; // これより先の予定は次回以降の実行に任せる
 const GRACE_MS = 4 * MIN_MS; // 時刻を少し過ぎていても送る猶予(実行が1回飛んだ時の保険)
 
+// 締切の通知設定(app.js の LM.DEADLINE_NOTIFY_OPTIONS と同じ内容にしておく)
+const DEADLINE_NOTIFY_OPTIONS = {
+  '30m': { min: 30, label: '30分前' },
+  '1h': { min: 60, label: '1時間前' },
+  '3h': { min: 180, label: '3時間前' },
+  '1d': { min: 1440, label: '前日' },
+  '3d': { min: 4320, label: '3日前' },
+  '1w': { min: 10080, label: '1週間前' },
+};
+
+function formatDateJa(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  return `${d.getUTCMonth() + 1}月${d.getUTCDate()}日(${['日', '月', '火', '水', '木', '金', '土'][d.getUTCDay()]})`;
+}
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 /* ---------- 日付・時刻ユーティリティ(すべてJST基準) ---------- */
@@ -55,10 +70,55 @@ function minutesToClock(totalMin) {
 }
 
 /* ---------- タスクの集計(タスクの「1日」はAM4:00区切り) ---------- */
-function summarizeTasks(state, dayKey) {
+// 端末が今日(4時以降)にまだ開かれていなくても、「明日のタスク」で入力済みの分があれば
+// それを今日のタスクとして扱う(アプリを開いた時の自動入力と同じ結果になる)
+function effectiveTodo(state, dayKey) {
   const todo = state.todo;
-  // 端末側が今日(4時以降)にまだ開かれていない=リセット済み扱いで、未入力とみなす
-  if (!todo || todo.dayKey !== dayKey) {
+  if (todo && todo.dayKey === dayKey) {
+    const pending = state.tomorrowTasks;
+    // 端末側で自動入力が済む前に同期された場合も、空いている枠には明日のタスクを入れる
+    if (pending && pending.forDay === dayKey && pending.tasks) {
+      const tasks = Object.assign({}, todo.dailyTasks || {});
+      let added = false;
+      Object.keys(pending.tasks).forEach((id) => {
+        const name = String(pending.tasks[id] || '').trim();
+        if (!name || (tasks[id] && String(tasks[id].name || '').trim())) return;
+        tasks[id] = { name, checked: false };
+        added = true;
+      });
+      if (added) {
+        const enteredAt = Number(todo.taskEnteredAt) > 0 ? Number(todo.taskEnteredAt) : jstMidnightEpoch(dayKey) + 4 * HOUR_MS;
+        return Object.assign({}, todo, { dailyTasks: tasks, taskEnteredAt: enteredAt });
+      }
+    }
+    return todo;
+  }
+  const pending = state.tomorrowTasks;
+  {
+    const tasks = {};
+    // ルーティンは名前が翌日に引き継がれる(同じ月の間だけ)ので、前日の端末の名前を持ってくる
+    const old = state.todo && state.todo.dailyTasks;
+    if (old && String(state.todo.dayKey || '').slice(0, 7) === dayKey.slice(0, 7)) {
+      ['rt1', 'rt2', 'rt3'].forEach((id) => {
+        const name = String((old[id] && old[id].name) || '').trim();
+        if (name) tasks[id] = { name, checked: false };
+      });
+    }
+    if (pending && pending.forDay === dayKey && pending.tasks) {
+      Object.keys(pending.tasks).forEach((id) => {
+        const name = String(pending.tasks[id] || '').trim();
+        if (name) tasks[id] = { name, checked: false };
+      });
+    }
+    if (Object.keys(tasks).length === 0) return null;
+    return { dayKey, dailyTasks: tasks, taskEnteredAt: jstMidnightEpoch(dayKey) + 4 * HOUR_MS };
+  }
+  return null;
+}
+
+function summarizeTasks(state, dayKey) {
+  const todo = effectiveTodo(state, dayKey);
+  if (!todo) {
     return { entered: 0, mainEntered: 0, mainUnfinished: 0, mainComplete: false, otherUnfinished: 0, unfinished: 0 };
   }
   const tasks = todo.dailyTasks || {};
@@ -81,6 +141,25 @@ function summarizeTasks(state, dayKey) {
   };
 }
 
+/* ---------- 未達成のタスク通知に添える、締切の文(近い順に最大2件) ----------
+   アプリ側が同期する todo.unfinishedDeadlineIds(未達成の締切タスクがある締切のid)を使う */
+function buildDeadlineNoteLines(st, nowMs) {
+  const ids = (st.todo && Array.isArray(st.todo.unfinishedDeadlineIds)) ? st.todo.unfinishedDeadlineIds : [];
+  if (ids.length === 0) return [];
+  const today = jstDateStr(nowMs);
+  const list = ids
+    .map((id) => (st.schedules || []).find((s) => s.id === id && s.kind === 'deadline'))
+    .filter((s) => s && s.date && s.date >= today);
+  const lines = list.slice(0, 2).map((s) => {
+    const d = daysBetween(today, s.date);
+    if (d <= 0) return `「${s.name}」の締切は今日の${s.start}です`;
+    if (d === 1) return `「${s.name}」の締切は明日の${s.start}です`;
+    return `「${s.name}」の締切まで、あと${d}日です`;
+  });
+  if (list.length > 2) lines.push(`ほか${list.length - 2}件の締切にも、未達成のタスクがあります`);
+  return lines;
+}
+
 function roundHour(epochMs) {
   return Math.round(epochMs / HOUR_MS) * HOUR_MS;
 }
@@ -95,7 +174,7 @@ function buildItems(state, nowMs) {
 
   // 予定: 開始時刻と準備開始時刻
   (state.schedules || [])
-    .filter((s) => s.date === today && s.start)
+    .filter((s) => s.date === today && s.start && s.kind !== 'deadline')
     .forEach((s) => {
       items.push({
         key: `start:${s.id}:${today}`,
@@ -142,18 +221,21 @@ function buildItems(state, nowMs) {
       key: `task-empty:${dayKey}:${h}`,
       at: midnight + h * HOUR_MS,
       build: (st) => {
-        return summarizeTasks(st, dayKey).mainEntered === 0
+        // メイン以外(ルーティン含む)だけでも入力済みなら、未入力扱いにしない(未達成の通知に任せる)
+        return summarizeTasks(st, dayKey).entered === 0
           ? { title: 'メインタスクが入力されていません', body: '今日のメインタスクを入力しましょう' }
           : null;
       },
     });
   });
 
-  const todo = state.todo;
+  const todo = effectiveTodo(state, dayKey);
   const summary = summarizeTasks(state, dayKey);
-  if (todo && todo.dayKey === dayKey && Number(todo.taskEnteredAt) > 0 &&
-      summary.entered > 0 && !summary.mainComplete && summary.unfinished > 0) {
-    const enteredAt = roundHour(Number(todo.taskEnteredAt));
+  if (todo && summary.entered > 0 && !summary.mainComplete && summary.unfinished > 0) {
+    // 入力時刻の記録がない(ルーティンの自動引き継ぎだけ等)日は、その日のAM4:00を起点にする
+    const enteredAt = Number(todo.taskEnteredAt) > 0
+      ? roundHour(Number(todo.taskEnteredAt))
+      : jstMidnightEpoch(dayKey) + 4 * HOUR_MS;
     const resetAt = jstMidnightEpoch(dayKey) + 24 * HOUR_MS + 4 * HOUR_MS;
     for (let at = enteredAt + 3 * HOUR_MS; at < resetAt; at += 3 * HOUR_MS) {
       const reminderAt = at;
@@ -162,9 +244,10 @@ function buildItems(state, nowMs) {
         at: reminderAt,
         build: (st) => {
           const current = summarizeTasks(st, dayKey);
-          return current.mainEntered > 0 && !current.mainComplete && current.unfinished > 0
-            ? { title: '未達成のタスクがあります', body: `未達成 ${current.unfinished}件` }
-            : null;
+          if (current.entered === 0 || current.mainComplete || current.unfinished === 0) return null;
+          const lines = [`未達成 ${current.unfinished}件`];
+          if (current.mainEntered === 0) lines.push('メインタスクは未入力です');
+          return { title: '未達成のタスクがあります', body: [...lines, ...buildDeadlineNoteLines(st, Date.now())].join('\n') };
         },
       });
     }
@@ -178,9 +261,58 @@ function buildItems(state, nowMs) {
       build: (st) => {
         const current = summarizeTasks(st, dayKey);
         return current.mainComplete && current.otherUnfinished > 0
-          ? { title: 'その他に未達成のタスクがあります', body: `未達成 ${current.otherUnfinished}件` }
+          ? { title: 'その他に未達成のタスクがあります', body: [`未達成 ${current.otherUnfinished}件`, ...buildDeadlineNoteLines(st, Date.now())].join('\n') }
           : null;
       },
+    });
+  });
+  
+    // 締切: 通知設定で選んだ「◯分前」に通知(未来の日付の締切も対象)
+  (state.schedules || [])
+    .filter((s) => s.kind === 'deadline' && s.date && s.start && Array.isArray(s.notifyBefore))
+    .forEach((s) => {
+      const dueAt = jstMidnightEpoch(s.date) + clockToMinutes(s.start) * MIN_MS;
+      s.notifyBefore.forEach((id) => {
+        const opt = DEADLINE_NOTIFY_OPTIONS[id];
+        if (!opt) return;
+        items.push({
+          key: `deadline:${s.id}:${id}:${s.date}:${s.start}`,
+          at: dueAt - opt.min * MIN_MS,
+          build: (st) => {
+            const cur = (st.schedules || []).find((x) => x.id === s.id);
+            if (!cur || cur.kind !== 'deadline') return null;
+            // 削除・日時変更・通知設定の解除があれば送らない(変更後は別のキーで改めて予約される)
+            if (cur.date !== s.date || cur.start !== s.start) return null;
+            if (!Array.isArray(cur.notifyBefore) || !cur.notifyBefore.includes(id)) return null;
+            return {
+              title: '締切が近づいています',
+              body: `${cur.name}(${formatDateJa(cur.date)} ${cur.start}・締切の${opt.label})`,
+            };
+          },
+        });
+      });
+    });
+
+  // ゲームのログイン忘れ: 指定時刻ごとに、その日のログイン記録がないゲームだけ通知
+  (state.gameReminders || []).forEach((game) => {
+    if (!game || game.notifyEnabled !== true || !game.id || !game.name) return;
+    const reminderTimes = [...new Set((Array.isArray(game.reminderTimes) ? game.reminderTimes : [game.reminderTime || ''])
+      .filter((time) => /^([01]\d|2[0-3]):[0-5]\d$/.test(time)))];
+    if (!reminderTimes.length || game.lastLoginDate === today) return;
+    reminderTimes.forEach((reminderTime) => {
+      const at = midnight + clockToMinutes(reminderTime) * MIN_MS;
+      items.push({
+        key: `game-login:${game.id}:${today}:${reminderTime}`,
+        at,
+        build: (st) => {
+          const current = (st.gameReminders || []).find((g) => g && g.id === game.id && g.notifyEnabled === true);
+          const currentTimes = current
+            ? (Array.isArray(current.reminderTimes) ? current.reminderTimes : [current.reminderTime || ''])
+            : [];
+          if (!current || !currentTimes.includes(reminderTime) || current.lastLoginDate === today) return null;
+          return { title: 'ゲームのログイン確認', body: `「${current.name}」の今日のログインがまだ記録されていません` };
+        },
+      });
     });
   });
 
@@ -280,7 +412,7 @@ async function main() {
   }
 }
 
-module.exports = { jstDateStr, jstMidnightEpoch, summarizeTasks, roundHour, buildItems, selectDue, calcPrepStartMin };
+module.exports = { effectiveTodo, jstDateStr, jstMidnightEpoch, summarizeTasks, roundHour, buildItems, selectDue, calcPrepStartMin, buildDeadlineNoteLines };
 
 if (require.main === module) {
   main().catch((e) => {

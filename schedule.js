@@ -31,6 +31,38 @@
   const stepIndicator = document.getElementById('step-indicator');
   const cancelBtn = document.getElementById('cancel-edit');
   const steps = Array.from(document.querySelectorAll('.lm-step'));
+  const formTabs = [...document.querySelectorAll('[data-form-tab]')];
+  const schedulePanel = document.getElementById('tab-panel-schedule');
+  const deadlinePanel = document.getElementById('tab-panel-deadline');
+  const deadlineForm = document.getElementById('deadline-form');
+  const deadlineFields = {
+    name: document.getElementById('d-name'),
+    date: document.getElementById('d-date'),
+    time: document.getElementById('d-time'),
+  };
+  const deadlineTitle = document.getElementById('deadline-form-title');
+  const deadlineCancelBtn = document.getElementById('deadline-cancel-edit');
+  let editingDeadlineId = null;
+  const deadlineNotifyList = document.getElementById('d-notify-list');
+  renderDeadlineNotifyOptions();
+  const presetPanel = document.getElementById('tab-panel-preset');
+  const presetForm = document.getElementById('preset-form');
+  const presetFields = {
+    name: document.getElementById('p-name'),
+    travel: document.getElementById('p-travel'),
+    prep: document.getElementById('p-prep'),
+    arrive: document.getElementById('p-arrive'),
+  };
+  const presetList = document.getElementById('preset-list');
+  const ROUTE_PRESET_KEY = LM.KEYS.ROUTE_PRESETS || 'lm_routePresets';
+  const presetTitle = document.getElementById('preset-form-title');
+  const presetCancelBtn = document.getElementById('preset-cancel-edit');
+  let editingPresetId = null;
+  const deadlineTaskCount = document.getElementById('d-task-count');
+  const deadlineTaskDraft = LM.createDeadlineTaskDraft(
+    document.getElementById('d-task-area'),
+    (n) => { deadlineTaskCount.textContent = n ? `(${n})` : ''; }
+  );
 
   let editingId = null;
   let editingDeadlineId = null;
@@ -253,14 +285,11 @@
   function startEdit(id) {
     const schedule = LM.get(LM.KEYS.SCHEDULES, []).find((s) => s.id === id);
     if (!schedule) return;
-    if (schedule.type === 'deadline') {
-      startDeadlineEdit(id);
-      return;
-    }
     if (schedule.autoSource === 'shift') {
       LM.showToast('この予定は履修・シフト側で編集してください', 'error');
       return;
     }
+    switchFormTab('schedule');
     editingId = id;
     setEntryTab('schedule');
     fields.name.value = schedule.name;
@@ -530,7 +559,6 @@
   }
 
   function getScheduleCategory(schedule) {
-    if (schedule.type === 'deadline') return 'deadline';
     if (schedule.autoSource !== 'shift') return 'other';
     return schedule.name === '学校' ? 'school' : 'work';
   }
@@ -551,14 +579,19 @@
       name.textContent = ` ${schedule.name}`;
       const category = document.createElement('div');
       category.className = 'lm-schedule-source';
-      category.textContent = schedule.autoSource === 'shift'
+      category.textContent = schedule.kind === 'deadline' ? '締切'
+        : schedule.autoSource === 'shift'
         ? (getScheduleCategory(schedule) === 'school' ? '学校(履修・シフト)' : 'バイト(履修・シフト)')
         : 'その他(手入力)';
       info.append(date, name, category);
       const departure = document.createElement('div');
       departure.className = 'lm-schedule-departure';
-      const result = LM.calcDeparture(schedule);
-      departure.textContent = `準備開始 ${result.prepStart} ・ 出発 ${result.depart} ・ 到着目安 ${result.arrive}`;
+      if (schedule.kind === 'deadline') {
+        departure.textContent = `締切 ${schedule.start}`;
+      } else {
+        const result = LM.calcDeparture(schedule);
+        departure.textContent = `準備開始 ${result.prepStart} ・ 出発 ${result.depart} ・ 到着目安 ${result.arrive}`;
+      }
       row.append(info, departure);
       wrap.appendChild(row);
     });
@@ -568,17 +601,6 @@
   function showConfirm(id) {
     const schedule = LM.get(LM.KEYS.SCHEDULES, []).find((s) => s.id === id);
     if (!schedule) return;
-    if (schedule.type === 'deadline') {
-      const wrap = document.createElement('div');
-      wrap.className = 'sc-deadline-detail';
-      const date = document.createElement('div');
-      date.textContent = `締切日: ${LM.formatDateHeader(schedule.date)}`;
-      const time = document.createElement('div');
-      time.textContent = `締切時刻: ${schedule.deadlineTime || '未設定'}`;
-      wrap.append(date, time);
-      LM.openModal(schedule.name, wrap);
-      return;
-    }
     const sets = LM.get(LM.KEYS.BELONGING_SETS, []);
     const selectedIds = schedule.belongingSetIds || (schedule.belongingSetId ? [schedule.belongingSetId] : []);
     const belongingNames = selectedIds
@@ -654,11 +676,9 @@
     presetLabel.textContent = '逆算プリセット';
     const preset = document.createElement('select');
     preset.id = presetLabel.htmlFor;
-    [
+     [
       ['', 'プリセットなし'],
-      ['car', '車'],
-      ['itsukaichi', '五日市'],
-      ['nishihiroshima', '西広島'],
+      ...getRoutePresets().map((item) => [`preset:${item.id}`, item.name]),
       ['custom', '個別設定'],
     ].forEach(([value, label]) => {
       const option = document.createElement('option');
@@ -690,16 +710,23 @@
       inputs[key] = input;
     });
 
-    const presetByName = { 車: 'car', 五日市: 'itsukaichi', 西広島: 'nishihiroshima' };
-    preset.value = presetByName[schedule.routePreset] ||
-      (Number(schedule.travelMin) || Number(schedule.prepMin) || Number(schedule.arriveBeforeMin) ? 'custom' : '');
+    const presetByName = {};
     const presetValues = {
-      car: { routePreset: '車', travelMin: 20, prepMin: 40, arriveBeforeMin: 10 },
-      itsukaichi: { routePreset: '五日市', travelMin: 70, prepMin: 30, arriveBeforeMin: 10 },
-      nishihiroshima: { routePreset: '西広島', travelMin: 45, prepMin: 40, arriveBeforeMin: 10 },
       custom: { routePreset: '個別設定' },
       '': { routePreset: '' },
     };
+    getRoutePresets().forEach((item) => {
+      const key = `preset:${item.id}`;
+      presetByName[item.name] = key;
+      presetValues[key] = {
+        routePreset: item.name,
+        travelMin: item.travelMin,
+        prepMin: item.prepMin,
+        arriveBeforeMin: item.arriveBeforeMin,
+      };
+    });
+    preset.value = presetByName[schedule.routePreset] ||
+      (Number(schedule.travelMin) || Number(schedule.prepMin) || Number(schedule.arriveBeforeMin) ? 'custom' : '');
     const applyPreset = () => {
       const values = presetValues[preset.value];
       if (preset.value === 'custom') return;
@@ -769,9 +796,504 @@
     return candidates.find((shift) => shift.start === schedule.start) || candidates[0] || null;
   }
 
+   /* ---------- 期限・締切 ---------- */
+    function switchFormTab(tab) {
+    schedulePanel.hidden = tab !== 'schedule';
+    deadlinePanel.hidden = tab !== 'deadline';
+    presetPanel.hidden = tab !== 'preset';
+    formTabs.forEach((button) => {
+      const active = button.dataset.formTab === tab;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
+  }
+
+  function saveDeadline() {
+    const name = deadlineFields.name.value.trim();
+    if (!name || !deadlineFields.date.value || !deadlineFields.time.value) {
+      deadlineForm.reportValidity();
+      return;
+    }
+    const schedules = LM.get(LM.KEYS.SCHEDULES, []);
+    const data = {
+      id: editingDeadlineId || LM.uid(),
+      kind: 'deadline',
+      name,
+      date: deadlineFields.date.value,
+      start: deadlineFields.time.value,
+      end: '',
+      place: '',
+      travelMin: 0,
+      prepMin: 0,
+      arriveBeforeMin: 0,
+      belongingSetIds: [],
+      memo: '',
+      notifyBefore: getSelectedDeadlineNotify(),
+    };
+    if (editingDeadlineId) {
+      const idx = schedules.findIndex((s) => s.id === editingDeadlineId);
+      if (idx !== -1) schedules[idx] = data;
+      else schedules.push(data);
+    } else {
+      schedules.push(data);
+    }
+    if (!LM.set(LM.KEYS.SCHEDULES, schedules)) return;
+    deadlineTaskDraft.commit(data.id);
+    LM.syncFirebase();
+    resetDeadlineForm();
+    renderList();
+    renderCalendar();
+  }
+
+  function startDeadlineEdit(id) {
+    const schedule = LM.get(LM.KEYS.SCHEDULES, []).find((s) => s.id === id);
+    if (!schedule) return;
+    editingDeadlineId = id;
+    deadlineFields.name.value = schedule.name;
+    deadlineFields.date.value = schedule.date;
+    deadlineFields.time.value = schedule.start;
+    const selectedNotify = Array.isArray(schedule.notifyBefore) ? schedule.notifyBefore : [];
+    deadlineNotifyList.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
+      cb.checked = selectedNotify.includes(cb.value);
+    });
+    deadlineTitle.textContent = '締切を編集';
+    deadlineCancelBtn.style.display = 'inline-block';
+    deadlineTaskDraft.showExisting(schedule);
+    switchFormTab('deadline');
+    window.scrollTo({ top: deadlinePanel.offsetTop - 20, behavior: 'smooth' });
+  }
+
+  function resetDeadlineForm() {
+    editingDeadlineId = null;
+    deadlineForm.reset();
+    deadlineFields.date.value = LM.todayStr();
+    deadlineTitle.textContent = '締切を登録';
+    deadlineCancelBtn.style.display = 'none';
+    history.replaceState(null, '', location.pathname);
+    deadlineTaskDraft.reset();
+  }
+
+    function showDeadlineConfirm(schedule) {
+    const notifyLabels = (schedule.notifyBefore || [])
+      .map((id) => (LM.DEADLINE_NOTIFY_OPTIONS.find((o) => o.id === id) || {}).label)
+      .filter(Boolean);
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'font-size:14px; line-height:1.9;';
+    wrap.innerHTML = `
+      <div><span style="color:var(--text-soft);">締切日</span> ${LM.formatDateHeader(schedule.date)}</div>
+      <div><span style="color:var(--text-soft);">締切時刻</span> ${schedule.start}</div>
+      <div><span style="color:var(--text-soft);">通知</span> ${notifyLabels.length ? notifyLabels.join('、') : '(なし)'}</div>
+    `;
+    if (LM.appendDeadlineTaskPanel) LM.appendDeadlineTaskPanel(wrap, schedule);
+    LM.openModal(schedule.name, wrap);
+    LM.openModal(schedule.name, wrap);
+  }
+
+  formTabs.forEach((button) => {
+    button.addEventListener('click', () => switchFormTab(button.dataset.formTab));
+  });
+  deadlineForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    saveDeadline();
+  });
+  deadlineCancelBtn.addEventListener('click', resetDeadlineForm);
+  deadlineFields.date.value = LM.todayStr();
+    /* ---------- 登録済みの締切(締切タブの下部) ---------- */
+  const deadlineListEl = document.getElementById('deadline-list');
+  const DEADLINE_PAGE_SIZE = 5;
+  let deadlineListPage = 0;
+
+  function renderDeadlineList() {
+    if (!deadlineListEl) return;
+    const today = LM.todayStr();
+    const deadlines = LM.get(LM.KEYS.SCHEDULES, [])
+      .filter((s) => s.kind === 'deadline')
+      .sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
+    deadlineListEl.replaceChildren();
+
+    if (deadlines.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'lm-empty';
+      empty.textContent = '登録されている締切はありません';
+      deadlineListEl.appendChild(empty);
+      return;
+    }
+
+    const tasks = LM.refreshDeadlineTaskLinks();
+    const totalPages = Math.max(1, Math.ceil(deadlines.length / DEADLINE_PAGE_SIZE));
+    deadlineListPage = Math.min(deadlineListPage, totalPages - 1);
+    deadlines
+      .slice(deadlineListPage * DEADLINE_PAGE_SIZE, (deadlineListPage + 1) * DEADLINE_PAGE_SIZE)
+      .forEach((s) => {
+        const remainDays = LM.daysBetween(today, s.date);
+        const mine = tasks.filter((t) => t.deadlineId === s.id);
+        const doneCount = mine.filter((t) => t.done).length;
+        const row = document.createElement('div');
+        row.className = 'lm-schedule-item';
+        row.style.cursor = 'pointer';
+        row.style.justifyContent = 'space-between';
+        row.style.alignItems = 'center';
+        row.innerHTML = `
+          <span data-dl-open="${s.id}" style="flex:1; min-width:0;">
+            <span class="lm-schedule-time${remainDays <= 7 ? ' is-soon' : ''}">${LM.formatDateHeader(s.date).slice(0, -3)} ${s.start}</span>
+            <span>${escapeHtml(s.name)}</span>
+            <small class="lm-schedule-source">${remainDays > 0 ? `あと${remainDays}日` : '今日'}${mine.length ? ` ・ タスク ${doneCount}/${mine.length}` : ''}</small>
+          </span>
+          <span style="display:flex; gap:6px;">
+            <button type="button" data-dl-edit="${s.id}" class="lm-btn secondary" style="padding:6px 10px; font-size:12px;">編集</button>
+            <button type="button" data-dl-delete="${s.id}" class="lm-btn secondary" style="padding:6px 10px; font-size:12px;">削除</button>
+          </span>
+        `;
+        deadlineListEl.appendChild(row);
+      });
+
+    if (deadlines.length > DEADLINE_PAGE_SIZE) {
+      const pager = document.createElement('div');
+      pager.className = 'lm-pager';
+      pager.innerHTML = `
+        <button type="button" data-dl-page="-1" ${deadlineListPage === 0 ? 'disabled' : ''}>◀</button>
+        <span>${deadlineListPage + 1}/${totalPages}</span>
+        <button type="button" data-dl-page="1" ${deadlineListPage >= totalPages - 1 ? 'disabled' : ''}>▶</button>
+      `;
+      deadlineListEl.appendChild(pager);
+    }
+  }
+
+  if (deadlineListEl) {
+    deadlineListEl.addEventListener('click', (e) => {
+      const pageBtn = e.target.closest('[data-dl-page]');
+      if (pageBtn) {
+        deadlineListPage = Math.max(0, deadlineListPage + Number(pageBtn.dataset.dlPage));
+        renderDeadlineList();
+        return;
+      }
+      const editId = e.target.closest('[data-dl-edit]')?.dataset.dlEdit;
+      const deleteId = e.target.closest('[data-dl-delete]')?.dataset.dlDelete;
+      const openId = e.target.closest('[data-dl-open]')?.dataset.dlOpen;
+      if (editId) {
+        startEdit(editId);
+      } else if (deleteId) {
+        const taskCount = LM.getDeadlineTasks().filter((t) => t.deadlineId === deleteId).length;
+        if (!confirm(`この締切を削除しますか?${taskCount ? '\n関連タスクは「締切削除済み」として残ります' : ''}`)) return;
+        LM.set(LM.KEYS.SCHEDULES, LM.get(LM.KEYS.SCHEDULES, []).filter((s) => s.id !== deleteId));
+        LM.syncFirebase();
+        if (editingDeadlineId === deleteId) resetDeadlineForm();
+        renderList();
+        renderCalendar();
+        renderDeadlineList();
+      } else if (openId) {
+        showConfirm(openId);
+      }
+    });
+
+    // 予定一覧が描き直されるたび(締切の保存・削除・フィルタ切り替え)に、締切一覧も描き直す
+    new MutationObserver(renderDeadlineList).observe(scheduleList, { childList: true });
+    // 詳細ポップアップを閉じた時に、タスクの進捗表示を最新にする
+    new MutationObserver(() => {
+      if (!document.querySelector('.lm-modal-overlay')) renderDeadlineList();
+    }).observe(document.body, { childList: true });
+    renderDeadlineList();
+  }
+
+    /* ---------- 逆算プリセット ---------- */
+  function getRoutePresets() {
+    const presets = LM.get(ROUTE_PRESET_KEY, []);
+    return Array.isArray(presets) ? presets : [];
+  }
+
+  function saveRoutePreset() {
+    const name = presetFields.name.value.trim();
+    if (!name) {
+      presetFields.name.reportValidity();
+      return;
+    }
+    const presets = getRoutePresets();
+    if (name === '個別設定' || name === 'プリセットなし' ||
+        presets.some((item) => item.name === name && item.id !== editingPresetId)) {
+      LM.showToast('同じ名前のプリセットがあります', 'error');
+      return;
+    }
+    const data = {
+      id: editingPresetId || LM.uid(),
+      name,
+      travelMin: Math.max(0, Number(presetFields.travel.value) || 0),
+      prepMin: Math.max(0, Number(presetFields.prep.value) || 0),
+      arriveBeforeMin: Math.max(0, Number(presetFields.arrive.value) || 0),
+    };
+    const idx = editingPresetId ? presets.findIndex((item) => item.id === editingPresetId) : -1;
+    if (idx !== -1) presets[idx] = data;
+    else presets.push(data);
+    if (!LM.set(ROUTE_PRESET_KEY, presets)) return;
+    LM.syncFirebase();
+    resetPresetForm();
+    renderPresetList();
+    LM.showToast('プリセットを保存しました');
+  }
+
+  function startPresetEdit(id) {
+    const item = getRoutePresets().find((p) => p.id === id);
+    if (!item) return;
+    editingPresetId = id;
+    presetFields.name.value = item.name;
+    presetFields.travel.value = item.travelMin || 0;
+    presetFields.prep.value = item.prepMin || 0;
+    presetFields.arrive.value = item.arriveBeforeMin || 0;
+    presetTitle.textContent = '逆算プリセットを編集';
+    presetCancelBtn.style.display = 'inline-block';
+    window.scrollTo({ top: presetPanel.offsetTop - 20, behavior: 'smooth' });
+  }
+
+  function resetPresetForm() {
+    editingPresetId = null;
+    presetForm.reset();
+    presetFields.travel.value = 0;
+    presetFields.prep.value = 0;
+    presetFields.arrive.value = 0;
+    presetTitle.textContent = '逆算プリセットを作成';
+    presetCancelBtn.style.display = 'none';
+  }
+
+  function renderPresetList() {
+    const presets = getRoutePresets();
+    presetList.replaceChildren();
+    if (presets.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'lm-empty';
+      empty.textContent = 'プリセットはまだありません';
+      presetList.appendChild(empty);
+      return;
+    }
+    presets.forEach((item) => {
+      const row = document.createElement('div');
+      row.className = 'hs-template-row';
+      const info = document.createElement('div');
+      info.className = 'hs-template-name';
+      const name = document.createElement('strong');
+      name.textContent = item.name;
+      const detail = document.createElement('span');
+      detail.textContent = `移動 ${item.travelMin}分 ・ 準備 ${item.prepMin}分 ・ 到着希望 ${item.arriveBeforeMin}分前`;
+      info.append(name, detail);
+
+      const actions = document.createElement('div');
+      actions.className = 'hs-template-actions';
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.className = 'lm-btn secondary';
+      edit.textContent = '編集';
+      edit.addEventListener('click', () => startPresetEdit(item.id));
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'lm-btn secondary';
+      remove.textContent = '削除';
+      remove.addEventListener('click', () => {
+        if (!confirm(`「${item.name}」を削除しますか?`)) return;
+        LM.set(ROUTE_PRESET_KEY, getRoutePresets().filter((p) => p.id !== item.id));
+        LM.syncFirebase();
+        if (editingPresetId === item.id) resetPresetForm();
+        renderPresetList();
+      });
+      actions.append(edit, remove);
+      row.append(info, actions);
+      presetList.appendChild(row);
+    });
+  }
+
+  presetForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    saveRoutePreset();
+  });
+  presetCancelBtn.addEventListener('click', resetPresetForm);
+  renderPresetList();
+
+    function renderDeadlineNotifyOptions() {
+    deadlineNotifyList.replaceChildren();
+    LM.DEADLINE_NOTIFY_OPTIONS.forEach((opt) => {
+      const label = document.createElement('label');
+      label.className = 'lm-check-item';
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.value = opt.id;
+      const text = document.createElement('span');
+      text.textContent = opt.label;
+      label.append(input, text);
+      deadlineNotifyList.appendChild(label);
+    });
+  }
+
+  function getSelectedDeadlineNotify() {
+    return Array.from(deadlineNotifyList.querySelectorAll('input[type="checkbox"]:checked')).map((cb) => cb.value);
+  }
+
+
   function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str == null ? '' : String(str);
     return div.innerHTML;
   }
+  
+    /* ---------- カレンダーの選択日を登録フォームの日付に反映 ---------- */
+  function syncSelectedDateToForms() {
+    const selectedButton = calendarGrid.querySelector('[data-date][aria-pressed="true"]');
+    if (!selectedButton) return;
+    const date = selectedButton.dataset.date;
+    if (!editingId) fields.date.value = date;
+    if (!editingDeadlineId) deadlineFields.date.value = date;
+  }
+  // カレンダーが再描画されるたび(日付タップ・月移動・今日ボタン・日付ナビ)に反映
+  new MutationObserver(syncSelectedDateToForms).observe(calendarGrid, { childList: true });
+  syncSelectedDateToForms();
+  
+    /* ---------- 確認ポップアップ:画面中央表示 + ✒マークで編集 ---------- */
+  (function () {
+    const style = document.createElement('style');
+    style.textContent = `
+      .lm-modal-overlay.sc-confirm-center {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+      }
+      .lm-modal-overlay.sc-confirm-center .lm-modal {
+        position: relative !important;
+        top: auto !important;
+        bottom: auto !important;
+        left: auto !important;
+        right: auto !important;
+        transform: none !important;
+        margin: 0 auto !important;
+        width: min(90vw, 420px);
+        max-height: 80vh;
+        overflow-y: auto;
+        border-radius: 16px !important;
+      }
+      .sc-confirm-edit {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        margin-left: 6px;
+        padding: 0;
+        vertical-align: middle;
+        border: none;
+        background: transparent;
+        color: var(--text-soft, #888);
+        cursor: pointer;
+      }
+      .sc-confirm-edit svg {
+        width: 18px;
+        height: 18px;
+        fill: currentColor;
+      }
+    `;
+    document.head.appendChild(style);
+
+    const PENCIL_SVG =
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>';
+    const TITLE_SELECTOR = '.lm-modal-title, .lm-modal-head h2, h2, h3, h1';
+
+        function enhanceConfirmModals() {
+      document.querySelectorAll('.lm-modal-overlay').forEach((overlay) => {
+        const modal = overlay.querySelector('.lm-modal');
+        if (!modal) return;
+        const text = modal.textContent || '';
+        const isConfirm = text.includes('開始時刻') || text.includes('締切時刻');
+        overlay.classList.toggle('sc-confirm-center', isConfirm);
+        if (!isConfirm) return;
+        if (modal.querySelector('.sc-confirm-edit')) return;
+
+        const elements = Array.from(modal.querySelectorAll('*'));
+        const candidates = LM.get(LM.KEYS.SCHEDULES, []).filter((s) =>
+          s.name &&
+          text.includes(s.name) &&
+          text.includes(LM.formatDateHeader(s.date)) &&
+          text.includes(s.start)
+        );
+
+        for (const target of candidates) {
+          const titleEl = elements.find((el) =>
+            el.children.length === 0 && el.textContent.trim() === target.name
+          );
+          if (!titleEl) continue;
+
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'sc-confirm-edit';
+          btn.dataset.scheduleId = target.id;
+          btn.setAttribute('aria-label', '予定を編集');
+          btn.innerHTML = PENCIL_SVG;
+          btn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            LM.closeModal();
+            if (document.querySelector('.lm-modal-overlay')) LM.closeModal();
+            startEdit(target.id);
+          });
+          titleEl.appendChild(btn);
+          break;
+        }
+      });
+    }
+
+    new MutationObserver(enhanceConfirmModals).observe(document.body, { childList: true, subtree: true });
+  })();
+  
+  /* ---------- 日本の祝日(holidays-jp API・カレンダーに薄紫の印を付ける) ---------- */
+(function () {
+  const API_URL = 'https://holidays-jp.github.io/api/v1/date.json';
+  const CACHE_KEY = 'lm_holidaysJp';
+  const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+  const grid = document.getElementById('schedule-calendar-grid');
+  if (!grid) return;
+  let holidays = {};
+
+  function loadCache() {
+    try {
+      const cache = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null');
+      return cache && cache.data ? cache : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // 去年以降だけ残して保存量を抑える
+  function trim(data) {
+    const minYear = new Date().getFullYear() - 1;
+    const result = {};
+    Object.entries(data || {}).forEach(([date, name]) => {
+      if (Number(date.slice(0, 4)) >= minYear) result[date] = name;
+    });
+    return result;
+  }
+
+  function apply() {
+    grid.querySelectorAll('[data-date]').forEach((button) => {
+      const name = holidays[button.dataset.date];
+      if (!name || button.classList.contains('is-holiday')) return;
+      button.classList.add('is-holiday');
+      button.title = name;
+      button.setAttribute('aria-label', `${button.getAttribute('aria-label') || ''}、祝日(${name})`);
+    });
+  }
+
+  async function refresh() {
+    const cache = loadCache();
+    if (cache) {
+      holidays = cache.data;
+      apply();
+      if (Date.now() - cache.savedAt < CACHE_TTL_MS) return;
+    }
+    try {
+      const res = await fetch(API_URL);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      holidays = trim(await res.json());
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ savedAt: Date.now(), data: holidays }));
+      apply();
+    } catch (e) {
+      console.error('holidays fetch failed', e);
+    }
+  }
+
+  // カレンダーが再描画されるたびに祝日の印を付け直す(子要素の入れ替わりだけを監視するので、ループしない)
+  new MutationObserver(apply).observe(grid, { childList: true });
+    refresh();
+  })();
 })();

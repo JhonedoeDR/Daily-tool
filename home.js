@@ -47,6 +47,7 @@
   hasContent.schedule = renderSchedules();
   hasContent.belongings = renderBelongings();
   hasContent.shift = renderShift();
+  renderDeadlineOverview();
   reorderSections();
   setupTaskLink();
   renderNotifyBanner();
@@ -66,6 +67,7 @@
     hasContent.schedule = renderSchedules();
     hasContent.belongings = renderBelongings();
     hasContent.shift = renderShift();
+    renderDeadlineOverview();
     reorderSections();
     refreshCircle();
   }
@@ -79,6 +81,8 @@
     let modes = getCircleModes();
     let index = modes.findIndex((m) => m.key === DEFAULT_CIRCLE_MODE);
     if (index < 0) index = 0;
+    const AUTO_SLIDE_MS = 6000; // 自動スライドの間隔(ミリ秒)。変えたい時はここ
+    let autoSlideTimer = null;
 
     renderModeDots();
 
@@ -107,7 +111,21 @@
         void hero.offsetWidth; // アニメーションを再生し直す
         hero.classList.add(dir > 0 ? 'is-next' : 'is-prev');
       }
+      scheduleAutoSlide();
     }
+
+    // 自動スライド: 一定時間ごとに次の円へ。時間計算でタイマーが動いている間は止める
+    function scheduleAutoSlide() {
+      clearTimeout(autoSlideTimer);
+      autoSlideTimer = setTimeout(() => {
+        const holding = modes[index].key === 'timecalc' && timer.status === 'running';
+        const busy = document.hidden || document.querySelector('.lm-modal-overlay');
+        if (holding || busy) scheduleAutoSlide();
+        else show(index + 1, 1); // show の最後で次の予約が入る
+      }, AUTO_SLIDE_MS);
+    }
+    // 操作した直後に切り替わらないよう、タッチしたら間隔を数え直す
+    hero.addEventListener('touchstart', scheduleAutoSlide, { passive: true });
 
     document.getElementById('hm-prev').addEventListener('click', () => show(index - 1, -1));
     document.getElementById('hm-next').addEventListener('click', () => show(index + 1, 1));
@@ -610,32 +628,74 @@
   }
 
   /* ---------- 今日のタスク(メインタスク+ほかの件数) ---------- */
-  function renderTasks() {
+    function renderTasks() {
     const el = document.getElementById('tasks-list');
     const state = LM.getTodoState();
 
     const mainTasks = LM.TODO_MAIN_IDS.map((id) => ({ id, ...state.dailyTasks[id] })).filter((t) => t.name.trim());
     const otherIds = LM.TODO_GROUPS.filter((g) => !g.isMain).flatMap((g) => g.ids);
     const otherCount = otherIds.filter((id) => (state.dailyTasks[id].name || '').trim()).length;
+    // 締切に紐付いたタスク: メイン分はメインの先頭に合流、それ以外はメインの下に並べる
+    const linkedMain = LM.getLinkedMainPlan ? LM.getLinkedMainPlan().shown : [];
+    const linkedOther = LM.getActiveDeadlineTasks
+      ? LM.getActiveDeadlineTasks().filter((t) => t.category !== 'main') : [];
 
-    if (mainTasks.length === 0 && otherCount === 0) {
+    if (mainTasks.length === 0 && otherCount === 0 && linkedMain.length === 0 && linkedOther.length === 0) {
       el.innerHTML = '<p class="lm-empty">今日のタスクはまだ登録されていません</p>';
       return false;
     }
 
     el.innerHTML = '';
-    const ul = document.createElement('ul');
-    ul.className = 'lm-check-list';
-    mainTasks.forEach((t) => {
+    const onChange = (e) => {
+      const checkbox = e.target;
+      if (checkbox.type !== 'checkbox') return;
+      if (checkbox.dataset.dlTaskId) {
+        LM.toggleDeadlineTask(checkbox.dataset.dlTaskId, checkbox.checked);
+        renderDeadlineOverview(); // 締切の進行バーも進める
+      } else {
+        const s = LM.getTodoState();
+        LM.toggleTodoCheck(s, checkbox.dataset.todoId, checkbox.checked);
+      }
+      hasContent.task = renderTasks();
+      refreshCircle();
+    };
+    const buildItem = (item) => {
       const li = document.createElement('li');
-      li.className = 'lm-check-item' + (t.checked ? ' done' : '');
+      li.className = 'lm-check-item' + (item.checked ? ' done' : '');
       li.innerHTML = `
-        <input type="checkbox" ${t.checked ? 'checked' : ''} data-todo-id="${t.id}" />
-        <span>${escapeHtml(t.name)}</span>
+        <input type="checkbox" ${item.checked ? 'checked' : ''} ${item.linked ? 'data-dl-task-id' : 'data-todo-id'}="${item.id}" />
+        <span>${escapeHtml(item.name)}</span>
       `;
-      ul.appendChild(li);
-    });
-    el.appendChild(ul);
+      return li;
+    };
+
+    const mainItems = [
+      ...linkedMain.map((t) => ({ linked: true, id: t.id, name: t.title, checked: t.done })),
+      ...mainTasks.map((t) => ({ linked: false, id: t.id, name: t.name, checked: t.checked })),
+    ];
+    if (mainItems.length > 0) {
+      const ul = document.createElement('ul');
+      ul.className = 'lm-check-list';
+      mainItems.forEach((item) => ul.appendChild(buildItem(item)));
+      ul.addEventListener('change', onChange);
+      el.appendChild(ul);
+    }
+
+    if (linkedOther.length > 0) {
+      LM.TODO_GROUPS.filter((g) => g.key !== 'main').forEach((g) => {
+        const list = linkedOther.filter((t) => t.category === g.key);
+        if (list.length === 0) return;
+        const head = document.createElement('div');
+        head.className = 'dl-home-cat';
+        head.textContent = g.label;
+        el.appendChild(head);
+        const ul2 = document.createElement('ul');
+        ul2.className = 'lm-check-list';
+        list.forEach((t) => ul2.appendChild(buildItem({ linked: true, id: t.id, name: t.title, checked: t.done })));
+        ul2.addEventListener('change', onChange);
+        el.appendChild(ul2);
+      });
+    }
 
     if (otherCount > 0) {
       const otherEl = document.createElement('div');
@@ -643,16 +703,6 @@
       otherEl.textContent = `ほか${otherCount}`;
       el.appendChild(otherEl);
     }
-
-    ul.addEventListener('change', (e) => {
-      const checkbox = e.target;
-      if (checkbox.type !== 'checkbox') return;
-      const id = checkbox.dataset.todoId;
-      const s = LM.getTodoState();
-      LM.toggleTodoCheck(s, id, checkbox.checked);
-      hasContent.task = renderTasks();
-      refreshCircle();
-    });
 
     return true;
   }
@@ -671,7 +721,7 @@
   function renderShift() {
     const el = document.getElementById('shift-box');
     const shifts = LM.get(LM.KEYS.SHIFTS, [])
-      .filter((s) => s.date === today)
+      .filter((s) => s.date === today && s.kind === 'class' && s.scheduleRegistered === true)
       .sort((a, b) => (a.start || '').localeCompare(b.start || ''));
 
     if (shifts.length === 0) {
@@ -830,6 +880,34 @@
       };
       reader.readAsText(file);
     });
+  }
+  
+    /* ---------- 締切とタスク(追加) ---------- */
+      function renderDeadlineOverview() {
+    const el = document.getElementById('deadline-overview');
+    if (!el || !LM.getDeadlineOverview) return false;
+    const items = LM.getDeadlineOverview(3);
+    if (items.length === 0) {
+      el.innerHTML = '<p class="lm-empty">締切はありません</p>';
+      return false;
+    }
+    el.replaceChildren();
+    items.forEach((it) => {
+      const s = it.deadline;
+      const rate = it.total > 0 ? Math.round((it.done / it.total) * 100) : 0;
+      const soon = it.remainDays <= 7; // 赤くするのは1週間以内だけ
+      const card = document.createElement('div');
+      card.className = 'dl-home-card';
+      card.innerHTML = `
+        <a class="dl-home-link" href="./schedule.html?id=${encodeURIComponent(s.id)}">
+          <div class="dl-home-name">${escapeHtml(s.name)}</div>
+          <span class="dl-home-due${soon ? ' is-soon' : ''}">${it.remainDays > 0 ? `あと${it.remainDays}日` : '今日'} ・ ${escapeHtml(s.start)}</span>
+        </a>
+        ${it.total > 0 ? `<div class="lm-progress-track"><div class="lm-progress-fill" style="width:${rate}%"></div></div>
+        <div class="lm-event-remain">タスク ${it.done}/${it.total}</div>` : ''}`;
+      el.appendChild(card);
+    });
+    return true;
   }
 
   function escapeHtml(str) {

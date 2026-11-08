@@ -42,6 +42,7 @@
   const monthLabel = document.getElementById('month-label');
   const monthSummary = document.getElementById('month-summary');
   const classRegistrationFilter = document.getElementById('class-registration-filter');
+  const classAttendanceFilter = document.getElementById('class-attendance-filter');
   const templatePager = document.getElementById('template-pager');
   const templateListAll = document.getElementById('template-list-all');
   const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
@@ -54,6 +55,7 @@
   let activeSubjectFilter = '';
   let activeSectionFilter = '';
   let activeRegistrationFilter = '';
+  let activeAttendanceFilter = '';
   let addUndoId = null;
   let addUndoIds = [];
   let placementDate = '';
@@ -128,6 +130,10 @@
   });
   classRegistrationFilter.addEventListener('change', () => {
     activeRegistrationFilter = classRegistrationFilter.value;
+    renderAll();
+  });
+  classAttendanceFilter.addEventListener('change', () => {
+    activeAttendanceFilter = classAttendanceFilter.value;
     renderAll();
   });
   classSectionFilter.addEventListener('change', () => {
@@ -418,7 +424,7 @@
     renderAll();
   }
 
-  function getAttendanceProgress(template) {
+    function getAttendanceProgress(template) {
     const entries = LM.get(LM.KEYS.SHIFTS, []).filter((item) =>
       item.kind === 'class' &&
       !item.isExam &&
@@ -426,8 +432,32 @@
     );
     const attended = entries.filter((item) => item.attended === true).length;
     const registered = entries.filter((item) => item.scheduleRegistered === true).length;
+    const missed = entries.filter((item) => getAttendanceStatus(item) === 'missed').length;
     const required = Math.max(0, Number(template.attendanceRequired) || 0);
-    return { attended, registered, required, remaining: Math.max(0, required - attended) };
+    return { attended, registered, missed, required, remaining: Math.max(0, required - attended) };
+  }
+
+  // 'attended': 出席を記録済み / 'missed': 履修登録済みで時間が過ぎたのに出席の記録がない / それ以外は null
+  function getAttendanceStatus(entry) {
+    if (entry.kind !== 'class' || entry.isExam) return null;
+    if (entry.attended === true) return 'attended';
+    if (entry.scheduleRegistered !== true) return null;
+    const today = LM.todayStr();
+    if (entry.date < today) return 'missed';
+    const now = new Date();
+    if (entry.date === today && /^\d{2}:\d{2}$/.test(entry.end || '') &&
+        LM.clockToMinutes(entry.end) < now.getHours() * 60 + now.getMinutes()) return 'missed';
+    return null;
+  }
+  
+    function createTemplatePenButton(id) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.dataset.editTemplate = id;
+    button.setAttribute('aria-label', 'テンプレートを編集');
+    button.style.cssText = 'display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; padding:0; border:none; background:transparent; color:var(--text-soft, #888); cursor:pointer;';
+    button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" style="width:18px; height:18px; fill:currentColor;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>';
+    return button;
   }
 
   function getTemplates() {
@@ -522,6 +552,9 @@
     templateForm.hidden = false;
     templateToggle.setAttribute('aria-expanded', 'true');
     templateName.focus();
+    templateToggle.setAttribute('aria-expanded', 'true');
+    templateForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    templateName.focus();
   }
 
   function closeTemplateForm() {
@@ -545,14 +578,22 @@
       row.className = 'hs-template-modal-row';
       const title = document.createElement('strong');
       title.textContent = template.name;
+      const pen = createTemplatePenButton(template.id);
+      pen.addEventListener('click', () => {
+        LM.closeModal();
+        startTemplateEdit(template.id);
+      });
+      const titleRow = document.createElement('div');
+      titleRow.style.cssText = 'display:flex; align-items:center; gap:2px;';
+      titleRow.append(title, pen);
       const type = document.createElement('span');
       type.textContent = template.kind === 'class' ? '授業・履修' : 'アルバイトのシフト';
-      row.append(title, type);
+      row.append(titleRow, type);
       if (template.kind === 'class') {
         const capacity = document.createElement('small');
         const skippedSections = getSkippedSections(template, selectedDate);
         const attendance = getAttendanceProgress(template);
-        capacity.textContent = `区分ごと${template.unitCapacity || 1}回 ・ 出席${attendance.attended}/${attendance.required}（残り${attendance.remaining}） ・ 履修登録${attendance.registered}/${attendance.required}${skippedSections.length ? `・今年度スキップ${skippedSections.join('・')}` : ''}`;
+          capacity.textContent = `区分ごと${template.unitCapacity || 1}回 ・ 出席${attendance.attended}/${attendance.required}（残り${attendance.remaining}） ・ 履修登録${attendance.registered}/${attendance.required}${attendance.missed ? ` ・ 欠席${attendance.missed}` : ''}${skippedSections.length ? `・今年度スキップ${skippedSections.join('・')}` : ''}`;
         row.appendChild(capacity);
       }
       const belongings = (template.belongingSetIds || [])
@@ -582,15 +623,17 @@
       name.className = 'hs-template-name';
       const title = document.createElement('strong');
       title.textContent = template.name;
+      const titleRow = document.createElement('div');
+      titleRow.style.cssText = 'display:flex; align-items:center; gap:2px;';
+      titleRow.append(title, createTemplatePenButton(template.id));
       const kind = document.createElement('span');
       if (template.kind === 'class') {
-        const attendance = getAttendanceProgress(template);
-        kind.textContent = `授業・履修 ・ 区分ごと${template.unitCapacity || 1}回 ・ 出席${attendance.attended}/${attendance.required}（残り${attendance.remaining}） ・ 履修登録${attendance.registered}/${attendance.required}`;
+      const attendance = getAttendanceProgress(template);
+        kind.textContent = `授業・履修 ・ 区分ごと${template.unitCapacity || 1}回 ・ 出席${attendance.attended}/${attendance.required}（残り${attendance.remaining}） ・ 履修登録${attendance.registered}/${attendance.required}${attendance.missed ? ` ・ 欠席${attendance.missed}` : ''}`;
       } else {
         kind.textContent = 'アルバイトのシフト';
       }
-      name.append(title, kind);
-
+      name.append(titleRow, kind);
       const actions = document.createElement('div');
       actions.className = 'hs-template-actions';
       const add = document.createElement('button');
@@ -975,6 +1018,7 @@
     });
     classSubjectFilter.value = activeSubjectFilter;
     classRegistrationFilter.value = activeRegistrationFilter;
+    classAttendanceFilter.value = activeAttendanceFilter;
 
     const term = getSchoolTerm(selectedDate);
     const selectedTemplate = templates.find((entry) => entry.id === activeSubjectFilter);
@@ -1030,6 +1074,7 @@
       if (!matchesSubject) return false;
       if (activeRegistrationFilter === 'registered' && item.scheduleRegistered !== true) return false;
       if (activeRegistrationFilter === 'unregistered' && item.scheduleRegistered === true) return false;
+      if (activeAttendanceFilter && getAttendanceStatus(item) !== activeAttendanceFilter) return false;
       if (!activeSectionFilter) return true;
       if (activeSectionFilter === 'exam') return item.isExam === true;
       return String(getClassUnitInfo(item)?.section || '') === activeSectionFilter;
@@ -1352,11 +1397,9 @@
       button.appendChild(number);
       const markers = document.createElement('span');
       markers.className = 'hs-calendar-markers';
-      events.slice(0, 4).forEach((item) => {
+      getCalendarDots(events).slice(0, 4).forEach((dot) => {
         const marker = document.createElement('span');
-        const registered = item.kind === 'class' &&
-          (item.entries || [item]).some((entry) => entry.scheduleRegistered === true);
-        marker.className = `hs-calendar-marker${item.kind === 'class' ? ' is-class' : ' is-shift'}${item.isExam ? ' is-exam' : ''}${registered ? ' is-registered' : ''}`;
+        marker.className = `hs-calendar-marker${dot.item.kind === 'class' ? ' is-class' : ' is-shift'}${dot.item.isExam ? ' is-exam' : ''}${dot.registered ? ' is-registered' : ''}${dot.missed ? ' is-missed' : ''}`;
         marker.setAttribute('aria-hidden', 'true');
         markers.appendChild(marker);
       });
@@ -1366,6 +1409,31 @@
       calendarGrid.appendChild(button);
     }
     renderCalendarSelection();
+  }
+  
+    // カレンダーのドット: 時間割順(開始時刻順)。複数時限の授業は、履修登録済みの時限だけを1時限1ドットで並べる。
+  // 履修登録されていない授業(グレー)は、色つきのドットの後ろにまとめる
+  function getCalendarDots(events) {
+    const dots = [];
+    events.forEach((item) => {
+      const entries = item.kind === 'class' ? (item.entries || [item]) : [item];
+      const registeredEntries = entries.filter((entry) => entry.scheduleRegistered === true);
+      const groups = item.kind === 'class' && entries.length > 1 && registeredEntries.length > 0
+        ? registeredEntries.map((entry) => [entry])
+        : [entries];
+      groups.forEach((list) => {
+        const registered = item.kind === 'class' && list.some((entry) => entry.scheduleRegistered === true);
+        dots.push({
+          item,
+          registered,
+          missed: item.kind === 'class' && list.some((entry) => getAttendanceStatus(entry) === 'missed'),
+          gray: item.kind === 'class' && !item.isExam && !registered,
+          start: list[0]?.start || item.start || '',
+        });
+      });
+    });
+    return dots.sort((a, b) =>
+      Number(a.gray) - Number(b.gray) || (a.start || '99:99').localeCompare(b.start || '99:99'));
   }
 
   function renderCalendarSelection() {
@@ -1392,6 +1460,9 @@
       const isClass = item.kind === 'class';
       const row = document.createElement('article');
       row.className = `hs-day-item${isClass ? ' is-class' : ''}${item.isExam ? ' is-exam' : ''}${entries.length > 1 ? ' has-multiple-periods' : ''}`;
+      const rowStatuses = isClass && !item.isExam ? entries.map(getAttendanceStatus) : [];
+      if (rowStatuses.includes('missed')) row.classList.add('has-missed');
+      else if (rowStatuses.length > 0 && rowStatuses.every((status) => status === 'attended')) row.classList.add('all-attended');
       const detail = document.createElement('div');
       detail.className = 'hs-day-detail';
       const title = document.createElement('strong');
@@ -1405,6 +1476,13 @@
           periodInfo.className = `hs-day-period${entry.scheduleRegistered === true ? ' is-registered' : ''}`;
           const section = addClassUnitLabel(entry);
           periodInfo.textContent = `${entry.periodNumber ? `${entry.periodNumber}限目 ` : ''}${entry.start && entry.end ? `${entry.start}〜${entry.end}` : '時間未設定'}${entry.isExam ? '' : ` ・ ${section}`}`;
+          const attStatus = getAttendanceStatus(entry);
+          if (attStatus) {
+            const badge = document.createElement('span');
+            badge.className = `hs-att-badge is-${attStatus}`;
+            badge.textContent = attStatus === 'attended' ? '出席' : '欠席';
+            periodInfo.appendChild(badge);
+          }
           periods.appendChild(periodInfo);
         });
         detail.appendChild(periods);

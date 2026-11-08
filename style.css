@@ -9,7 +9,7 @@
   --accent-soft: #f8e16b;
   --teal: #5ebfe0;
   --teal-soft: #f8e16b;
-  --red: #a85c4a;
+  --red: #e04b4b;
   --radius: 10px;
   --font-display: 'Zen Maru Gothic', sans-serif;
   --font-body: 'Zen Kaku Gothic New', sans-serif;
@@ -1886,9 +1886,9 @@ body {
   background: var(--accent-soft);
 }
 .hs-attendance.is-attended {
-  border-color: #4f8b68;
-  background: #e8f3eb;
-  color: #28573a;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
 }
 .hs-day-actions .hs-attendance {
   font-size: 11px;
@@ -2496,3 +2496,566 @@ body {
 #template-pager {
   margin-top: 4px;
 }
+
+/* ---------- 予定・締切(タブ・締切の赤) ---------- */
+.lm-form-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 4px 0 12px;
+}
+.lm-form-tabs .lm-btn {
+  flex: 1;
+  padding: 10px 6px;
+  font-size: 13px;
+}
+.lm-form-tabs .lm-btn.is-active {
+  border-color: var(--text);
+  background: var(--text);
+  color: var(--paper);
+}
+#tab-panel-schedule[hidden],
+#tab-panel-deadline[hidden] {
+  display: none !important;
+}
+.sc-calendar-marker.is-deadline {
+  background: #e04b4b;
+}
+.sc-calendar-agenda-item.is-deadline {
+  border-left: 3px solid #e04b4b;
+  padding-left: 8px;
+}
+
+/* ---------- 祝日(日付の数字に薄紫を被せる) ---------- */
+.hs-calendar-day.is-holiday .hs-calendar-number {
+  background: #e3d7f5;
+}
+/* 祝日を選択中は、選択を示す輪郭を足す(薄紫は残す) */
+.hs-calendar-day.is-holiday[aria-pressed='true'] .hs-calendar-number {
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.lm-form-tabs .lm-btn {
+  padding: 10px 4px;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+/* ---------- タスクページ: ごほうび入力(テキスト風) ---------- */
+.lm-reward-row {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+.lm-reward-label {
+  flex: 0 0 auto;
+}
+
+.lm-reward-input {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  padding: 4px 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  outline: none;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+.lm-reward-input::placeholder {
+  color: var(--text-soft);
+  opacity: 1;
+}
+
+/* ---------- 締切・タスク連携 ---------- */
+.dl-panel {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--paper-line);
+}
+.dl-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 14px;
+}
+.dl-head-count {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+.dl-panel .lm-progress-track { margin-bottom: 6px; }
+.dl-row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  column-gap: 8px;
+  row-gap: 4px;
+  align-items: start;
+  padding: 9px 0;
+  border-top: 1px solid var(--paper-line);
+}
+.dl-row input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  margin: 2px 0 0;
+  accent-color: var(--accent);
+}
+.dl-title {
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.dl-row.is-waiting .dl-title { color: var(--text-soft); }
+.dl-row.is-done .dl-title {
+  color: var(--text-soft);
+  text-decoration: line-through;
+  text-decoration-color: var(--paper-line);
+}
+.dl-meta {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.dl-badge {
+  padding: 1px 8px;
+  border: 1px solid var(--paper-line);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--text-soft);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.dl-badge.is-on {
+  border-color: var(--accent-soft);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.dl-badge.is-wait { border-style: dashed; }
+.dl-actions {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+.dl-btn {
+  min-height: 30px;
+  padding: 5px 12px;
+  border: 1px solid var(--paper-line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 12px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.dl-btn:active { background: var(--accent-soft); }
+.dl-btn.is-danger { color: var(--red); }
+.dl-prereq {
+  margin: 2px 0 6px 30px;
+  padding: 8px 10px;
+  border: 1px solid var(--paper-line);
+  border-radius: 10px;
+}
+.dl-prereq-title {
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+.dl-add { margin-top: 12px; }
+.dl-add-form {
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--paper-line);
+  border-radius: 12px;
+}
+.dl-add-form .lm-field { margin-bottom: 10px; }
+.dl-add-form .lm-check-list {
+  max-height: 140px;
+  overflow-y: auto;
+}
+.dl-add-form .lm-btn { width: 100%; }
+
+/* タスクページの連携タスク行(既存の入力枠と同じ見た目に揃える) */
+.dl-todo-label {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--paper-line);
+  border-radius: 8px;
+  background: #fff;
+}
+.dl-todo-title {
+  font-size: 16px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.dl-todo-meta {
+  font-size: 11px;
+  color: var(--text-soft);
+}
+.dl-todo-meta.is-orphan { color: #e04b4b; }
+.lm-todo-row.is-checked .dl-todo-title {
+  color: var(--text-soft);
+  text-decoration: line-through;
+  text-decoration-color: var(--paper-line);
+}
+
+/* ホームの締切カード(半幅の左カラムでも崩れないよう縦積み) */
+.dl-home-card { margin-bottom: 12px; }
+.dl-home-card:last-child { margin-bottom: 0; }
+.dl-home-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+.dl-home-name {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.dl-home-due {
+  display: inline-block;
+  margin: 2px 0 6px;
+  font-size: 11px;
+  color: var(--text-soft);
+}
+.dl-home-card .lm-event-remain { margin-top: 4px; }
+.dl-home-more {
+  margin-top: 4px;
+  text-align: right;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+/* ---------- 締切・タスク連携(追加分) ---------- */
+.dl-home-due.is-soon { color: #e04b4b; }
+
+/* タスク追加の枠を低くする */
+.dl-add > summary { padding: 8px 14px; font-size: 13px; }
+.dl-add-form { padding: 8px; }
+.dl-add-form .lm-field { gap: 2px; margin-bottom: 6px; }
+.dl-add-form .lm-field label { font-size: 12px; }
+.dl-add-form .lm-field input,
+.dl-add-form .lm-field select { padding: 6px 10px; }
+.dl-add-form .lm-check-item { padding: 3px 4px; }
+.dl-add-form .lm-check-list { max-height: 110px; }
+.dl-add-form .lm-btn { padding: 8px 14px; }
+
+/* アコーディオン(締切の新規作成) */
+.dl-accordion {
+  margin: 0 0 10px;
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  background: var(--paper);
+}
+.dl-accordion > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  list-style: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.dl-accordion > summary::-webkit-details-marker { display: none; }
+.dl-accordion > summary::after {
+  content: '›';
+  color: var(--text-soft);
+  font-size: 18px;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+.dl-accordion[open] > summary::after { transform: rotate(90deg); }
+.dl-accordion-count { margin-left: 6px; color: var(--text-soft); font-size: 12px; }
+.dl-accordion-body { padding: 0 12px 12px; }
+.dl-accordion-body .dl-panel {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+/* 新規作成中のタスク一覧 */
+.dl-draft-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 0;
+  border-top: 1px solid var(--paper-line);
+}
+.dl-draft-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+/* 明日のタスクで締切タスクが使っている枠 */
+.lm-todo-row input[type='text'].dl-locked {
+  border-style: dashed;
+  background: var(--paper);
+  color: var(--text-soft);
+}
+
+/* 登録済みの締切: 1週間以内は日付を赤にする */
+.lm-schedule-time.is-soon { color: #e04b4b; }
+
+/* 登録済みの締切をコンパクトに */
+#deadline-list .lm-schedule-item { padding: 3px 0; gap: 8px; }
+#deadline-list .lm-schedule-source {
+  display: inline;
+  margin: 0 0 0 6px;
+  font-size: 10px;
+  line-height: 1.3;
+}
+#deadline-list .lm-btn { padding: 4px 9px !important; font-size: 11px !important; }
+#deadline-list .lm-pager { margin-top: 4px; }
+
+/* ホームのタスクボックス: 締切タスクの分類見出し */
+.dl-home-cat {
+  margin: 8px 0 2px;
+  font-family: var(--font-display);
+  font-size: 11px;
+  color: var(--text-soft);
+}
+
+/* 履修・シフト: 出席と欠席の区別 */
+.hs-att-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 10px;
+  line-height: 1.6;
+}
+.hs-att-badge.is-attended { border-color: var(--accent-soft); background: #ffffff; color: var(--text-soft); }
+.hs-att-badge.is-missed { border-color: var(--red); background: var(--paper); color: var(--red); }
+.hs-day-item.all-attended { padding-left: 8px; border-left: 3px solid var(--accent-soft); }
+.hs-day-item.has-missed { padding-left: 8px; border-left: 3px solid var(--red); }
+.hs-calendar-marker.is-missed { background: var(--red); }
+
+
+/* =========================================================
+   ゲーム管理(予定・締切 / イベント / 履修・シフトと同じ部品に統一)
+   フォームは .lm-field、タブは .lm-form-tabs、ボタンは .lm-btn、
+   カレンダーは .hs-calendar-* をそのまま使用
+   ========================================================= */
+.lm-games-page { padding-bottom: calc(118px + env(safe-area-inset-bottom, 0px)); }
+.lm-games-page .lm-sub-header { margin-bottom: 14px; }
+.lm-text-btn { border: 0; padding: 5px 7px; background: transparent; color: var(--text-soft); font: inherit; font-size: 12px; }
+.lm-btn.danger { background: #fff; border: 1px solid #e7b4b4; color: #a83b3b; }
+
+/* 絵文字の代わりに使う線アイコン */
+.lm-game-svg { display: block; width: 100%; height: 100%; }
+
+/* ---- 上部スライダー(カレンダー / 攻略メモ) ---- */
+.lm-game-slider { margin: 0 0 8px; padding: 2px 2px 6px; }
+.lm-game-slides { min-height: 280px; }
+.lm-game-slide { display: none; }
+.lm-game-slide.is-active { display: block; }
+.lm-game-slide-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 0 0 10px; }
+.lm-game-slide-heading h2 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 16px; }
+.lm-game-slide-link { border: 0; background: transparent; color: var(--accent); font: inherit; font-size: 12px; }
+.lm-game-calendar-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; color: var(--text-soft); font-size: 11px; }
+.lm-game-calendar-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.lm-game-calendar-legend i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
+.lm-game-calendar-legend .login-dot { background: #f0c94d; }
+.lm-game-calendar-legend .goal-dot { background: #e05b5b; }
+.hs-calendar-marker.is-game-login { background: #f0c94d; }
+.hs-calendar-marker.is-game-goal { background: #e05b5b; }
+.lm-game-calendar-selected { margin: 8px 0 0; padding-top: 7px; border-top: 1px solid var(--paper-line); color: var(--text-soft); font-size: 12px; line-height: 1.5; }
+.lm-game-slider-controls { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 6px 0 0; }
+.lm-game-slider-controls > button { display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 1px solid var(--paper-line); border-radius: 50%; background: #fff; color: var(--text); font-size: 17px; line-height: 1; }
+.lm-game-slide-dots { display: flex; gap: 7px; }
+.lm-game-slide-dots button { width: 7px; height: 7px; padding: 0; border: 0; border-radius: 50%; background: var(--paper-line); }
+.lm-game-slide-dots button.is-active { background: var(--accent); }
+
+/* ふせん */
+.lm-game-sticky-board { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.lm-game-sticky { display: flex; flex-direction: column; min-width: 0; min-height: 115px; max-height: 140px; padding: 9px; border: 1px solid #eadf9f; border-radius: 4px 4px 10px 4px; background: #fff9d9; box-shadow: 0 2px 4px #30434a0d; overflow: hidden; }
+.lm-game-sticky.sticky-2 { background: #eaf7fb; border-color: #c7e4ee; }
+.lm-game-sticky.sticky-3 { background: #fff0e5; border-color: #f0d7c5; }
+.lm-game-sticky.sticky-4 { background: #f1ecff; border-color: #ddd2f5; }
+.lm-game-sticky-top { display: flex; align-items: center; justify-content: space-between; gap: 4px; color: var(--text-soft); font-size: 10px; }
+.lm-game-sticky-pin { display: inline-block; width: 12px; height: 12px; color: var(--text); flex: 0 0 auto; }
+.lm-game-sticky h3 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin: 5px 0 3px; font-size: 12px; line-height: 1.4; }
+.lm-game-sticky a { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #247f9f; font-size: 10px; }
+.lm-game-sticky p { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin: 4px 0; color: var(--text); font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
+.lm-game-sticky button { align-self: flex-end; margin-top: auto; border: 0; padding: 2px 0 0 5px; background: transparent; color: var(--text-soft); font: inherit; font-size: 10px; }
+
+/* ---- 機能タブ(.lm-form-tabs を流用 + 線アイコン) ---- */
+.lm-game-tabs { margin: 4px 0 12px; }
+.lm-game-tabs .lm-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; min-width: 0; padding: 10px 4px; font-size: 12px; line-height: 1.3; }
+.lm-game-tab-icon { display: block; width: 20px; height: 20px; }
+
+/* ---- 入力欄へ自動スクロールしたときの余白 ---- */
+#game-register-section, #game-current-picker, #game-note-form-title { scroll-margin-top: 12px; }
+
+/* ---- フォーム(.lm-field と同じ見た目) ---- */
+.lm-game-form { display: block; }
+.lm-game-current-picker[hidden], .lm-game-panel[hidden] { display: none !important; }
+.lm-game-form-label { margin: 2px 0 10px; font-family: var(--font-display); font-weight: 700; font-size: 14px; }
+.lm-game-form-actions { display: flex; gap: 8px; }
+.lm-game-form-actions .lm-btn { padding: 12px 18px; }
+.lm-game-file-control { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; padding: 4px 6px 4px 12px; border: 1px solid var(--paper-line); border-radius: 8px; background: #fff; color: var(--text-soft); font-size: 13px; cursor: pointer; }
+.lm-game-file-control > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lm-game-file-button { flex: 0 0 auto; padding: 8px 10px; border-radius: 6px; background: var(--paper); border: 1px solid var(--paper-line); color: var(--text); font-size: 12px; font-weight: 700; }
+.lm-game-file-control input[type="file"] { position: absolute; width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; overflow: hidden; clip-path: inset(50%); }
+.lm-game-check { display: flex !important; align-items: center; gap: 8px; margin: 0 0 14px; color: var(--text); font-size: 13px; }
+.lm-game-check[hidden] { display: none !important; }
+.lm-game-check input { width: 18px; height: 18px; accent-color: var(--accent); }
+.lm-game-quick-config, .lm-game-notify-times { min-width: 0; margin: 0 0 14px; padding: 10px 12px 12px; border: 1px solid var(--paper-line); border-radius: 8px; background: #fff; }
+.lm-game-quick-config legend, .lm-game-notify-times legend { padding: 0 5px; color: var(--text); font-size: 13px; font-weight: 700; }
+.lm-game-status { margin: 0; color: var(--text-soft); font-size: 12px; }
+.lm-game-quick-config .lm-game-status { margin: 0 0 8px; }
+.lm-game-quick-values { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.lm-game-quick-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border: 1px solid var(--paper-line); border-radius: 8px; background: var(--paper); color: var(--text); font-size: 12px; }
+.lm-game-quick-chip button { border: 0; padding: 0 2px; background: transparent; color: var(--text-soft); font-size: 16px; line-height: 1; }
+.lm-game-quick-add { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.lm-game-quick-add input, .lm-game-reminder-row input[type="time"], .lm-game-current-picker select {
+  width: 100%; min-width: 0; font-family: var(--font-body); font-size: 16px; padding: 10px 12px;
+  border: 1px solid var(--paper-line); border-radius: 8px; background: #fff; color: var(--text);
+}
+.lm-game-quick-add input:focus, .lm-game-reminder-row input[type="time"]:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.lm-game-quick-add .lm-btn, .lm-game-small-btn, .lm-game-notify-times > .lm-btn { padding: 9px 12px; font-size: 12px; }
+
+/* ---- 登録済みゲーム(イベントの一覧と同じ罫線区切り) ---- */
+.lm-games-list { display: block; }
+.lm-game-card { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--paper-line); }
+.lm-game-card:last-child { border-bottom: 0; }
+.lm-game-card.is-editing { padding-left: 8px; border-left: 3px solid var(--accent); }
+.lm-game-icon { width: 44px; height: 44px; object-fit: cover; border-radius: 10px; }
+.lm-game-icon-placeholder { display: grid; place-items: center; border: 1px solid var(--paper-line); background: var(--paper); color: var(--text-soft); }
+.lm-game-icon-placeholder .lm-game-svg { width: 22px; height: 22px; }
+.lm-game-card-main { min-width: 0; }
+.lm-game-card-main strong { font-size: 14px; overflow-wrap: anywhere; }
+.lm-game-card-summary { margin: 3px 0 0; color: var(--text-soft); font-size: 12px; overflow-wrap: anywhere; }
+.lm-game-card-actions, .lm-game-note-actions { display: flex; gap: 6px; }
+.lm-game-card-actions .lm-btn, .lm-game-note-actions .lm-btn { padding: 6px 10px; font-size: 12px; }
+
+/* ---- ログイン・石・メモの各パネル ---- */
+.lm-game-panel .lm-section { min-width: 0; }
+.lm-game-subsection { display: grid; gap: 12px; }
+.lm-game-subsection h3 { margin: 0; font-family: var(--font-display); font-size: 15px; }
+.lm-game-subsection p { margin: 0; }
+.lm-game-delta-form { display: grid; grid-template-columns: 1fr 1fr; column-gap: 8px; align-items: end; }
+.lm-game-delta-form .lm-btn { grid-column: 1 / -1; }
+.lm-game-quick-stone-wrap { display: grid; gap: 7px; }
+.lm-game-quick-stone-buttons { display: flex; flex-wrap: wrap; gap: 7px; }
+.lm-game-quick-stone-buttons .lm-btn { padding: 8px 12px; font-size: 12px; }
+.lm-game-reminder-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; margin-bottom: 6px; }
+.lm-game-log-list { margin: 0; padding-left: 20px; font-size: 12px; color: var(--text-soft); }
+.lm-game-help { margin: 0 0 12px; color: var(--text-soft); font-size: 12px; line-height: 1.7; }
+.lm-game-notify-setup { border: 1px dashed var(--paper-line); border-radius: 8px; padding: 12px; }
+
+/* 攻略メモ一覧 */
+.lm-game-notes { display: block; }
+.lm-game-note { display: grid; gap: 7px; padding: 10px 0; border-bottom: 1px solid var(--paper-line); overflow-wrap: anywhere; }
+.lm-game-note:last-child { border-bottom: 0; }
+.lm-game-note.is-editing { padding-left: 8px; border-left: 3px solid var(--accent); }
+.lm-game-note-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.lm-game-note-head h4 { min-width: 0; margin: 0; font-size: 14px; overflow-wrap: anywhere; }
+.lm-game-note p { font-size: 13px; }
+.lm-game-note a { color: #247f9f; overflow-wrap: anywhere; }
+.lm-game-note-text { white-space: normal; }
+.lm-game-pin-btn { flex: 0 0 auto; width: 30px; height: 30px; padding: 6px; border: 1px solid var(--paper-line); border-radius: 8px; background: #fff; color: var(--text-soft); }
+.lm-game-pin-btn.is-pinned { border-color: var(--text); background: var(--text); color: var(--paper); }
+.lm-note-image img { display: block; width: 100%; max-height: 320px; object-fit: contain; border-radius: 8px; background: #fff; }
+
+/* ---- ゲーム画面コンパクト調整(枠・入力欄・ボタンを小さく / スライダー固定) ---- */
+.lm-games-page { --game-slide-h: 350px; padding-top: 22px; }
+.lm-games-page .lm-date-header { font-size: 22px; }
+.lm-games-page .lm-sub-header { font-size: 12px; margin-bottom: 10px; }
+.lm-games-page .lm-section { padding: 10px 2px; }
+.lm-games-page .lm-section-title { margin: 0 0 8px; font-size: 14px; }
+.lm-games-page .lm-field { gap: 3px; margin-bottom: 8px; min-width: 0; }
+.lm-games-page .lm-field label { font-size: 12px; }
+.lm-games-page .lm-field input,
+.lm-games-page .lm-field select,
+.lm-games-page .lm-field textarea,
+.lm-games-page .lm-game-current-picker select { width: 100%; min-width: 0; min-height: 34px; padding: 6px 9px; border-radius: 8px; font-size: 14px; }
+.lm-games-page .lm-field textarea { min-height: 54px; }
+.lm-games-page input[type="date"], .lm-games-page input[type="time"] { -webkit-appearance: none; appearance: none; display: block; }
+.lm-games-page .lm-btn { padding: 8px 14px; font-size: 13px; }
+.lm-games-page .lm-game-form-actions { gap: 6px; }
+.lm-games-page .lm-game-form-actions .lm-btn { padding: 8px 14px; }
+/* 機能ボタン */
+.lm-games-page .lm-game-tabs { margin: 2px 0 10px; }
+.lm-games-page .lm-game-tabs .lm-btn { gap: 4px; padding: 7px 2px; font-size: 10px; line-height: 1.25; white-space: nowrap; }
+.lm-games-page .lm-game-tab-icon { width: 18px; height: 18px; }
+/* スライダー: サイズ・位置を固定 */
+.lm-games-page .lm-game-slider { margin: 0 0 10px; padding: 0 2px 4px; }
+.lm-games-page .lm-game-slides { height: var(--game-slide-h); min-height: 0; overflow: hidden; }
+.lm-games-page .lm-game-slide { height: 100%; overflow-y: auto; overscroll-behavior: contain; }
+.lm-games-page .lm-game-slide-heading { margin-bottom: 6px; align-items: center; }
+.lm-games-page .lm-game-slide-heading h2 { font-size: 14px; }
+.lm-games-page .lm-game-today-btn { padding: 4px 10px; font-size: 11px; }
+.lm-games-page .hs-calendar-nav { margin-bottom: 4px; }
+.lm-games-page .hs-calendar-nav .lm-btn { min-width: 34px; padding: 3px 10px; font-size: 16px; }
+.lm-games-page .hs-calendar-nav strong { font-size: 14px; }
+.lm-games-page .hs-calendar-weekday { padding: 2px 0; font-size: 11px; }
+.lm-games-page .hs-calendar-day { min-height: 34px; padding: 2px 1px; }
+.lm-games-page .hs-calendar-number { width: 22px; height: 22px; font-size: 11px; }
+.lm-games-page .lm-game-calendar-legend { margin-top: 4px; font-size: 10px; }
+.lm-games-page .lm-game-calendar-selected { margin-top: 5px; padding-top: 5px; font-size: 11px; }
+.lm-games-page .lm-game-slider-controls { padding-top: 6px; }
+.lm-games-page .lm-game-sticky { min-height: 104px; max-height: 128px; padding: 7px; }
+/* 入力まわり */
+.lm-games-page .lm-game-current-picker { margin-bottom: 8px; }
+.lm-games-page .lm-game-file-control { min-height: 34px; padding: 3px 4px 3px 9px; font-size: 12px; }
+.lm-games-page .lm-game-file-button { padding: 5px 9px; font-size: 11px; }
+.lm-games-page .lm-game-quick-config, .lm-games-page .lm-game-notify-times { margin: 0 0 10px; padding: 6px 9px 9px; }
+.lm-games-page .lm-game-quick-config legend, .lm-games-page .lm-game-notify-times legend { font-size: 12px; }
+.lm-games-page .lm-game-quick-config .lm-game-status { margin-bottom: 6px; font-size: 11px; }
+.lm-games-page .lm-game-quick-chip { padding: 3px 7px; font-size: 11px; }
+.lm-games-page .lm-game-quick-add input, .lm-games-page .lm-game-reminder-row input[type="time"] { min-width: 0; width: 100%; max-width: 100%; min-height: 32px; padding: 5px 8px; font-size: 13px; }
+.lm-games-page .lm-game-quick-add .lm-btn { padding: 7px 12px; font-size: 12px; }
+.lm-games-page .lm-game-reminder-row { grid-template-columns: minmax(0, 1fr) auto; gap: 6px; margin-bottom: 6px; }
+.lm-games-page .lm-game-small-btn { padding: 5px 9px; font-size: 11px; white-space: nowrap; }
+.lm-games-page .lm-game-notify-times > .lm-btn { padding: 6px 10px; font-size: 11px; }
+.lm-games-page .lm-game-subsection { gap: 8px; }
+.lm-games-page .lm-game-subsection h3 { font-size: 13px; }
+.lm-games-page .lm-game-delta-form { column-gap: 6px; }
+.lm-games-page .lm-game-delta-form > .lm-field { min-width: 0; }
+.lm-games-page .lm-game-quick-stone-buttons { gap: 6px; }
+.lm-games-page .lm-game-quick-stone-buttons .lm-btn { padding: 6px 10px; font-size: 12px; }
+.lm-games-page .lm-game-status { font-size: 11px; }
+.lm-games-page .lm-game-check { margin-bottom: 8px; font-size: 12px; }
+/* 一覧 */
+.lm-games-page .lm-game-card { grid-template-columns: 38px minmax(0, 1fr) auto; gap: 8px; padding: 7px 0; }
+.lm-games-page .lm-game-icon { width: 38px; height: 38px; border-radius: 9px; }
+.lm-games-page .lm-game-icon-placeholder .lm-game-svg { width: 20px; height: 20px; }
+.lm-games-page .lm-game-card-main strong { font-size: 13px; }
+.lm-games-page .lm-game-card-summary { margin-top: 2px; font-size: 11px; }
+.lm-games-page .lm-game-card-actions .lm-btn, .lm-games-page .lm-game-note-actions .lm-btn { padding: 5px 9px; font-size: 11px; }
+.lm-games-page .lm-game-note { gap: 5px; padding: 8px 0; }
+.lm-games-page .lm-game-note-head h4 { font-size: 13px; }
+.lm-games-page .lm-game-note p { font-size: 12px; }
+.lm-games-page .lm-game-pin-btn { width: 26px; height: 26px; padding: 5px; }
+.lm-games-page details summary { font-size: 12px; }
+.lm-games-page .lm-game-log-list { font-size: 11px; }
+/* 編集中の表示(控えめに差をつける) */
+.lm-games-page [data-game-edit], .lm-games-page [data-note-edit] { transition: none; }
+.lm-game-card.is-editing [data-game-edit], .lm-game-note.is-editing [data-note-edit] { border-color: var(--accent); background: #eaf7fb; color: #247f9f; font-weight: 700; }
+.lm-games-page .lm-games-add-section.is-editing, .lm-games-page .lm-game-edit-box.is-editing { margin-left: -2px; padding-left: 10px; border-left: 3px solid var(--accent); background: #f4fbfe; }
+.lm-games-page .lm-game-edit-box.is-editing { padding-top: 8px; padding-bottom: 2px; margin-bottom: 10px; border-radius: 0 8px 8px 0; }
+.lm-games-page .lm-games-add-section.is-editing .lm-section-title::after, .lm-games-page .lm-game-edit-box.is-editing .lm-game-form-label::after { content: '編集中'; display: inline-block; margin-left: 8px; padding: 1px 7px; border: 1px solid var(--accent); border-radius: 999px; background: #fff; color: #247f9f; font-family: var(--font-body); font-size: 10px; font-weight: 700; vertical-align: 2px; }
