@@ -5,16 +5,6 @@
   const scheduleFilters = [...document.querySelectorAll('[data-schedule-filter]')];
   const calendarGrid = document.getElementById('schedule-calendar-grid');
   const calendarTitle = document.getElementById('schedule-calendar-title');
-  const scheduleEntryTab = document.getElementById('schedule-entry-tab');
-  const deadlineEntryTab = document.getElementById('deadline-entry-tab');
-  const scheduleEntryPanel = document.getElementById('schedule-entry-panel');
-  const deadlineEntryPanel = document.getElementById('deadline-entry-panel');
-  const deadlineForm = document.getElementById('deadline-form');
-  const deadlineName = document.getElementById('deadline-name');
-  const deadlineDate = document.getElementById('deadline-date');
-  const deadlineTime = document.getElementById('deadline-time');
-  const deadlineSave = document.getElementById('deadline-save');
-  const cancelDeadlineEdit = document.getElementById('cancel-deadline-edit');
   const fields = {
     name: document.getElementById('f-name'),
     date: document.getElementById('f-date'),
@@ -42,7 +32,6 @@
   };
   const deadlineTitle = document.getElementById('deadline-form-title');
   const deadlineCancelBtn = document.getElementById('deadline-cancel-edit');
-  let editingDeadlineId = null;
   const deadlineNotifyList = document.getElementById('d-notify-list');
   renderDeadlineNotifyOptions();
   const presetPanel = document.getElementById('tab-panel-preset');
@@ -76,15 +65,11 @@
 
   populateBelongingOptions();
   fields.date.value = LM.todayStr();
-  deadlineDate.value = LM.todayStr();
+  deadlineFields.date.value = LM.todayStr();
   goToStep(1, false);
   renderList();
   renderCalendar();
   scheduleList.addEventListener('click', onListClick);
-  scheduleEntryTab.addEventListener('click', () => setEntryTab('schedule'));
-  deadlineEntryTab.addEventListener('click', () => setEntryTab('deadline'));
-  deadlineForm.addEventListener('submit', saveDeadline);
-  cancelDeadlineEdit.addEventListener('click', resetDeadlineForm);
   calendarGrid.addEventListener('click', (event) => {
     const button = event.target.closest('[data-date]');
     if (!button) return;
@@ -223,75 +208,19 @@
     renderCalendar();
   }
 
-  function setEntryTab(tab) {
-    const showDeadline = tab === 'deadline';
-    scheduleEntryPanel.hidden = showDeadline;
-    deadlineEntryPanel.hidden = !showDeadline;
-    scheduleEntryTab.classList.toggle('is-active', !showDeadline);
-    deadlineEntryTab.classList.toggle('is-active', showDeadline);
-    scheduleEntryTab.setAttribute('aria-selected', String(!showDeadline));
-    deadlineEntryTab.setAttribute('aria-selected', String(showDeadline));
-  }
-
-  function saveDeadline(event) {
-    event.preventDefault();
-    const name = deadlineName.value.trim();
-    if (!name || !deadlineDate.value || !deadlineTime.value) {
-      LM.showToast('名前、締切日、締切時刻を入力してください', 'error');
-      return;
-    }
-    const schedules = LM.get(LM.KEYS.SCHEDULES, []);
-    const deadline = {
-      ...(schedules.find((schedule) => schedule.id === editingDeadlineId) || {}),
-      id: editingDeadlineId || LM.uid(),
-      type: 'deadline',
-      name,
-      date: deadlineDate.value,
-      deadlineTime: deadlineTime.value,
-    };
-    const index = schedules.findIndex((schedule) => schedule.id === editingDeadlineId);
-    if (index === -1) schedules.push(deadline);
-    else schedules[index] = deadline;
-    if (!LM.set(LM.KEYS.SCHEDULES, schedules)) return;
-    LM.syncFirebase();
-    resetDeadlineForm();
-    renderList();
-    renderCalendar();
-    LM.showToast(editingDeadlineId ? '締切を更新しました' : '締切を登録しました');
-  }
-
-  function startDeadlineEdit(id) {
-    const deadline = LM.get(LM.KEYS.SCHEDULES, [])
-      .find((schedule) => schedule.id === id && schedule.type === 'deadline');
-    if (!deadline) return;
-    editingDeadlineId = id;
-    deadlineName.value = deadline.name || '';
-    deadlineDate.value = deadline.date || LM.todayStr();
-    deadlineTime.value = deadline.deadlineTime || '';
-    deadlineSave.textContent = '変更を保存';
-    cancelDeadlineEdit.hidden = false;
-    setEntryTab('deadline');
-    deadlineForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }
-
-  function resetDeadlineForm() {
-    editingDeadlineId = null;
-    deadlineForm.reset();
-    deadlineDate.value = LM.todayStr();
-    deadlineSave.textContent = '締切を保存';
-    cancelDeadlineEdit.hidden = true;
-  }
-
   function startEdit(id) {
     const schedule = LM.get(LM.KEYS.SCHEDULES, []).find((s) => s.id === id);
     if (!schedule) return;
+    if (schedule.kind === 'deadline') {
+      startDeadlineEdit(id);
+      return;
+    }
     if (schedule.autoSource === 'shift') {
       LM.showToast('この予定は履修・シフト側で編集してください', 'error');
       return;
     }
     switchFormTab('schedule');
     editingId = id;
-    setEntryTab('schedule');
     fields.name.value = schedule.name;
     fields.date.value = schedule.date;
     fields.start.value = schedule.start;
@@ -354,11 +283,14 @@
 
   function renderList() {
     const allSchedules = LM.get(LM.KEYS.SCHEDULES, [])
-      .sort((a, b) => (a.date + (a.deadlineTime || a.start || '')).localeCompare(b.date + (b.deadlineTime || b.start || '')));
-    const schedules = allSchedules.filter((schedule) => activeFilter === 'all' || getScheduleCategory(schedule) === activeFilter);
+      .filter((schedule) => schedule.kind !== 'deadline')
+      .sort((a, b) => (a.date + (a.start || '')).localeCompare(b.date + (b.start || '')));
+    const schedules = allSchedules.filter((schedule) =>
+      activeFilter === 'all' || getScheduleCategory(schedule) === activeFilter
+    );
 
     if (schedules.length === 0) {
-      scheduleList.innerHTML = `<p class="lm-empty">${allSchedules.length ? 'この分類の予定・締切はありません' : '登録されている予定・締切はありません'}</p>`;
+      scheduleList.innerHTML = `<p class="lm-empty">${allSchedules.length ? 'この分類の予定はありません' : '登録されている予定はありません'}</p>`;
       return;
     }
 
@@ -373,16 +305,12 @@
       row.style.justifyContent = 'space-between';
       row.style.alignItems = 'center';
       const linked = s.autoSource === 'shift';
-      const isDeadline = s.type === 'deadline';
       row.innerHTML = `
         <span data-confirm="${s.id}" style="flex:1;">
-          <span class="lm-schedule-time">${LM.formatDateHeader(s.date).slice(0, -3)} ${isDeadline ? `締切 ${s.deadlineTime || ''}` : s.start}</span>
-          <span>${escapeHtml(s.name)}${isDeadline ? '<small class="lm-schedule-source">期限・締切</small>' : linked ? '<small class="lm-schedule-source">履修・シフトから反映</small>' : ''}</span>
+          <span class="lm-schedule-time">${LM.formatDateHeader(s.date).slice(0, -3)} ${s.start}</span>
+          <span>${escapeHtml(s.name)}${linked ? '<small class="lm-schedule-source">履修・シフトから反映</small>' : ''}</span>
         </span>
-        ${isDeadline ? `<span style="display:flex; gap:6px;">
-          <button type="button" data-edit-deadline="${s.id}" class="lm-btn secondary" style="padding:6px 10px; font-size:12px;">編集</button>
-          <button type="button" data-delete="${s.id}" class="lm-btn secondary" style="padding:6px 10px; font-size:12px;">削除</button>
-        </span>` : linked ? `<span style="display:flex; gap:6px;">
+        ${linked ? `<span style="display:flex; gap:6px;">
           <button type="button" data-route-settings="${s.id}" class="lm-btn secondary" style="padding:6px 10px; font-size:12px;">逆算設定</button>
         </span>` : `<span style="display:flex; gap:6px;">
           <button type="button" data-edit="${s.id}" class="lm-btn secondary" style="padding:6px 10px; font-size:12px;">編集</button>
@@ -565,7 +493,8 @@
 
   function openScheduleListModal() {
     const schedules = LM.get(LM.KEYS.SCHEDULES, [])
-      .filter((schedule) => activeFilter === 'all' || getScheduleCategory(schedule) === activeFilter)
+      .filter((schedule) => schedule.kind !== 'deadline' &&
+        (activeFilter === 'all' || getScheduleCategory(schedule) === activeFilter))
       .sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start));
     const wrap = document.createElement('div');
     schedules.forEach((schedule) => {
@@ -579,19 +508,14 @@
       name.textContent = ` ${schedule.name}`;
       const category = document.createElement('div');
       category.className = 'lm-schedule-source';
-      category.textContent = schedule.kind === 'deadline' ? '締切'
-        : schedule.autoSource === 'shift'
+      category.textContent = schedule.autoSource === 'shift'
         ? (getScheduleCategory(schedule) === 'school' ? '学校(履修・シフト)' : 'バイト(履修・シフト)')
         : 'その他(手入力)';
       info.append(date, name, category);
       const departure = document.createElement('div');
       departure.className = 'lm-schedule-departure';
-      if (schedule.kind === 'deadline') {
-        departure.textContent = `締切 ${schedule.start}`;
-      } else {
-        const result = LM.calcDeparture(schedule);
-        departure.textContent = `準備開始 ${result.prepStart} ・ 出発 ${result.depart} ・ 到着目安 ${result.arrive}`;
-      }
+      const result = LM.calcDeparture(schedule);
+      departure.textContent = `準備開始 ${result.prepStart} ・ 出発 ${result.depart} ・ 到着目安 ${result.arrive}`;
       row.append(info, departure);
       wrap.appendChild(row);
     });
@@ -601,6 +525,10 @@
   function showConfirm(id) {
     const schedule = LM.get(LM.KEYS.SCHEDULES, []).find((s) => s.id === id);
     if (!schedule) return;
+    if (schedule.kind === 'deadline') {
+      showDeadlineConfirm(schedule);
+      return;
+    }
     const sets = LM.get(LM.KEYS.BELONGING_SETS, []);
     const selectedIds = schedule.belongingSetIds || (schedule.belongingSetId ? [schedule.belongingSetId] : []);
     const belongingNames = selectedIds
@@ -640,12 +568,10 @@
       return;
     }
     const routeSettingsId = e.target.closest('[data-route-settings]')?.dataset.routeSettings;
-    const editDeadlineId = e.target.closest('[data-edit-deadline]')?.dataset.editDeadline;
     const editId = e.target.closest('[data-edit]')?.dataset.edit;
     const deleteId = e.target.closest('[data-delete]')?.dataset.delete;
     const confirmId = e.target.closest('[data-confirm]') ? e.target.closest('[data-confirm]').dataset.confirm : null;
-    if (editDeadlineId) startDeadlineEdit(editDeadlineId);
-    else if (routeSettingsId) openLinkedRouteSettings(routeSettingsId);
+    if (routeSettingsId) openLinkedRouteSettings(routeSettingsId);
     else if (editId) startEdit(editId);
     else if (deleteId) {
       if (!confirm('この予定を削除しますか?')) return;
@@ -654,7 +580,6 @@
       LM.syncFirebase();
       renderList();
       renderCalendar();
-      if (deleteId === editingDeadlineId) resetDeadlineForm();
     } else if (confirmId) {
       showConfirm(confirmId);
     }
@@ -796,8 +721,8 @@
     return candidates.find((shift) => shift.start === schedule.start) || candidates[0] || null;
   }
 
-   /* ---------- 期限・締切 ---------- */
-    function switchFormTab(tab) {
+  /* ---------- 期限・締切 ---------- */
+  function switchFormTab(tab) {
     schedulePanel.hidden = tab !== 'schedule';
     deadlinePanel.hidden = tab !== 'deadline';
     presetPanel.hidden = tab !== 'preset';
@@ -846,7 +771,8 @@
   }
 
   function startDeadlineEdit(id) {
-    const schedule = LM.get(LM.KEYS.SCHEDULES, []).find((s) => s.id === id);
+    const schedule = LM.get(LM.KEYS.SCHEDULES, [])
+      .find((s) => s.id === id && s.kind === 'deadline');
     if (!schedule) return;
     editingDeadlineId = id;
     deadlineFields.name.value = schedule.name;
@@ -873,7 +799,7 @@
     deadlineTaskDraft.reset();
   }
 
-    function showDeadlineConfirm(schedule) {
+  function showDeadlineConfirm(schedule) {
     const notifyLabels = (schedule.notifyBefore || [])
       .map((id) => (LM.DEADLINE_NOTIFY_OPTIONS.find((o) => o.id === id) || {}).label)
       .filter(Boolean);
@@ -886,7 +812,6 @@
     `;
     if (LM.appendDeadlineTaskPanel) LM.appendDeadlineTaskPanel(wrap, schedule);
     LM.openModal(schedule.name, wrap);
-    LM.openModal(schedule.name, wrap);
   }
 
   formTabs.forEach((button) => {
@@ -897,8 +822,7 @@
     saveDeadline();
   });
   deadlineCancelBtn.addEventListener('click', resetDeadlineForm);
-  deadlineFields.date.value = LM.todayStr();
-    /* ---------- 登録済みの締切(締切タブの下部) ---------- */
+  /* ---------- 登録済みの締切(締切タブの下部) ---------- */
   const deadlineListEl = document.getElementById('deadline-list');
   const DEADLINE_PAGE_SIZE = 5;
   let deadlineListPage = 0;
@@ -971,7 +895,7 @@
       const deleteId = e.target.closest('[data-dl-delete]')?.dataset.dlDelete;
       const openId = e.target.closest('[data-dl-open]')?.dataset.dlOpen;
       if (editId) {
-        startEdit(editId);
+        startDeadlineEdit(editId);
       } else if (deleteId) {
         const taskCount = LM.getDeadlineTasks().filter((t) => t.deadlineId === deleteId).length;
         if (!confirm(`この締切を削除しますか?${taskCount ? '\n関連タスクは「締切削除済み」として残ります' : ''}`)) return;

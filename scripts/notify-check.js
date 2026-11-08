@@ -11,7 +11,7 @@ const MIN_MS = 60 * 1000;
 const LOOKAHEAD_MS = 8 * MIN_MS; // これより先の予定は次回以降の実行に任せる
 const GRACE_MS = 4 * MIN_MS; // 時刻を少し過ぎていても送る猶予(実行が1回飛んだ時の保険)
 
-// 締切の通知設定(app.js の LM.DEADLINE_NOTIFY_OPTIONS と同じ内容にしておく)
+// 締切の通知設定(js/core/app.js の LM.DEADLINE_NOTIFY_OPTIONS と同じ内容にしておく)
 const DEADLINE_NOTIFY_OPTIONS = {
   '30m': { min: 30, label: '30分前' },
   '1h': { min: 60, label: '1時間前' },
@@ -94,26 +94,23 @@ function effectiveTodo(state, dayKey) {
     return todo;
   }
   const pending = state.tomorrowTasks;
-  {
-    const tasks = {};
-    // ルーティンは名前が翌日に引き継がれる(同じ月の間だけ)ので、前日の端末の名前を持ってくる
-    const old = state.todo && state.todo.dailyTasks;
-    if (old && String(state.todo.dayKey || '').slice(0, 7) === dayKey.slice(0, 7)) {
-      ['rt1', 'rt2', 'rt3'].forEach((id) => {
-        const name = String((old[id] && old[id].name) || '').trim();
-        if (name) tasks[id] = { name, checked: false };
-      });
-    }
-    if (pending && pending.forDay === dayKey && pending.tasks) {
-      Object.keys(pending.tasks).forEach((id) => {
-        const name = String(pending.tasks[id] || '').trim();
-        if (name) tasks[id] = { name, checked: false };
-      });
-    }
-    if (Object.keys(tasks).length === 0) return null;
-    return { dayKey, dailyTasks: tasks, taskEnteredAt: jstMidnightEpoch(dayKey) + 4 * HOUR_MS };
+  const tasks = {};
+  // ルーティンは名前が翌日に引き継がれる(同じ月の間だけ)ので、前日の端末の名前を持ってくる
+  const old = state.todo && state.todo.dailyTasks;
+  if (old && String(state.todo.dayKey || '').slice(0, 7) === dayKey.slice(0, 7)) {
+    ['rt1', 'rt2', 'rt3'].forEach((id) => {
+      const name = String((old[id] && old[id].name) || '').trim();
+      if (name) tasks[id] = { name, checked: false };
+    });
   }
-  return null;
+  if (pending && pending.forDay === dayKey && pending.tasks) {
+    Object.keys(pending.tasks).forEach((id) => {
+      const name = String(pending.tasks[id] || '').trim();
+      if (name) tasks[id] = { name, checked: false };
+    });
+  }
+  if (Object.keys(tasks).length === 0) return null;
+  return { dayKey, dailyTasks: tasks, taskEnteredAt: jstMidnightEpoch(dayKey) + 4 * HOUR_MS };
 }
 
 function summarizeTasks(state, dayKey) {

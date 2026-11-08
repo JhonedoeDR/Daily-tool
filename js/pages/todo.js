@@ -38,8 +38,207 @@
     };
   }
   function save() {
-    localStorage.setItem(KEY, JSON.stringify(data));
-    try { if (window.LM && LM.syncFirebaseDebounced) LM.syncFirebaseDebounced(); } catch (_) {}
+    return LM.set(KEY, data);
+  }
+  function renderLegacyGroups() {
+    const container = $('todo-groups');
+    if (!container) return;
+    container.replaceChildren();
+    const state = LM.getTodoState();
+
+    LM.TODO_GROUPS.forEach(group => {
+      const groupEl = document.createElement('section');
+      groupEl.className = 'lm-todo-group';
+      const heading = document.createElement('div');
+      heading.className = 'lm-todo-group-label' + (group.isMain ? ' is-main' : '');
+      heading.textContent = group.label;
+      groupEl.appendChild(heading);
+
+      group.ids.forEach(id => {
+        const task = state.dailyTasks[id] || { name: '', checked: false };
+        const row = document.createElement('div');
+        row.className = 'lm-todo-row' + (task.checked ? ' is-checked' : '');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = !!task.checked;
+        checkbox.setAttribute('aria-label', `${group.label}を完了`);
+        checkbox.addEventListener('change', () => {
+          LM.toggleTodoCheck(LM.getTodoState(), id, checkbox.checked);
+          renderLegacyGroups();
+          updateProgressDisplays();
+        });
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.maxLength = 200;
+        input.value = task.name || '';
+        input.placeholder = `${group.label}のタスク`;
+        input.addEventListener('input', () => {
+          const current = LM.getTodoState();
+          LM.setTodoTaskName(current, id, input.value);
+          LM.saveTodoState(current);
+          row.classList.toggle('is-checked', !!current.dailyTasks[id].checked);
+        });
+        row.append(checkbox, input);
+
+        if (group.key === 'other' && group.ids.length > 1) {
+          const remove = document.createElement('button');
+          remove.type = 'button';
+          remove.className = 'lm-todo-slot-remove';
+          remove.textContent = '-';
+          remove.setAttribute('aria-label', 'このタスク枠を削除');
+          remove.addEventListener('click', () => {
+            const current = LM.getTodoState();
+            const lastSlot = group.ids.length;
+            for (let slot = Number(id.slice(5)) + 1; slot <= lastSlot; slot += 1) {
+              current.dailyTasks[`other${slot - 1}`] = current.dailyTasks[`other${slot}`];
+            }
+            delete current.dailyTasks[`other${lastSlot}`];
+            current.otherSlotCount = LM.configureOtherTodoSlots(lastSlot - 1);
+            LM.saveTodoState(current);
+            renderLegacyGroups();
+          });
+          row.appendChild(remove);
+        }
+        groupEl.appendChild(row);
+      });
+
+      if (group.key === 'other') {
+        const add = document.createElement('button');
+        add.type = 'button';
+        add.className = 'lm-btn secondary';
+        add.textContent = '＋ 枠を追加';
+        add.addEventListener('click', () => {
+          const current = LM.getTodoState();
+          current.otherSlotCount = LM.configureOtherTodoSlots(current.otherSlotCount + 1);
+          current.dailyTasks[`other${current.otherSlotCount}`] = { name: '', checked: false };
+          LM.saveTodoState(current);
+          renderLegacyGroups();
+        });
+        groupEl.appendChild(add);
+      }
+
+      LM.appendLinkedTodoRows(groupEl, group.key, renderLegacyGroups);
+      container.appendChild(groupEl);
+    });
+  }
+  function setupTomorrowTasks() {
+    const key = 'lm_tomorrowTasks';
+    const button = $('tomorrow-task-btn');
+    if (!button) return;
+
+    button.addEventListener('click', () => {
+      const [year, month, day] = LM.todoDayKey().split('-').map(Number);
+      const forDay = LM.scheduleDateKey(new Date(year, month - 1, day + 1));
+      const saved = LM.get(key, null);
+      const data = saved && saved.forDay === forDay
+        ? { forDay, tasks: saved.tasks || {}, otherSlotCount: Math.max(1, Number(saved.otherSlotCount) || 1) }
+        : { forDay, tasks: {}, otherSlotCount: 1 };
+      const wrap = document.createElement('div');
+
+      function persist() {
+        const hasTasks = Object.values(data.tasks).some(value => String(value || '').trim());
+        if (hasTasks) LM.set(key, data);
+        else localStorage.removeItem(key);
+        LM.syncFirebaseDebounced();
+      }
+
+      function render() {
+        wrap.replaceChildren();
+        const note = document.createElement('p');
+        note.className = 'lm-empty';
+        note.style.marginBottom = '12px';
+        note.textContent = 'AM4:00以降に最初にこのページを開いたとき、今日のタスクに反映されます(ルーティンは毎日引き継がれるため対象外です)';
+        wrap.appendChild(note);
+        const locks = LM.getMainLockTitles('tomorrow');
+
+        LM.TODO_GROUPS.filter(group => group.key !== 'routine').forEach(group => {
+          const ids = group.key === 'other'
+            ? Array.from({ length: data.otherSlotCount }, (_, index) => `other${index + 1}`)
+            : group.ids;
+          const groupEl = document.createElement('div');
+          groupEl.className = 'lm-todo-group';
+          const heading = document.createElement('div');
+          heading.className = 'lm-todo-group-label' + (group.isMain ? ' is-main' : '');
+          heading.textContent = group.label;
+          groupEl.appendChild(heading);
+
+          ids.forEach((id, index) => {
+            const row = document.createElement('div');
+            row.className = 'lm-todo-row';
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.placeholder = `${group.label}${ids.length > 1 ? ` ${index + 1}` : ''}のタスク`;
+            input.value = data.tasks[id] || '';
+            const lockTitle = group.isMain ? locks[index] : undefined;
+            if (lockTitle) {
+              input.value = lockTitle;
+              input.disabled = true;
+              input.classList.add('dl-locked');
+              input.title = '締切のタスクが使用中です';
+            }
+            input.addEventListener('input', () => {
+              data.tasks[id] = input.value;
+              persist();
+            });
+            row.appendChild(input);
+
+            if (group.key === 'other' && index > 0) {
+              const remove = document.createElement('button');
+              remove.type = 'button';
+              remove.className = 'lm-todo-slot-remove';
+              remove.textContent = '-';
+              remove.setAttribute('aria-label', 'この追加枠を削除');
+              remove.addEventListener('click', () => {
+                for (let slot = index + 1; slot < data.otherSlotCount; slot += 1) {
+                  data.tasks[`other${slot}`] = data.tasks[`other${slot + 1}`] || '';
+                }
+                delete data.tasks[`other${data.otherSlotCount}`];
+                data.otherSlotCount -= 1;
+                persist();
+                render();
+              });
+              row.appendChild(remove);
+            }
+            groupEl.appendChild(row);
+          });
+
+          if (group.key === 'other') {
+            const add = document.createElement('button');
+            add.type = 'button';
+            add.className = 'lm-btn secondary';
+            add.textContent = '＋ 枠を追加';
+            add.addEventListener('click', () => {
+              data.otherSlotCount += 1;
+              persist();
+              render();
+            });
+            groupEl.appendChild(add);
+          }
+          wrap.appendChild(groupEl);
+        });
+      }
+
+      render();
+      LM.openModal('明日のタスク', wrap);
+    });
+  }
+  function resetDailyTasks() {
+    const button = $('daily-reset-btn');
+    if (!button) return;
+    button.addEventListener('click', () => {
+      if (!confirm('今日のタスク入力と達成状況をリセットしますか?')) return;
+      const state = LM.getTodoState();
+      const routineNames = Object.fromEntries(
+        LM.TODO_ROUTINE_IDS.map(id => [id, (state.dailyTasks[id] && state.dailyTasks[id].name) || ''])
+      );
+      state.dailyTasks = LM.defaultTodoTasks();
+      LM.TODO_ROUTINE_IDS.forEach(id => { state.dailyTasks[id].name = routineNames[id]; });
+      state.taskEnteredAt = 0;
+      LM.saveTodoState(state);
+      renderLegacyGroups();
+      updateProgressDisplays();
+    });
   }
   function esc(s) {
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -344,7 +543,10 @@
   $('todo-add-link').addEventListener('click', () => addLink());
   $('todo-link-mode').addEventListener('change', renderCustomGroups);
   ['todo-tab-filter', 'todo-deadline-filter', 'todo-sort'].forEach(id => $(id).addEventListener('change', render));
+  setupTomorrowTasks();
+  resetDailyTasks();
   setCreateTab('main');
   render();
+  renderLegacyGroups();
   updateProgressDisplays();
 })();

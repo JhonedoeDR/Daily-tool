@@ -1,9 +1,10 @@
 /* =========================================================
    生活管理ツール - 共通データレイヤー / ユーティリティ
-   全ページ(index.html, schedule.html, ...)から <script src="./app.js"> で読み込む。
+   全ページから <script src="./js/core/app.js"> で読み込む。
    ========================================================= */
 
 const LM = {};
+const FIREBASE_SERVICE_URL = new URL('../services/firebase-sync.js', document.currentScript.src);
 
 /* ---------- localStorage キー一覧 ----------
  * lm_schedules     : 予定 [{id, name, date, start, end, place, travelMin, prepMin, arriveBeforeMin, belongingSetId, memo, autoSource?}]
@@ -58,28 +59,31 @@ LM.uid = function () {
 };
 
 LM.syncShiftSchedules = function () {
+  const shifts = LM.get(LM.KEYS.SHIFTS, []);
+  const today = LM.todayStr();
   const earliestByDateAndKind = new Map();
-  LM.get(LM.KEYS.SHIFTS, []).forEach((shift) => {
-    if (shift.scheduleRegistered !== true) return;
+  const allBelongingSets = LM.get(LM.KEYS.BELONGING_SETS, []);
+  const setIdsByName = new Map();
+  allBelongingSets.forEach((set) => {
+    if (!setIdsByName.has(set.name)) setIdsByName.set(set.name, []);
+    setIdsByName.get(set.name).push(set.id);
+  });
+  const classSetIdsByDate = new Map();
+  shifts.forEach((shift) => {
+    const validDate = /^\d{4}-\d{2}-\d{2}$/.test(shift.date || '');
+    if (shift.kind === 'class' && validDate) {
+      if (!classSetIdsByDate.has(shift.date)) classSetIdsByDate.set(shift.date, new Set());
+      const ids = classSetIdsByDate.get(shift.date);
+      (shift.belongingSetIds || []).forEach((id) => ids.add(id));
+      (setIdsByName.get(shift.name) || []).forEach((id) => ids.add(id));
+    }
+
+    if (shift.scheduleRegistered !== true || !validDate ||
+        shift.date < today || !/^\d{2}:\d{2}$/.test(shift.start || '')) return;
     const kind = shift.kind === 'class' ? 'class' : 'shift';
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(shift.date || '') ||
-        shift.date < LM.todayStr() ||
-        !/^\d{2}:\d{2}$/.test(shift.start || '')) return;
     const key = `${shift.date}:${kind}`;
     const current = earliestByDateAndKind.get(key);
     if (!current || shift.start < current.start) earliestByDateAndKind.set(key, shift);
-  });
-  
-    // 学校の予定用: その日の全授業のセット + 常備 + 学校
-  const allBelongingSets = LM.get(LM.KEYS.BELONGING_SETS, []);
-  const setIdsByName = (name) => allBelongingSets.filter((s) => s.name === name).map((s) => s.id);
-  const classSetIdsByDate = new Map();
-  LM.get(LM.KEYS.SHIFTS, []).forEach((s) => {
-    if (s.kind !== 'class' || !/^\d{4}-\d{2}-\d{2}$/.test(s.date || '')) return;
-    if (!classSetIdsByDate.has(s.date)) classSetIdsByDate.set(s.date, new Set());
-    const acc = classSetIdsByDate.get(s.date);
-    (s.belongingSetIds || []).forEach((id) => acc.add(id));
-    setIdsByName(s.name).forEach((id) => acc.add(id));
   });
 
   const projected = [...earliestByDateAndKind.entries()]
@@ -100,8 +104,8 @@ LM.syncShiftSchedules = function () {
           ? [...new Set([
               ...(shift.belongingSetIds || []),
               ...(classSetIdsByDate.get(date) || []),
-              ...setIdsByName('常備'),
-              ...setIdsByName('学校'),
+              ...(setIdsByName.get('常備') || []),
+              ...(setIdsByName.get('学校') || []),
             ])]
           : (shift.belongingSetIds || []),
         memo: '',
@@ -443,8 +447,6 @@ LM.TODO_WEEK_TOTAL = 14;
  * -------------------------------------------- */
 LM.TODO_ROUTINE_IDS = ['rt1', 'rt2', 'rt3'];
 LM.TODO_ROUTINE_RATE = 2 / 3;
-// true にすると、月が変わってもルーティンの名前を引き継ぐ(達成数・ご褒美は月ごとにリセット)
-LM.TODO_ROUTINE_KEEP_NAMES_ACROSS_MONTHS = false;
 
 // 週の始まり(月曜)はタスク境界の AM4:00 を基準に算出する。
 // 04:00より前はまだ前日で、前週として扱う。
@@ -536,10 +538,12 @@ LM.getTodoState = function () {
   state.otherSlotCount = LM.configureOtherTodoSlots(
     Number.isFinite(savedOtherSlots) && savedOtherSlots > 0 ? savedOtherSlots : legacyOtherSlots
   );
-  if (!state.dailyTasks) state.dailyTasks = LM.defaultTodoTasks();
-  LM.TODO_GROUPS.find((g) => g.key === 'other').ids.forEach((id) => {
+  if (!state.dailyTasks || typeof state.dailyTasks !== 'object' || Array.isArray(state.dailyTasks)) {
+    state.dailyTasks = LM.defaultTodoTasks();
+  }
+  LM.TODO_GROUPS.forEach((group) => group.ids.forEach((id) => {
     if (!state.dailyTasks[id]) state.dailyTasks[id] = { name: '', checked: false };
-  });
+  }));
   const needsTaskEntryMigration = !Object.prototype.hasOwnProperty.call(state, 'taskEnteredAt');
   if (!Number.isFinite(Number(state.taskEnteredAt))) state.taskEnteredAt = 0;
   if (typeof state.weeklyClears !== 'number') state.weeklyClears = 0;
@@ -567,11 +571,9 @@ LM.getTodoState = function () {
     state.routineClears = 0;
     state.routineReflected = LM.defaultRoutineReflected();
     state.routineReward = '';
-    if (!LM.TODO_ROUTINE_KEEP_NAMES_ACROSS_MONTHS) {
-      LM.TODO_ROUTINE_IDS.forEach((id) => {
-        if (state.dailyTasks[id]) state.dailyTasks[id].name = '';
-      });
-    }
+    LM.TODO_ROUTINE_IDS.forEach((id) => {
+      if (state.dailyTasks[id]) state.dailyTasks[id].name = '';
+    });
   }
 
   // AM4:00を過ぎたら日付が変わったとみなし、入力・チェックを自動リセット(週間記録は保持)
@@ -623,18 +625,44 @@ LM.setTodoTaskName = function (state, id, name, enteredAt) {
   }
 };
 
-// 予定・イベントの変更をFirestoreへ同期する(準備が間に合っていなければ待ってから送る)
-LM.syncFirebase = async function () {
-  if (!window.LMFirebase) {
-    await new Promise((resolve) => window.addEventListener('lm-firebase-ready', resolve, { once: true }));
+LM.loadFirebase = function () {
+  if (window.LMFirebase) return Promise.resolve(window.LMFirebase);
+  if (!LM._firebaseModulePromise) {
+    LM._firebaseModulePromise = import(FIREBASE_SERVICE_URL.href)
+      .then(() => {
+        if (!window.LMFirebase) throw new Error('Firebaseサービスの初期化が完了しませんでした');
+        return window.LMFirebase;
+      })
+      .catch((error) => {
+        LM._firebaseModulePromise = null;
+        console.error('Firebase service failed to load', error);
+        window.dispatchEvent(new CustomEvent('lm-firebase-error', {
+          detail: {
+            action: 'Firebaseサービスの読み込み',
+            message: error && error.message ? error.message : String(error),
+          },
+        }));
+        throw error;
+      });
   }
-  if (!window.LMFirebase) return false;
-  const synced = await window.LMFirebase.syncData();
+  return LM._firebaseModulePromise;
+};
+
+// 通知に必要な変更が発生したページだけFirebase連携を読み込んで同期する。
+LM.syncFirebase = async function () {
+  let firebase;
+  try {
+    firebase = await LM.loadFirebase();
+  } catch {
+    return false;
+  }
+  const synced = await firebase.syncData();
   if (synced) localStorage.removeItem('lm_shiftScheduleSyncPending');
   return synced;
 };
 
 LM.syncShiftSchedules();
+if (LM.get('lm_shiftScheduleSyncPending', false)) LM.syncFirebase();
 
 // 連続した変更(文字入力など)をまとめて、最後の変更から少し後に1回だけ同期する
 LM._syncTimer = null;
@@ -683,12 +711,13 @@ LM.openModal = function (title, contentEl) {
   overlay.innerHTML = `
     <div class="lm-modal">
       <div class="lm-modal-header">
-        <strong>${title}</strong>
+        <strong></strong>
         <button type="button" class="lm-modal-close">✕</button>
       </div>
       <div class="lm-modal-body"></div>
     </div>
   `;
+  overlay.querySelector('.lm-modal-header strong').textContent = title;
   overlay.querySelector('.lm-modal-body').appendChild(contentEl);
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) LM.closeModal();
@@ -740,45 +769,6 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js').catch((e) => console.error('SW registration failed', e));
   });
 }
-
-/* ---------- ナビゲーション(共通フッターボタン)描画 ----------
- * 【旧ボタン】今は使っていません。各ページは renderNav-menu.js を読み込むため、
- * この LM.renderNav はそちらの定義で上書きされ、画面には出ません(コードだけ残しています)。
- * ------------------------------------------------------------- */
-LM.renderNav = function (container) {
-  const nav = document.createElement('nav');
-  nav.className = 'lm-nav';
-  const items = [
-    { href: './schedule.html', label: '予定・逆算' },
-    { href: './belongings.html', label: '持ちもの' },
-    { href: './todo.html', label: 'タスク' },
-    { href: './wishlist.html', label: 'WISHリスト' },
-    { href: './time-calc.html', label: '時間計算' },
-    { href: './event.html', label: 'イベント' },
-    { href: './shift.html', label: '履修・シフト' },
-    { href: 'https://jhonedoedr.github.io/MyBookLog/', label: 'よみもの記録', external: true },
-  ];
-  items.forEach((it) => {
-    const a = document.createElement('a');
-    a.href = it.href;
-    a.className = 'lm-nav-btn';
-    a.textContent = it.label;
-    if (it.external) {
-      a.target = '_blank';
-      a.rel = 'noopener';
-    }
-    a.addEventListener('click', (e) => {
-      e.preventDefault();
-      a.classList.add('lm-pressed');
-      setTimeout(() => {
-        if (it.external) window.open(a.href, '_blank', 'noopener');
-        else location.href = a.href;
-      }, 90);
-    });
-    nav.appendChild(a);
-  });
-  container.appendChild(nav);
-};
 
 /* =========================================================
    締切・タスク連携(追加ブロック)
@@ -951,8 +941,6 @@ LM._dlEl = function (tag, cls, text) {
   if (text != null) el.textContent = text;
   return el;
 };
-
-LM._dlEnsureStyle = function () {}; // 見た目は style.css の dl- 系クラスに移した
 
 // 並び順: 締切が近い順 → 作成順
 LM._dlCompare = function (a, b) {

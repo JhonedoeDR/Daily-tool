@@ -109,12 +109,15 @@
       }
       if (enabled && !('Notification' in window)) { e.currentTarget.checked = false; status.textContent = 'このブラウザでは通知に対応していません。'; return; }
       if (enabled) {
-        if (!window.LMFirebase || typeof window.LMFirebase.registerToken !== 'function') {
+        let firebase;
+        try {
+          firebase = await LM.loadFirebase();
+        } catch {
           e.currentTarget.checked = false;
           status.textContent = '通知機能の準備ができていません。ページを再読み込みしてからお試しください。';
           return;
         }
-        const token = await window.LMFirebase.registerToken();
+        const token = await firebase.registerToken();
         if (!token) {
           e.currentTarget.checked = false;
           status.textContent = '通知の登録に失敗しました。HTTPS・Service Worker・Firebase設定を確認してください。';

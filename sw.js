@@ -51,7 +51,7 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 // --- オフライン用キャッシュ ---
-const CACHE_NAME = 'lm-cache-v26';
+const CACHE_NAME = 'lm-cache-v27';
 const ASSETS = [
   './',
   './index.html',
@@ -64,20 +64,28 @@ const ASSETS = [
   './todo.html',
   './games.html',
   './style.css',
-  './app.js',
-  './renderNav-menu.js',
-  './firebase-sync.js',
-  './home.js',
-  './schedule.js',
-  './belongings.js',
-  './time-calc.js',
-  './shift.js',
-  './wishlist.js',
-  './event.js',
-  './todo.js',
-  './games.js',
-  './games-db.js',
+  './js/core/app.js',
+  './js/ui/navigation.js',
+  './js/services/firebase-sync.js',
+  './js/pages/home.js',
+  './js/pages/schedule.js',
+  './js/pages/belongings.js',
+  './js/pages/time-calc.js',
+  './js/pages/shift.js',
+  './js/pages/wishlist.js',
+  './js/pages/event.js',
+  './js/pages/todo.js',
+  './js/pages/games.js',
+  './js/storage/games-db.js',
   './manifest.json',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './hm-dog.png',
+  './hm-dog-hands.png',
+  './hm-dog-existing.png',
+  './hm-dog-happy.png',
+  './hm-dog-sleep.png',
+  './hm-dog-stunned.png',
 ];
 
 self.addEventListener('install', (e) => {

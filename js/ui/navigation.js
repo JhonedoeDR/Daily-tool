@@ -1,5 +1,5 @@
 /* ---------- 共通ナビゲーション: 下部固定メニュー(全ページ共通) ----------
- * 各ページは今まで通り LM.renderNav(container) を呼ぶだけでよい(app.js の後に読み込むこと)。
+ * 各ページは LM.renderNav(container) を呼ぶだけでよい(app.js の後に読み込むこと)。
  * 下部メニュー・HOME長押しメニュー・バックアップをここに集約している。
  * 見た目の基本は style.css の「新HOME」ブロック(.hm-nav / .hm-more など)を使い、
  * このファイルからは全ページ共通で必要な分だけCSSを追加する。
@@ -7,20 +7,8 @@
  * 廃止したもの:
  *  ・右上の☰メニュー(コードごと削除)
  *  ・旧「← 今日のページに戻る」ボタン(各HTMLには残してあり、下のCSSで表示しないだけ)
- *  ・app.js の旧ナビボタン(LM.renderNav の旧版。ここで上書きされるため動かない)
- */
-LM.NAV_ITEMS = [
-  { href: './index.html', label: '今日のページ' },
-  { href: './schedule.html', label: '予定・締切' },
-  { href: './belongings.html', label: '持ちもの' },
-  { href: './todo.html', label: 'タスク' },
-  { href: './wishlist.html', label: 'WISHリスト' },
-  { href: './time-calc.html', label: '時間計算' },
-  { href: './event.html', label: 'イベント' },
-  { href: './shift.html', label: '履修・シフト' },
-  { href: 'https://jhonedoedr.github.io/MyBookLog/', label: 'よみもの記録', external: true },
-];
 
+ */
 LM.HOME_URL = './index.html';
 LM.LONG_PRESS_MS = 500;
 

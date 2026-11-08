@@ -34,11 +34,6 @@
     </div>
     <div id="tab-panel-schedule">
 
-    <div class="sc-entry-tabs" role="tablist" aria-label="登録する内容">
-      <button type="button" class="lm-btn secondary is-active" id="schedule-entry-tab" role="tab" aria-selected="true" aria-controls="schedule-entry-panel">予定を登録</button>
-      <button type="button" class="lm-btn secondary" id="deadline-entry-tab" role="tab" aria-selected="false" aria-controls="deadline-entry-panel">期限・締切を登録</button>
-    </div>
-    <div id="schedule-entry-panel" role="tabpanel" aria-labelledby="schedule-entry-tab">
       <p class="lm-sub-header" id="form-title">予定を登録(<span id="step-indicator">1</span>/3)</p>
       <button type="button" id="cancel-edit" class="lm-btn secondary" style="display:none; margin-bottom:12px;">編集をキャンセル</button>
       <section class="lm-section">
@@ -105,27 +100,6 @@
         </div>
       </form>
       </section>
-    </div>
-    <section class="lm-section sc-deadline-panel" id="deadline-entry-panel" role="tabpanel" aria-labelledby="deadline-entry-tab" hidden>
-      <form id="deadline-form">
-        <div class="lm-field">
-          <label for="deadline-name">名前</label>
-          <input id="deadline-name" type="text" maxlength="100" required />
-        </div>
-        <div class="lm-field">
-          <label for="deadline-date">締切日</label>
-          <input id="deadline-date" type="date" required />
-        </div>
-        <div class="lm-field">
-          <label for="deadline-time">締切時刻</label>
-          <input id="deadline-time" type="time" required />
-        </div>
-        <div class="sc-deadline-actions">
-          <button type="button" class="lm-btn secondary" id="cancel-deadline-edit" hidden>編集をキャンセル</button>
-          <button type="submit" class="lm-btn" id="deadline-save">締切を保存</button>
-        </div>
-      </form>
-    </section>
 
     <section class="lm-section">
       <div class="lm-section-title">登録済みの予定</div>
@@ -211,9 +185,8 @@
     <div id="nav-container"></div>
   </div>
 
-  <script src="./app.js"></script>
-  <script src="./renderNav-menu.js"></script>
-  <script type="module" src="./firebase-sync.js"></script>
-  <script src="./schedule.js"></script>
+  <script src="./js/core/app.js"></script>
+  <script src="./js/ui/navigation.js"></script>
+  <script src="./js/pages/schedule.js"></script>
 </body>
 </html>
