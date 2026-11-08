@@ -899,9 +899,26 @@ body {
 }
 
 /* ---------- タスクページ(追加タスク管理) ---------- */
+.lm-page.todo-page {
+  padding-top: 18px;
+}
+
+.todo-page > .lm-sub-header {
+  margin-bottom: 10px;
+}
+
+.todo-page > .lm-section {
+  padding-top: 10px;
+  padding-bottom: 12px;
+}
+
+.todo-page .lm-section-title {
+  margin-bottom: 7px;
+}
+
 .todo-manager {
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 
 .todo-manager [hidden] {
@@ -910,7 +927,7 @@ body {
 
 .todo-toolbar {
   display: grid;
-  gap: 12px;
+  gap: 9px;
 }
 
 .todo-filter-row {
@@ -971,8 +988,8 @@ body {
 
 .todo-create-form {
   display: grid;
-  gap: 12px;
-  padding: 14px;
+  gap: 9px;
+  padding: 11px;
   border: 1px solid var(--paper-line);
   border-radius: 10px;
   background: #fff;
@@ -988,6 +1005,18 @@ body {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+
+.todo-date-fields > .todo-field {
+  min-width: 0;
+}
+
+.todo-date-fields input[type='date'] {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  padding: 8px 6px;
+  font-size: 13px;
 }
 
 .todo-advanced {
@@ -1154,6 +1183,12 @@ body {
 
 .todo-legacy-area > .todo-help {
   margin: 8px 0 14px;
+}
+
+@media (max-width: 380px) {
+  .todo-date-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .lm-week-grid {
