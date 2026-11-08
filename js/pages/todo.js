@@ -14,6 +14,19 @@
   function uid() {
     return 'tm_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 9);
   }
+  function routinePeriodKey(period, date = new Date()) {
+    if (period === 'weekly') return LM.todoMondayKey(date);
+    if (period === 'monthly') return LM.routineMonthKey(date);
+    return LM.todoDayKey(date);
+  }
+  function safeLinkUrl(value) {
+    try {
+      const url = new URL(value);
+      return ['http:', 'https:'].includes(url.protocol) ? url.href : '';
+    } catch {
+      return '';
+    }
+  }
   function load() {
     try {
       const raw = JSON.parse(localStorage.getItem(KEY) || 'null');
@@ -26,18 +39,36 @@
     return { version: 1, tasks: [], legacyMigrated: false, weeklyCounted: {}, routineCounted: {} };
   }
   function normalizeTask(t) {
+    const task = t && typeof t === 'object' ? t : {};
+    const category = ['main', 'routine', 'other'].includes(task.category) ? task.category : 'other';
+    const routinePeriod = ['daily', 'weekdays', 'weekly', 'monthly'].includes(task.routinePeriod)
+      ? task.routinePeriod : 'daily';
+    const checkedAt = Number(task.checkedAt) || 0;
+    const checkedDay = String(task.checkedDay || (checkedAt && category === 'routine'
+      ? routinePeriodKey(routinePeriod, new Date(checkedAt)) : ''));
     return {
-      id: String(t.id || uid()), category: ['main', 'routine', 'other'].includes(t.category) ? t.category : 'other',
-      name: String(t.name || ''), startDate: String(t.startDate || ''), endDate: String(t.endDate || ''),
-      checked: !!t.checked, checkedAt: Number(t.checkedAt) || 0, checkedDay: String(t.checkedDay || ''),
-      subtasks: Array.isArray(t.subtasks) ? t.subtasks.map(s => ({ id: String(s.id || uid()), name: String(s.name || ''), checked: !!s.checked })) : [],
-      links: Array.isArray(t.links) ? t.links.map(l => ({ url: String(l.url || ''), label: String(l.label || '') })) : [],
-      linkedTaskIds: Array.isArray(t.linkedTaskIds) ? t.linkedTaskIds.map(String) : [],
-      linkMode: ['all', 'sequence', 'custom'].includes(t.linkMode) ? t.linkMode : 'all',
-      linkGroups: t.linkGroups && typeof t.linkGroups === 'object' ? t.linkGroups : {}
+      id: String(task.id || uid()), category,
+      name: String(task.name || ''), startDate: String(task.startDate || ''), endDate: String(task.endDate || ''),
+      checked: !!task.checked && (category !== 'routine' || checkedDay === routinePeriodKey(routinePeriod)),
+      checkedAt, checkedDay,
+      routinePeriod,
+      subtasks: Array.isArray(task.subtasks) ? task.subtasks.map(s => ({
+        id: String(s && s.id || uid()), name: String(s && s.name || ''), checked: !!(s && s.checked)
+      })) : [],
+      links: Array.isArray(task.links) ? task.links.map(l => ({
+        url: safeLinkUrl(String(l && l.url || '')), label: String(l && l.label || '')
+      })) : [],
+      linkedTaskIds: Array.isArray(task.linkedTaskIds) ? task.linkedTaskIds.map(String) : [],
+      linkMode: ['all', 'sequence', 'custom'].includes(task.linkMode) ? task.linkMode : 'all',
+      linkGroups: task.linkGroups && typeof task.linkGroups === 'object' ? task.linkGroups : {}
     };
   }
   function save() {
+    const currentMonth = todayKey().slice(0, 7);
+    data.weeklyCounted = Object.fromEntries(Object.entries(data.weeklyCounted)
+      .filter(([week]) => week === weekKey()));
+    data.routineCounted = Object.fromEntries(Object.entries(data.routineCounted)
+      .filter(([period]) => period.startsWith(currentMonth) || period === weekKey()));
     return LM.set(KEY, data);
   }
   function renderLegacyGroups() {
@@ -249,33 +280,97 @@
   function weekKey() {
     return window.LM && LM.todoMondayKey ? LM.todoMondayKey() : todayKey();
   }
-  function categoryLabel(c) { return c === 'main' ? 'ã¡ã¤ã³' : c === 'routine' ? 'ã«ã¼ãã£ã³' : 'ãã®ä»'; }
-  function visibleLinkedIds(parent) {
-    const ids = parent.linkedTaskIds.filter(id => data.tasks.some(t => t.id === id));
+  function categoryLabel(c) { return c === 'main' ? 'メイン' : c === 'routine' ? 'ルーティン' : 'その他'; }
+  function routinePeriodLabel(period) {
+    return ({ daily: '毎日', weekdays: '平日', weekly: '毎週', monthly: '毎月' })[period] || '毎日';
+  }
+  function visibleLinkedIds(parent, byId) {
+    const ids = parent.linkedTaskIds.filter(id => byId.has(id));
     if (parent.linkMode === 'all') return ids;
-    const groups = ids.map(id => ({ id, group: parent.linkMode === 'sequence' ? ids.indexOf(id) + 1 : Math.max(1, Number(parent.linkGroups[id]) || 1) }));
+    const groups = ids.map((id, index) => ({
+      id, group: parent.linkMode === 'sequence' ? index + 1 : Math.max(1, Number(parent.linkGroups[id]) || 1)
+    }));
     const current = groups.reduce((min, x) => {
-      const t = data.tasks.find(y => y.id === x.id);
+      const t = byId.get(x.id);
       return t && !t.checked ? Math.min(min, x.group) : min;
     }, Infinity);
     return groups.filter(x => x.group === current).map(x => x.id);
   }
-  function allVisibleIds() {
-    const hidden = new Set();
-    data.tasks.forEach(parent => {
-      if (!parent.linkedTaskIds.length || parent.linkMode === 'all') return;
-      const allowed = new Set(visibleLinkedIds(parent));
-      parent.linkedTaskIds.forEach(id => { if (!allowed.has(id)) hidden.add(id); });
-    });
-    // è¤æ°ã®è¦ªããåç§ããã¦ããå ´åãããããã®è¦ªãè¡¨ç¤ºãè¨±å¯ããã°è¡¨ç¤ºãã
-    const referenced = new Set(data.tasks.flatMap(t => t.linkedTaskIds));
-    data.tasks.forEach(t => {
-      if (referenced.has(t.id)) {
-        const permitted = data.tasks.some(p => p.linkedTaskIds.includes(t.id) && visibleLinkedIds(p).includes(t.id));
-        if (permitted) hidden.delete(t.id);
+  function linkedAncestors(taskId) {
+    const parents = new Map();
+    data.tasks.forEach(task => task.linkedTaskIds.forEach(id => {
+      const list = parents.get(id) || [];
+      list.push(task.id);
+      parents.set(id, list);
+    }));
+    const ancestors = new Set();
+    const queue = [...(parents.get(taskId) || [])];
+    for (let cursor = 0; cursor < queue.length; cursor += 1) {
+      const id = queue[cursor];
+      if (ancestors.has(id)) continue;
+      ancestors.add(id);
+      queue.push(...(parents.get(id) || []));
+    }
+    return ancestors;
+  }
+  function linkedCycleIds(byId) {
+    const adjacency = new Map(data.tasks.map(task => [
+      task.id, task.linkedTaskIds.filter(id => byId.has(id))
+    ]));
+    const state = new Map();
+    const path = [];
+    const pathIndexes = new Map();
+    const cycleIds = new Set();
+    data.tasks.forEach(task => {
+      if (state.has(task.id)) return;
+      const stack = [{ id: task.id, childIndex: 0 }];
+      state.set(task.id, 1);
+      pathIndexes.set(task.id, path.length);
+      path.push(task.id);
+      while (stack.length) {
+        const frame = stack[stack.length - 1];
+        const children = adjacency.get(frame.id);
+        if (frame.childIndex >= children.length) {
+          stack.pop();
+          state.set(frame.id, 2);
+          path.pop();
+          pathIndexes.delete(frame.id);
+          continue;
+        }
+        const childId = children[frame.childIndex];
+        frame.childIndex += 1;
+        if (state.get(childId) === 1) {
+          const cycleStart = pathIndexes.get(childId);
+          path.slice(cycleStart).forEach(id => cycleIds.add(id));
+        } else if (!state.has(childId)) {
+          state.set(childId, 1);
+          pathIndexes.set(childId, path.length);
+          path.push(childId);
+          stack.push({ id: childId, childIndex: 0 });
+        }
       }
     });
-    return data.tasks.filter(t => !hidden.has(t.id)).map(t => t.id);
+    return cycleIds;
+  }
+  function allVisibleIds() {
+    const referenced = new Set(data.tasks.flatMap(task => task.linkedTaskIds));
+    const byId = new Map(data.tasks.map(task => [task.id, task]));
+    const visible = new Set();
+    const queue = data.tasks.filter(task => !referenced.has(task.id));
+    linkedCycleIds(byId).forEach(id => queue.push(byId.get(id)));
+    for (let cursor = 0; cursor < queue.length; cursor += 1) {
+      const parent = queue[cursor];
+      if (visible.has(parent.id)) continue;
+      visible.add(parent.id);
+      const childIds = parent.linkMode === 'all'
+        ? parent.linkedTaskIds
+        : visibleLinkedIds(parent, byId);
+      childIds.forEach(id => {
+        const child = byId.get(id);
+        if (child && !visible.has(child.id)) queue.push(child);
+      });
+    }
+    return [...visible];
   }
 
   function resetForm() {
@@ -284,44 +379,56 @@
     $('todo-task-name').value = '';
     $('todo-start-date').value = '';
     $('todo-end-date').value = '';
+    $('todo-start-date').setCustomValidity('');
+    $('todo-end-date').setCustomValidity('');
     $('todo-link-mode').value = 'all';
+    $('todo-routine-period-select').value = 'daily';
     $('todo-subtasks').innerHTML = '';
     $('todo-links').innerHTML = '';
     $('todo-advanced').open = false;
-    $('todo-save-button').textContent = 'ã¿ã¹ã¯ãè¿½å ';
+    $('todo-save-button').textContent = 'タスクを追加';
     $('todo-cancel-edit').hidden = true;
     renderLinkedChoices();
     renderCustomGroups();
   }
   function setCreateTab(tab) {
     createTab = tab;
-    document.querySelectorAll('[data-create-tab]').forEach(b => b.classList.toggle('is-active', b.dataset.createTab === tab));
-    $('todo-form-heading').textContent = categoryLabel(tab) + 'ã¿ã¹ã¯ãè¿½å ';
+    form.setAttribute('aria-labelledby', `todo-tab-${tab}`);
+    document.querySelectorAll('[data-create-tab]').forEach(b => {
+      const active = b.dataset.createTab === tab;
+      b.classList.toggle('is-active', active);
+      b.setAttribute('aria-selected', String(active));
+    });
+    $('todo-form-heading').textContent = categoryLabel(tab) + 'タスクを追加';
     $('todo-date-fields').hidden = tab === 'routine';
+    $('todo-routine-period').hidden = tab !== 'routine';
     $('todo-linked-field').hidden = tab === 'routine';
     $('todo-end-date-field').hidden = tab === 'routine';
     resetForm();
   }
-  function addSubtask(name = '', checked = false) {
+  function addSubtask(name = '', checked = false, id = uid()) {
     const row = document.createElement('div');
     row.className = 'todo-editor-row';
-    row.innerHTML = `<input type="checkbox" aria-label="å°è¦ç´ ã®éæ" ${checked ? 'checked' : ''}><input type="text" maxlength="200" placeholder="å°è¦ç´ ã®åå" value="${esc(name)}"><button type="button" class="lm-todo-slot-remove" aria-label="å°è¦ç´ ãåé¤">â</button>`;
+    row.dataset.id = id;
+    row.innerHTML = `<input type="checkbox" aria-label="小要素の達成" ${checked ? 'checked' : ''}><input type="text" maxlength="200" placeholder="小要素の名前" value="${esc(name)}"><button type="button" class="lm-todo-slot-remove" aria-label="小要素を削除">−</button>`;
     row.querySelector('button').addEventListener('click', () => row.remove());
     $('todo-subtasks').appendChild(row);
   }
   function addLink(url = '', label = '') {
     const row = document.createElement('div');
     row.className = 'todo-editor-row todo-link-row';
-    row.innerHTML = `<input type="url" placeholder="https://..." value="${esc(url)}"><input type="text" placeholder="ãªã³ã¯åï¼ä»»æï¼" value="${esc(label)}"><button type="button" class="lm-todo-slot-remove" aria-label="ãªã³ã¯ãåé¤">â</button>`;
+    row.innerHTML = `<input type="url" placeholder="https://..." value="${esc(url)}"><input type="text" placeholder="リンク名（任意）" value="${esc(label)}"><button type="button" class="lm-todo-slot-remove" aria-label="リンクを削除">−</button>`;
+    row.querySelector('input[type=url]').addEventListener('input', event => event.currentTarget.setCustomValidity(''));
     row.querySelector('button').addEventListener('click', () => row.remove());
     $('todo-links').appendChild(row);
   }
   function renderLinkedChoices(selected = [], groups = {}) {
     const box = $('todo-linked-list');
     box.innerHTML = '';
-    const candidates = data.tasks.filter(t => t.category !== 'routine' && t.id !== editingId);
+    const ancestors = editingId ? linkedAncestors(editingId) : new Set();
+    const candidates = data.tasks.filter(t => t.category !== 'routine' && t.id !== editingId && !ancestors.has(t.id));
     if (!candidates.length) {
-      box.innerHTML = '<p class="todo-help">ç´ä»ãã§ããã¡ã¤ã³ã»ãã®ä»ã¿ã¹ã¯ãããã¾ããã</p>';
+      box.innerHTML = '<p class="todo-help">紐付けできるメイン・その他タスクがありません。</p>';
       return;
     }
     candidates.forEach(t => {
@@ -331,8 +438,8 @@
       cb.type = 'checkbox'; cb.value = t.id; cb.checked = selected.includes(t.id);
       const name = document.createElement('span'); name.textContent = t.name;
       const num = document.createElement('input');
-      num.type = 'number'; num.min = '1'; num.max = '99'; num.value = groups[t.id] || 1;
-      num.className = 'todo-group-number'; num.setAttribute('aria-label', t.name + 'ã®è¡¨ç¤ºã°ã«ã¼ã');
+      num.type = 'number'; num.min = '1'; num.step = '1'; num.value = groups[t.id] || 1;
+      num.className = 'todo-group-number'; num.setAttribute('aria-label', t.name + 'の表示グループ');
       num.hidden = $('todo-link-mode').value !== 'custom';
       cb.addEventListener('change', renderCustomGroups);
       row.append(cb, name, num); box.appendChild(row);
@@ -340,29 +447,38 @@
   }
   function renderCustomGroups() {
     const mode = $('todo-link-mode').value;
-    $('todo-custom-groups').hidden = mode !== 'custom';
-    document.querySelectorAll('.todo-group-number').forEach(n => { n.hidden = mode !== 'custom'; });
+    document.querySelectorAll('.todo-linked-choice').forEach(row => {
+      const selected = row.querySelector('input[type=checkbox]').checked;
+      row.querySelector('.todo-group-number').hidden = mode !== 'custom' || !selected;
+    });
   }
   function editTask(task) {
     editingId = task.id;
     $('todo-edit-id').value = task.id;
     createTab = task.category;
-    document.querySelectorAll('[data-create-tab]').forEach(b => b.classList.toggle('is-active', b.dataset.createTab === createTab));
-    $('todo-form-heading').textContent = categoryLabel(createTab) + 'ã¿ã¹ã¯ãç·¨é';
+    form.setAttribute('aria-labelledby', `todo-tab-${createTab}`);
+    document.querySelectorAll('[data-create-tab]').forEach(b => {
+      const active = b.dataset.createTab === createTab;
+      b.classList.toggle('is-active', active);
+      b.setAttribute('aria-selected', String(active));
+    });
+    $('todo-form-heading').textContent = categoryLabel(createTab) + 'タスクを編集';
     $('todo-date-fields').hidden = createTab === 'routine';
+    $('todo-routine-period').hidden = createTab !== 'routine';
     $('todo-linked-field').hidden = createTab === 'routine';
     $('todo-end-date-field').hidden = createTab === 'routine';
     $('todo-task-name').value = task.name;
     $('todo-start-date').value = task.startDate;
     $('todo-end-date').value = task.endDate;
+    $('todo-routine-period-select').value = task.routinePeriod;
     $('todo-subtasks').innerHTML = '';
-    task.subtasks.forEach(s => addSubtask(s.name, s.checked));
+    task.subtasks.forEach(s => addSubtask(s.name, s.checked, s.id));
     $('todo-links').innerHTML = '';
     task.links.forEach(l => addLink(l.url, l.label));
     $('todo-link-mode').value = task.linkMode;
     renderLinkedChoices(task.linkedTaskIds, task.linkGroups);
     renderCustomGroups();
-    $('todo-save-button').textContent = 'å¤æ´ãä¿å­';
+    $('todo-save-button').textContent = '変更を保存';
     $('todo-cancel-edit').hidden = false;
     $('todo-advanced').open = true;
     $('todo-task-name').focus();
@@ -370,14 +486,32 @@
   function formTask() {
     const name = $('todo-task-name').value.trim();
     if (!name) return null;
+    const startDate = $('todo-start-date');
+    const endDate = $('todo-end-date');
+    endDate.setCustomValidity('');
+    if (createTab !== 'routine' && startDate.value && endDate.value && startDate.value > endDate.value) {
+      endDate.setCustomValidity('期限は開始日以降に設定してください。');
+      endDate.reportValidity();
+      return null;
+    }
+    const linkRows = [...$('todo-links').children];
+    for (const row of linkRows) {
+      const input = row.querySelector('input[type=url]');
+      input.setCustomValidity('');
+      if (input.value.trim() && !safeLinkUrl(input.value.trim())) {
+        input.setCustomValidity('リンクにはhttpまたはhttpsのURLを入力してください。');
+        input.reportValidity();
+        return null;
+      }
+    }
     const subtasks = [...$('todo-subtasks').children].map(row => ({
-      id: uid(), checked: row.querySelector('input[type=checkbox]').checked,
+      id: row.dataset.id || uid(), checked: row.querySelector('input[type=checkbox]').checked,
       name: row.querySelector('input[type=text]').value.trim()
     })).filter(s => s.name);
-    const links = [...$('todo-links').children].map(row => ({
+    const links = linkRows.map(row => ({
       url: row.querySelector('input[type=url]').value.trim(),
       label: row.querySelectorAll('input')[1].value.trim()
-    })).filter(l => l.url);
+    })).map(link => ({ ...link, url: safeLinkUrl(link.url) })).filter(l => l.url);
     const selected = [...$('todo-linked-list').querySelectorAll('input[type=checkbox]:checked')].map(x => x.value);
     const linkGroups = {};
     $('todo-linked-list').querySelectorAll('.todo-linked-choice').forEach(row => {
@@ -388,17 +522,28 @@
       id: editingId || uid(), category: createTab, name,
       startDate: createTab === 'routine' ? '' : $('todo-start-date').value,
       endDate: createTab === 'routine' ? '' : $('todo-end-date').value,
+      routinePeriod: createTab === 'routine' ? $('todo-routine-period-select').value : 'daily',
       subtasks, links,
       linkedTaskIds: createTab === 'routine' ? [] : selected,
       linkMode: $('todo-link-mode').value, linkGroups,
-      checked: editingId ? !!data.tasks.find(t => t.id === editingId)?.checked : false,
-      checkedAt: editingId ? (data.tasks.find(t => t.id === editingId)?.checkedAt || 0) : 0
+      checked: editingId
+        ? !!data.tasks.find(t => t.id === editingId)?.checked &&
+          (createTab !== 'routine' || data.tasks.find(t => t.id === editingId)?.checkedDay === routinePeriodKey($('todo-routine-period-select').value))
+        : false,
+      checkedAt: editingId ? (data.tasks.find(t => t.id === editingId)?.checkedAt || 0) : 0,
+      checkedDay: editingId ? (data.tasks.find(t => t.id === editingId)?.checkedDay || '') : ''
     };
   }
   function toggleTask(task, checked) {
     if (task.checked === checked) return;
+    if (checked && task.category === 'routine' && task.routinePeriod === 'weekdays') {
+      const [year, month, day] = todayKey().split('-').map(Number);
+      const weekday = new Date(year, month - 1, day).getDay();
+      if (weekday === 0 || weekday === 6) return render();
+    }
     task.checked = checked;
     task.checkedAt = checked ? Date.now() : 0;
+    if (task.category === 'routine' && checked) task.checkedDay = routinePeriodKey(task.routinePeriod);
     if (checked && task.category === 'main') {
       const wk = weekKey();
       const counted = data.weeklyCounted[wk] || (data.weeklyCounted[wk] = {});
@@ -411,8 +556,8 @@
       if (LM.notifyBaseMainCompleted) LM.notifyBaseMainCompleted(`manager:${task.id}:${todayKey()}`);
     }
     if (checked && task.category === 'routine') {
-      const day = todayKey();
-      const counted = data.routineCounted[day] || (data.routineCounted[day] = {});
+      const period = routinePeriodKey(task.routinePeriod);
+      const counted = data.routineCounted[period] || (data.routineCounted[period] = {});
       if (!counted[task.id]) {
         counted[task.id] = true;
         const legacy = LM.getTodoState();
@@ -446,7 +591,7 @@
     const remain = Math.max(0, required - p.count);
     const rate = required > 0 ? Math.min(100, Math.round(p.count / required * 100)) : 0;
     if ($('routine-progress')) {
-      $('routine-progress').innerHTML = `<div class="lm-event-top"><span>ä»æã®ã«ã¼ãã£ã³</span><span>${rate}%</span></div><div class="lm-progress-track"><div class="lm-progress-fill" style="width:${rate}%"></div></div><div class="lm-event-remain">${p.count} / ${required}å ã» æ®ã${remain}å ã» ææ«ã¾ã§${daysInMonth - day + 1}æ¥</div>`;
+      $('routine-progress').innerHTML = `<div class="lm-event-top"><span>今月のルーティン</span><span>${rate}%</span></div><div class="lm-progress-track"><div class="lm-progress-fill" style="width:${rate}%"></div></div><div class="lm-event-remain">${p.count} / ${required}回 ・ 残り${remain}回 ・ 月末まで${daysInMonth - day + 1}日</div>`;
     }
     if ($('routine-reward-box')) $('routine-reward-box').style.display = p.count >= required ? 'block' : 'none';
   }
@@ -474,7 +619,7 @@
     box.innerHTML = '';
     const list = filteredTasks();
     if (!list.length) {
-      box.innerHTML = '<p class="todo-help">è¡¨ç¤ºã§ããã¿ã¹ã¯ãããã¾ãããã¿ã¹ã¯ãè¿½å ãããããã£ã«ã¿ã¼ãå¤æ´ãã¦ãã ããã</p>';
+      box.innerHTML = '<p class="todo-help">表示できるタスクがありません。タスクを追加するか、フィルターを変更してください。</p>';
       return;
     }
     list.forEach(task => {
@@ -482,15 +627,22 @@
       card.className = 'todo-task-card' + (task.checked ? ' is-checked' : '');
       const top = document.createElement('div'); top.className = 'todo-task-top';
       const cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = task.checked;
-      cb.setAttribute('aria-label', task.name + 'ãå®äº');
+      const [year, month, day] = todayKey().split('-').map(Number);
+      const weekday = new Date(year, month - 1, day).getDay();
+      if (task.category === 'routine' && task.routinePeriod === 'weekdays' && (weekday === 0 || weekday === 6)) {
+        cb.disabled = true;
+        cb.title = '平日に実施できます';
+      }
+      cb.setAttribute('aria-label', task.name + 'を完了');
       cb.addEventListener('change', () => toggleTask(task, cb.checked));
       const title = document.createElement('div'); title.className = 'todo-task-title'; title.textContent = task.name;
       const category = document.createElement('span'); category.className = 'todo-category'; category.textContent = categoryLabel(task.category);
       top.append(cb, title, category); card.appendChild(top);
       const meta = [];
-      if (task.startDate) meta.push('éå§ ' + task.startDate);
-      if (task.endDate) meta.push('æé ' + task.endDate);
-      if (meta.length) { const m = document.createElement('div'); m.className = 'todo-task-meta'; m.textContent = meta.join('ã'); card.appendChild(m); }
+      if (task.startDate) meta.push('開始 ' + task.startDate);
+      if (task.endDate) meta.push('期限 ' + task.endDate);
+      if (task.category === 'routine') meta.push(routinePeriodLabel(task.routinePeriod));
+      if (meta.length) { const m = document.createElement('div'); m.className = 'todo-task-meta'; m.textContent = meta.join('　'); card.appendChild(m); }
       if (task.subtasks.length) {
         const sub = document.createElement('div'); sub.className = 'todo-card-subtasks';
         task.subtasks.forEach(s => {
@@ -512,13 +664,13 @@
       }
       if (task.linkedTaskIds.length) {
         const info = document.createElement('div'); info.className = 'todo-task-meta';
-        info.textContent = `ç´ä»ã ${task.linkedTaskIds.length}ä»¶ã»${({all:'ãã¹ã¦è¡¨ç¤º',sequence:'é æ¬¡è¡¨ç¤º',custom:'ã«ã¹ã¿ã è¡¨ç¤º'})[task.linkMode]}`;
+        info.textContent = `紐付け ${task.linkedTaskIds.length}件・${({all:'すべて表示',sequence:'順次表示',custom:'カスタム表示'})[task.linkMode]}`;
         card.appendChild(info);
       }
       const actions = document.createElement('div'); actions.className = 'todo-card-actions';
-      const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'lm-btn secondary'; edit.textContent = 'ç·¨é'; edit.addEventListener('click', () => editTask(task));
-      const del = document.createElement('button'); del.type = 'button'; del.className = 'lm-btn secondary'; del.textContent = 'åé¤'; del.addEventListener('click', () => {
-        if (!confirm(`ã${task.name}ããåé¤ãã¾ããï¼ç´ä»ãåãããé¸æå¯¾è±¡ããªããªãã¾ãã`)) return;
+      const edit = document.createElement('button'); edit.type = 'button'; edit.className = 'lm-btn secondary'; edit.textContent = '編集'; edit.addEventListener('click', () => editTask(task));
+      const del = document.createElement('button'); del.type = 'button'; del.className = 'lm-btn secondary'; del.textContent = '削除'; del.addEventListener('click', () => {
+        if (!confirm(`「${task.name}」を削除しますか？紐付け先からも選択対象がなくなります。`)) return;
         data.tasks = data.tasks.filter(t => t.id !== task.id);
         data.tasks.forEach(t => { t.linkedTaskIds = t.linkedTaskIds.filter(id => id !== task.id); delete t.linkGroups[task.id]; });
         save(); render();
@@ -542,6 +694,8 @@
   $('todo-add-subtask').addEventListener('click', () => addSubtask());
   $('todo-add-link').addEventListener('click', () => addLink());
   $('todo-link-mode').addEventListener('change', renderCustomGroups);
+  $('todo-start-date').addEventListener('input', () => $('todo-end-date').setCustomValidity(''));
+  $('todo-end-date').addEventListener('input', () => $('todo-end-date').setCustomValidity(''));
   ['todo-tab-filter', 'todo-deadline-filter', 'todo-sort'].forEach(id => $(id).addEventListener('change', render));
   setupTomorrowTasks();
   resetDailyTasks();

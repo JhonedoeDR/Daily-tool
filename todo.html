@@ -78,12 +78,12 @@
           </label>
         </div>
         <div class="todo-create-tabs" role="tablist" aria-label="タスクの種類">
-          <button type="button" class="todo-create-tab is-active" data-create-tab="main">メイン</button>
-          <button type="button" class="todo-create-tab" data-create-tab="routine">ルーティン</button>
-          <button type="button" class="todo-create-tab" data-create-tab="other">その他</button>
+          <button type="button" id="todo-tab-main" role="tab" aria-controls="todo-create-form" aria-selected="true" class="todo-create-tab is-active" data-create-tab="main">メイン</button>
+          <button type="button" id="todo-tab-routine" role="tab" aria-controls="todo-create-form" aria-selected="false" class="todo-create-tab" data-create-tab="routine">ルーティン</button>
+          <button type="button" id="todo-tab-other" role="tab" aria-controls="todo-create-form" aria-selected="false" class="todo-create-tab" data-create-tab="other">その他</button>
         </div>
       </div>
-      <form id="todo-create-form" class="todo-create-form">
+      <form id="todo-create-form" class="todo-create-form" role="tabpanel" aria-labelledby="todo-tab-main">
         <input type="hidden" id="todo-edit-id" />
         <div class="todo-form-heading" id="todo-form-heading">メインタスクを追加</div>
         <label class="todo-field">タスク名
@@ -123,7 +123,6 @@
                   <option value="custom">カスタム表示</option>
                 </select>
               </label>
-              <div id="todo-custom-groups" class="todo-custom-groups" hidden></div>
               <p class="todo-help">カスタム表示では、同時に表示するタスクに同じグループ番号を設定します。</p>
             </div>
             <div class="todo-field">

@@ -898,6 +898,264 @@ body {
   text-decoration-color: var(--paper-line);
 }
 
+/* ---------- タスクページ(追加タスク管理) ---------- */
+.todo-manager {
+  display: grid;
+  gap: 14px;
+}
+
+.todo-manager [hidden] {
+  display: none !important;
+}
+
+.todo-toolbar {
+  display: grid;
+  gap: 12px;
+}
+
+.todo-filter-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.todo-filter-row label,
+.todo-field {
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+.todo-filter-row label,
+.todo-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.todo-manager input:not([type='checkbox']),
+.todo-manager select {
+  min-width: 0;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--paper-line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+}
+
+.todo-create-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+}
+
+.todo-create-tab {
+  padding: 9px 6px;
+  border: 1px solid var(--paper-line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text-soft);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.todo-create-tab.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+  font-weight: 700;
+}
+
+.todo-create-form {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--paper-line);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.todo-form-heading {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.todo-date-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.todo-advanced {
+  border-top: 1px solid var(--paper-line);
+  padding-top: 10px;
+}
+
+.todo-advanced summary,
+.todo-legacy-area summary {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.todo-advanced-content {
+  display: grid;
+  gap: 16px;
+  padding-top: 12px;
+}
+
+.todo-subtask-editor,
+.todo-link-editor,
+.todo-linked-list {
+  display: grid;
+  gap: 7px;
+  margin: 7px 0;
+}
+
+.todo-editor-row {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: 7px;
+}
+
+.todo-editor-row input[type='checkbox'],
+.todo-card-subtask input[type='checkbox'],
+.todo-task-top input[type='checkbox'],
+.todo-linked-choice input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+.todo-link-row {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 32px;
+}
+
+.todo-linked-choice {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 72px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px;
+  border: 1px solid var(--paper-line);
+  border-radius: 8px;
+  color: var(--text);
+}
+
+.todo-linked-choice span {
+  overflow-wrap: anywhere;
+}
+
+.todo-linked-choice .todo-group-number {
+  padding: 6px !important;
+}
+
+.todo-help {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.todo-form-actions,
+.todo-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.todo-task-list {
+  display: grid;
+  gap: 10px;
+}
+
+.todo-task-card {
+  display: grid;
+  gap: 9px;
+  padding: 12px;
+  border: 1px solid var(--paper-line);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.todo-task-card.is-checked {
+  background: #f9fcfd;
+}
+
+.todo-task-top {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.todo-task-title {
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.todo-task-card.is-checked .todo-task-title {
+  color: var(--text-soft);
+  text-decoration: line-through;
+}
+
+.todo-category {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--text);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.todo-task-meta {
+  color: var(--text-soft);
+  font-size: 11px;
+}
+
+.todo-card-subtasks {
+  display: grid;
+  gap: 5px;
+  padding-left: 28px;
+}
+
+.todo-card-subtask {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.todo-card-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  font-size: 12px;
+}
+
+.todo-card-links a {
+  color: #247f9f;
+  overflow-wrap: anywhere;
+}
+
+.todo-legacy-area {
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid var(--paper-line);
+}
+
+.todo-legacy-area > .todo-help {
+  margin: 8px 0 14px;
+}
+
 .lm-week-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
