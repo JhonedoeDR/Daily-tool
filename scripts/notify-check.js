@@ -325,10 +325,12 @@ function selectDue(items, nowMs) {
 
 /* ---------- Firebase関連(実行時のみ読み込む) ---------- */
 async function main() {
-  const admin = require('firebase-admin');
+  const { cert, initializeApp } = require('firebase-admin/app');
+  const { FieldValue, getFirestore } = require('firebase-admin/firestore');
+  const { getMessaging } = require('firebase-admin/messaging');
   const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-  const db = admin.firestore();
+  initializeApp({ credential: cert(serviceAccount) });
+  const db = getFirestore();
   const stateRef = db.collection('notify').doc('state');
 
   const snap = await stateRef.get();
@@ -383,7 +385,7 @@ async function main() {
 
     try {
       // data-onlyで送る(表示はService Worker側で1回だけ行う)
-      const res = await admin.messaging().sendEachForMulticast({
+      const res = await getMessaging().sendEachForMulticast({
         tokens,
         data: { title: msg.title, body: msg.body },
         webpush: { headers: { Urgency: 'high', TTL: '300' } },
@@ -404,7 +406,7 @@ async function main() {
 
   // 無効になったトークンだけを安全に取り除く(他の端末の登録と競合しないようarrayRemove)
   if (invalidTokens.size > 0) {
-    await stateRef.update({ tokens: admin.firestore.FieldValue.arrayRemove(...invalidTokens) });
+    await stateRef.update({ tokens: FieldValue.arrayRemove(...invalidTokens) });
     console.log(`無効なトークンを${invalidTokens.size}件削除しました`);
   }
 }
