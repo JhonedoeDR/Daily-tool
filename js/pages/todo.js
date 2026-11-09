@@ -796,7 +796,7 @@
       const subtasks = document.createElement('section');
       subtasks.className = 'todo-detail-section';
       const subheading = document.createElement('h3');
-      subheading.textContent = 'チェックボックス小要素';
+      subheading.textContent = 'チェックボックス';
       subtasks.appendChild(subheading);
       task.subtasks.forEach(subtask => {
         const label = document.createElement('label');

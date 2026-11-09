@@ -332,7 +332,7 @@ LM.checkAndNotify = function () {
     const task = sorted[0];
     if (!task) return '';
     const category = ({ main: 'メイン', routine: 'ルーティン', other: 'その他' })[task.category] || 'その他';
-    const label = includeCategory ? `${category} の ${task.name}` : task.name;
+    const label = includeCategory ? `${category} - ${task.name}` : task.name;
     return `「${label}」${sorted.length > 1 ? `ほか${sorted.length - 1}つ` : ''}`;
   };
 
