@@ -489,7 +489,7 @@ LM.TODO_WEEK_TOTAL = 14;
  * ・ルーティン枠(rt1〜rt3)は、名前だけが1か月間、翌日以降も自動で引き継がれる(チェックは毎日リセット)
  * ・必要達成数 = 枠の数 × その月の日数 × 2/3 (3枠・30日なら60、31日なら62)
  * ・毎日2/3を満たす必要はなく、月全体の合計で数える(取りこぼしは後の日に全部クリアして取り返せる)
- * ・名前のあるルーティンを、その日に初めてチェックした時だけ+1(チェックを外しても減らない。メインの週間記録と同じ考え方)
+ * ・名前のあるルーティンはチェック状態に応じて月間クリア数を更新する
  * ・月が変わると(AM4:00基準)達成数とご褒美の文字はリセットされる
  * -------------------------------------------- */
 LM.TODO_ROUTINE_IDS = ['rt1', 'rt2', 'rt3'];
@@ -541,6 +541,25 @@ LM.defaultRoutineReflected = function () {
 // ルーティンの「月」もタスク境界の AM4:00 を基準とする。
 LM.routineMonthKey = function (d) {
   return LM.todoDayKey(d).slice(0, 7);
+};
+
+LM.updateTodoManagerClearCount = function (manager, task, checked) {
+  if (!manager || !task || !['main', 'routine'].includes(task.category)) return;
+  const date = checked ? new Date() : task.checkedAt ? new Date(task.checkedAt) : new Date();
+  let period;
+  if (task.category === 'main') period = LM.todoMondayKey(date);
+  else if (!checked && task.checkedDay) period = task.checkedDay;
+  else if (task.routinePeriod === 'weekly') period = LM.todoMondayKey(date);
+  else if (task.routinePeriod === 'monthly') period = LM.routineMonthKey(date);
+  else period = LM.todoDayKey(date);
+  const key = task.category === 'main' ? 'weeklyCounted' : 'routineCounted';
+  if (!manager[key] || typeof manager[key] !== 'object') manager[key] = {};
+  const counts = manager[key][period] && typeof manager[key][period] === 'object'
+    ? manager[key][period] : {};
+  if (checked) counts[task.id] = true;
+  else delete counts[task.id];
+  if (Object.keys(counts).length) manager[key][period] = counts;
+  else delete manager[key][period];
 };
 
 LM.defaultTodoState = function () {
@@ -730,13 +749,15 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// メインタスクを初めてチェックした時だけ週間クリア数を+1する(週をまたぐとリセット)
-// ルーティン(名前のあるもの)も、その日に初めてチェックした時だけ月間クリア数を+1する
+// メイン・ルーティンの達成数をチェック状態に合わせて更新する
 LM.toggleTodoCheck = function (state, id, checked) {
   state.dailyTasks[id].checked = checked;
   if (LM.TODO_MAIN_IDS.includes(id) && checked && !state.reflected[id] && state.weeklyClears < LM.TODO_WEEK_TOTAL) {
     state.weeklyClears += 1;
     state.reflected[id] = true;
+  } else if (LM.TODO_MAIN_IDS.includes(id) && !checked && state.reflected[id]) {
+    state.weeklyClears = Math.max(0, state.weeklyClears - 1);
+    state.reflected[id] = false;
   }
   if (
     LM.TODO_ROUTINE_IDS.includes(id) &&
@@ -746,6 +767,13 @@ LM.toggleTodoCheck = function (state, id, checked) {
   ) {
     state.routineClears += 1;
     state.routineReflected[id] = true;
+  } else if (
+    LM.TODO_ROUTINE_IDS.includes(id) &&
+    !checked &&
+    state.routineReflected[id]
+  ) {
+    state.routineClears = Math.max(0, state.routineClears - 1);
+    state.routineReflected[id] = false;
   }
   LM.saveTodoState(state);
 };

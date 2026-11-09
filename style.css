@@ -1203,33 +1203,11 @@ body {
   max-height: none;
 }
 
-.todo-month-calendar {
-  display: grid;
-  grid-template-columns: 36px minmax(0, 1fr) 36px;
-  align-items: center;
-  text-align: center;
-}
-
-.todo-month-calendar button {
-  width: 32px;
-  height: 30px;
-  border: 1px solid var(--paper-line);
-  border-radius: 6px;
-  background: #fff;
-  color: var(--text);
-  font-size: 18px;
-}
-
 .todo-month-days {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 3px;
   text-align: center;
-}
-
-.todo-month-weekday {
-  color: var(--text-soft);
-  font-size: 10px;
 }
 
 .todo-month-day {

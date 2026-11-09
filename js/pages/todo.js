@@ -19,7 +19,6 @@
   let linkedTaskIds = [];
   let linkedTaskGroups = {};
   let routineDays = [];
-  let calendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   let bulkSelectionMode = false;
   const pageSize = 5;
   const dayMs = 24 * 60 * 60 * 1000;
@@ -316,29 +315,13 @@
     const grid = $('todo-month-days');
     if (!grid) return;
     grid.replaceChildren();
-    const year = calendarMonth.getFullYear();
-    const month = calendarMonth.getMonth();
-    $('todo-month-label').textContent = `${year}年${month + 1}月`;
-    ['日', '月', '火', '水', '木', '金', '土'].forEach(day => {
-      const heading = document.createElement('span');
-      heading.className = 'todo-month-weekday';
-      heading.textContent = day;
-      grid.appendChild(heading);
-    });
-    const offset = new Date(year, month, 1).getDay();
-    const total = new Date(year, month + 1, 0).getDate();
-    for (let blank = 0; blank < offset; blank += 1) {
-      const spacer = document.createElement('span');
-      spacer.setAttribute('aria-hidden', 'true');
-      grid.appendChild(spacer);
-    }
-    for (let day = 1; day <= total; day += 1) {
+    for (let day = 1; day <= 31; day += 1) {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = 'todo-month-day';
       button.textContent = String(day);
       button.setAttribute('aria-pressed', String(routineDays.includes(day)));
-      button.setAttribute('aria-label', `${month + 1}月${day}日`);
+      button.setAttribute('aria-label', `${day}日`);
       button.addEventListener('click', () => {
         routineDays = routineDays.includes(day)
           ? routineDays.filter(selected => selected !== day)
@@ -366,14 +349,6 @@
       $('todo-routine-period-select').setCustomValidity('');
       routineDays = [];
       renderRoutineSchedule();
-    });
-    $('todo-month-prev').addEventListener('click', () => {
-      calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1);
-      renderMonthlyCalendar();
-    });
-    $('todo-month-next').addEventListener('click', () => {
-      calendarMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1);
-      renderMonthlyCalendar();
     });
   }
   function addSubtask(name = '', checked = false, id = uid()) {
@@ -627,19 +602,10 @@
         !routineScheduledOn(task.routinePeriod, task.routineDays)) {
       return render();
     }
+    LM.updateTodoManagerClearCount(data, task, checked);
     task.checked = checked;
     task.checkedAt = checked ? Date.now() : 0;
     if (task.category === 'routine' && checked) task.checkedDay = routinePeriodKey(task.routinePeriod);
-    if (checked && task.category === 'main') {
-      const wk = weekKey();
-      const counted = data.weeklyCounted[wk] || (data.weeklyCounted[wk] = {});
-      counted[task.id] = true;
-    }
-    if (checked && task.category === 'routine') {
-      const period = routinePeriodKey(task.routinePeriod);
-      const counted = data.routineCounted[period] || (data.routineCounted[period] = {});
-      counted[task.id] = true;
-    }
     save();
     render();
     updateProgressDisplays();
@@ -928,6 +894,7 @@
       top.appendChild(select);
       const cb = document.createElement('input');
       cb.type = 'checkbox';
+      cb.hidden = bulkSelectionMode;
       cb.checked = task.checked;
       cb.disabled = archiveMode;
       if (task.category === 'routine' && !routineScheduledOn(task.routinePeriod, task.routineDays)) {
@@ -960,9 +927,10 @@
       meta.className = 'todo-task-meta';
       const deadline = document.createElement('span');
       deadline.className = 'todo-task-deadline';
-      deadline.textContent = task.endDate
+      const deadlineText = task.endDate
         ? `期限・終了日 ${task.endDate}`
         : task.category === 'routine' ? routineScheduleLabel(task) : '期限なし';
+      deadline.textContent = `${categoryLabel(task.category)}　${deadlineText}`;
       meta.appendChild(deadline);
       if (task.linkedTaskIds.length) {
         const progress = linkedTaskProgress(task);

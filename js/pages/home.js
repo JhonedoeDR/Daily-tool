@@ -676,21 +676,10 @@
       if (checkbox.dataset.managerTaskId) {
         const task = taskData.find((item) => item.id === checkbox.dataset.managerTaskId);
         if (!task) return;
+        LM.updateTodoManagerClearCount(manager, task, checkbox.checked);
         task.checked = checkbox.checked;
         task.checkedAt = checkbox.checked ? Date.now() : 0;
         if (task.category === 'routine' && checkbox.checked) task.checkedDay = routineKey(task);
-        if (checkbox.checked && task.category === 'main') {
-          const week = LM.todoMondayKey();
-          if (!manager.weeklyCounted || typeof manager.weeklyCounted !== 'object') manager.weeklyCounted = {};
-          if (!manager.weeklyCounted[week] || typeof manager.weeklyCounted[week] !== 'object') manager.weeklyCounted[week] = {};
-          manager.weeklyCounted[week][task.id] = true;
-        }
-        if (checkbox.checked && task.category === 'routine') {
-          const period = routineKey(task);
-          if (!manager.routineCounted || typeof manager.routineCounted !== 'object') manager.routineCounted = {};
-          if (!manager.routineCounted[period] || typeof manager.routineCounted[period] !== 'object') manager.routineCounted[period] = {};
-          manager.routineCounted[period][task.id] = true;
-        }
         if (LM.set('lm_todoManager', manager)) LM.syncFirebaseDebounced();
       } else if (checkbox.dataset.dlTaskId) {
         LM.toggleDeadlineTask(checkbox.dataset.dlTaskId, checkbox.checked);
