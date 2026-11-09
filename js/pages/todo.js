@@ -11,6 +11,7 @@
   let data;
   let createTab = 'main';
   let editingId = null;
+  let editingOriginalCategory = null;
   let pageIndex = 0;
   let sortDescending = false;
   let archiveMode = false;
@@ -265,6 +266,7 @@
 
   function resetForm() {
     editingId = null;
+    editingOriginalCategory = null;
     $('todo-edit-id').value = '';
     $('todo-task-name').value = '';
     $('todo-start-date').value = '';
@@ -288,6 +290,27 @@
     renderCustomGroups();
   }
   function setCreateTab(tab) {
+    if (tab === createTab) return;
+    const previousTab = createTab;
+    const transferDetails = previousTab !== 'routine' && tab !== 'routine';
+    const taskName = $('todo-task-name').value;
+    const startDate = $('todo-start-date').value;
+    const endDate = $('todo-end-date').value;
+    const advancedOpen = $('todo-advanced').open;
+    const subtasks = transferDetails ? [...$('todo-subtasks').children].map(row => ({
+      id: row.dataset.id || uid(),
+      name: row.querySelector('input[type=text]').value,
+      checked: row.querySelector('input[type=checkbox]').checked
+    })) : [];
+    const links = transferDetails ? [...$('todo-links').children].map(row => ({
+      url: row.querySelector('input[type=url]').value,
+      label: row.querySelectorAll('input')[1].value
+    })) : [];
+    const notifications = transferDetails ? readNotificationEditor() : {};
+    const selectedLinkedIds = transferDetails ? [...linkedTaskIds] : [];
+    const selectedLinkGroups = transferDetails ? { ...linkedTaskGroups } : {};
+    const linkMode = transferDetails ? $('todo-link-mode').value : 'all';
+
     createTab = tab;
     form.setAttribute('aria-labelledby', `todo-tab-${tab}`);
     document.querySelectorAll('[data-create-tab]').forEach(b => {
@@ -295,12 +318,34 @@
       b.classList.toggle('is-active', active);
       b.setAttribute('aria-selected', String(active));
     });
-    $('todo-form-heading').textContent = categoryLabel(tab) + 'タスクを追加';
+    $('todo-form-heading').textContent = categoryLabel(tab) + `タスクを${editingId ? '編集' : '追加'}`;
     $('todo-date-fields').hidden = false;
     $('todo-routine-period').hidden = tab !== 'routine';
     $('todo-linked-field').hidden = tab === 'routine';
     $('todo-end-date-field').hidden = false;
-    resetForm();
+    $('todo-task-name').value = taskName;
+    $('todo-start-date').value = startDate;
+    $('todo-end-date').value = endDate;
+    $('todo-start-date').setCustomValidity('');
+    $('todo-end-date').setCustomValidity('');
+    $('todo-routine-period-select').setCustomValidity('');
+
+    $('todo-routine-period-select').value = 'daily';
+    routineDays = [];
+    renderRoutineSchedule();
+    $('todo-subtasks').replaceChildren();
+    subtasks.forEach(subtask => addSubtask(subtask.name, subtask.checked, subtask.id));
+    $('todo-links').replaceChildren();
+    links.forEach(link => addLink(link.url, link.label));
+    $('todo-linked-search').value = '';
+    linkedTaskIds = selectedLinkedIds;
+    linkedTaskGroups = selectedLinkGroups;
+    $('todo-link-mode').value = linkMode;
+    setNotificationEditor(notifications);
+    $('todo-advanced').open = transferDetails && advancedOpen;
+    $('todo-save-button').textContent = editingId ? '変更を保存' : 'タスクを追加';
+    $('todo-cancel-edit').textContent = editingId ? '編集をやめる' : '閉じる';
+    renderLinkedChoices();
   }
   function renderRoutineSchedule() {
     const period = $('todo-routine-period-select').value;
@@ -504,6 +549,7 @@
   }
   function editTask(task) {
     editingId = task.id;
+    editingOriginalCategory = task.category;
     $('todo-edit-id').value = task.id;
     createTab = task.category;
     form.setAttribute('aria-labelledby', `todo-tab-${createTab}`);
@@ -590,11 +636,17 @@
       linkedTaskIds: createTab === 'routine' ? [] : [...linkedTaskIds],
       linkMode: $('todo-link-mode').value, linkGroups,
       checked: editingId
-        ? !!data.tasks.find(t => t.id === editingId)?.checked &&
-          (createTab !== 'routine' || data.tasks.find(t => t.id === editingId)?.checkedDay === routinePeriodKey($('todo-routine-period-select').value))
+        ? (() => {
+          const previous = data.tasks.find(t => t.id === editingId);
+          if (!previous || (previous.category === 'routine') !== (createTab === 'routine')) return false;
+          return !!previous.checked && (createTab !== 'routine' ||
+            previous.checkedDay === routinePeriodKey($('todo-routine-period-select').value));
+        })()
         : false,
-      checkedAt: editingId ? (data.tasks.find(t => t.id === editingId)?.checkedAt || 0) : 0,
-      checkedDay: editingId ? (data.tasks.find(t => t.id === editingId)?.checkedDay || '') : ''
+      checkedAt: editingId && ((editingOriginalCategory === 'routine') === (createTab === 'routine'))
+        ? (data.tasks.find(t => t.id === editingId)?.checkedAt || 0) : 0,
+      checkedDay: editingId && ((editingOriginalCategory === 'routine') === (createTab === 'routine'))
+        ? (data.tasks.find(t => t.id === editingId)?.checkedDay || '') : ''
     };
   }
   function toggleTask(task, checked) {
