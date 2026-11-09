@@ -509,11 +509,12 @@
     candidates.forEach(t => {
       const row = document.createElement('div');
       row.className = 'todo-linked-choice';
-      const name = document.createElement('span'); name.textContent = t.name;
+      const name = document.createElement('span'); name.textContent = t.name; name.title = t.name;
       const add = document.createElement('button');
       add.type = 'button';
       add.className = 'lm-btn secondary';
       add.textContent = '追加';
+      add.setAttribute('aria-label', `${t.name}を紐付けに追加`);
       add.addEventListener('click', () => {
         linkedTaskIds.push(t.id);
         linkedTaskGroups[t.id] = 1;
